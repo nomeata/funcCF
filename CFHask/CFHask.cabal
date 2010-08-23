@@ -1,0 +1,15 @@
+Name:                CFHask
+Version:             0.1
+Synopsis:            Control-Flow Analysis implementation
+License:             BSD3
+License-file:        LICENSE
+Author:              Joachim Breitner
+Maintainer:          mail@joachim-breitner.de
+Stability:           Experimental
+Category:            Language
+Build-type:          Simple
+Cabal-version:       >=1.2
+
+Library
+  Build-depends:       containers, base
+  Exposed-modules:     Eval, CPSScheme
