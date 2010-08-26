@@ -22,6 +22,10 @@ infixl 9 :×
 upd :: (Ord k) => k :⇀a -> [k :× a] -> k :⇀ a
 upd map list = M.union (M.fromList list) map
 
+-- | A functorial variant of 'upd'
+upd' :: (Ord k, Functor f) => f (k :⇀ a) -> [k :× a] -> f (k :⇀ a)
+upd' map list = fmap (`upd` list) map
+
 -- | For use in the argument list of 'upd'
 (↦) :: k -> v -> k :× v
 k ↦ v = (k,v)
