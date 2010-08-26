@@ -44,15 +44,15 @@ data Val = L Lambda          -- ^ a lambda abstraction,
                              -- label of the binding position of the variable
                              -- for convenience),
          | C Label Const     -- ^ a constant value or
-         | P Label Prim      -- ^ a primitive operation.
+         | P Prim            -- ^ a primitive operation.
     deriving (Show)
 
 -- | As constants we only have integers.
 type Const = Integer
 
--- | Primitive operations 
-data Prim = Plus -- ^ Integer addition. Expected parameters: two integers, one continuation.
-          | If -- ^ Conditional branching. Expected paramters: one integer, one continuation to be called if the argument is nonzero, one continuation to be called if the argument is zero (“false”)
+-- | Primitive operations. The primitive operations are annotated by labels. These mark the (invisible) call sites that call the continuations, and are one per continuation.
+data Prim = Plus Label -- ^ Integer addition. Expected parameters: two integers, one continuation.
+          | If Label Label -- ^ Conditional branching. Expected paramters: one integer, one continuation to be called if the argument is nonzero, one continuation to be called if the argument is zero (“false”)
     deriving (Show)
 
 -- * Some example Programs
@@ -65,7 +65,7 @@ ex1 = Lambda 0 ["cont"] $
 -- | Returns 1 + 1
 ex2 :: Prog
 ex2 = Lambda 0 ["cont"] $ 
-        App 1 (P 1 Plus)
+        App 1 (P (Plus 1))
             [ C 2 1
             , C 3 1
             , R 4 0 "cont"]
@@ -74,12 +74,12 @@ ex2 = Lambda 0 ["cont"] $
 ex3 :: Prog
 ex3 = Lambda 0 ["cont"] $
         Let 1 [("rec", Lambda 2 ["p", "i", "c'"] $
-                        App 3 (P 4 If)
+                        App 3 (P (If 4 31))
                             [ R 5 2 "i"
                             , L $ Lambda 6 [] $
-                                App 7 (P 8 Plus) [R 9 2 "p", R 10 2 "i",
+                                App 7 (P  (Plus 8)) [R 9 2 "p", R 10 2 "i",
                                     L $ Lambda 11 ["p'"] $
-                                        App 12 (P 8 Plus) [R 13 2 "i", C 26 (-1),
+                                        App 12 (P (Plus 30)) [R 13 2 "i", C 26 (-1),
                                             L $ Lambda 14 ["i'"] $
                                                 App 29 (R 15 1 "rec")
                                                     [ R 16 11 "p'"

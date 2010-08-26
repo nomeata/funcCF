@@ -55,7 +55,7 @@ evalCPS lam = evalF f [Stop] ve 0
 --   piece of data.
 evalV :: Val -> BEnv -> VEnv -> D
 evalV (C _ int) β ve = DI int
-evalV (P _ prim) β ve = DP prim
+evalV (P prim) β ve = DP prim
 evalV (R _ binder var) β ve = ve ! (var, β ! binder)
 evalV (L lam) β ve = DC (lam, β)
 
@@ -69,9 +69,11 @@ evalF (DC (Lambda lab vs c, β)) as ve b
             where β' = β `upd` [lab ↦ b]
                   ve' = ve `upd` zipWith (\v a -> (v,b) ↦ a) vs as
 
-evalF (DP Plus) [DI a1, DI a2, cont] ve b = evalF cont [DI (a1 + a2)] ve b'
+evalF (DP (Plus c)) [DI a1, DI a2, cont] ve b = evalF cont [DI (a1 + a2)] ve b'
     where b' = succ b
-evalF (DP If) [DI v, cont1, cont2] ve b = evalF (if v /= 0 then cont1 else cont2) [] ve b'
+evalF (DP (If ct cf)) [DI v, contt, contf] ve b
+    | v /= 0 =  evalF contt [] ve b'
+    | v == 0 =  evalF contf [] ve b'
     where b' = succ b
 
 evalF Stop [DI int] _ _ = Right int 
