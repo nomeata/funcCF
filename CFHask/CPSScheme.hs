@@ -27,7 +27,7 @@ newtype Var = Var String
 
 -- | A lambda expression has a label, a list of abstract argument names and a body.
 data Lambda = Lambda Label [Var] Call
-    deriving (Show)
+    deriving (Show, Eq, Ord)
 
 -- | The body of a lambda expression is either 
 data Call = App Label Val [Val]
@@ -36,7 +36,7 @@ data Call = App Label Val [Val]
           -- ^ it is the definition of a list of (potentially mutable
           -- recursive) lambda expression, defined for a nother call
           -- expression.
-    deriving (Show)
+    deriving (Show, Eq, Ord)
 
 -- | A value can either be
 data Val = L Lambda          -- ^ a lambda abstraction,
@@ -45,7 +45,7 @@ data Val = L Lambda          -- ^ a lambda abstraction,
                              -- for convenience),
          | C Label Const     -- ^ a constant value or
          | P Prim            -- ^ a primitive operation.
-    deriving (Show)
+    deriving (Show, Eq, Ord)
 
 -- | As constants we only have integers.
 type Const = Integer
@@ -53,7 +53,7 @@ type Const = Integer
 -- | Primitive operations. The primitive operations are annotated by labels. These mark the (invisible) call sites that call the continuations, and are one per continuation.
 data Prim = Plus Label -- ^ Integer addition. Expected parameters: two integers, one continuation.
           | If Label Label -- ^ Conditional branching. Expected paramters: one integer, one continuation to be called if the argument is nonzero, one continuation to be called if the argument is zero (“false”)
-    deriving (Show)
+    deriving (Show, Eq, Ord)
 
 -- * Some example Programs
 

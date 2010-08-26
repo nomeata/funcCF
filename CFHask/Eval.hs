@@ -37,9 +37,9 @@ data D = DI Const   -- ^ A constant
                     --   lambda of a program
     deriving (Show)
 
--- | The result of evaluating a program can be either an error or a constant
+-- | The result of evaluating is a constant (or a thrown exception)
 --   value.
-type Ans = Either String Const
+type Ans = Const
 
 -- * Evaluation functions
 
@@ -64,7 +64,7 @@ evalV (L lam) β ve = DC (lam, β)
 --   calles 'evalC' for the function bodies.
 evalF :: D -> [D] -> VEnv -> Contour -> Ans
 evalF (DC (Lambda lab vs c, β)) as ve b
-        | length as /= length vs = Left $ "Wrong number of arguments to lambda expression " ++ show lab
+        | length as /= length vs = error $ "Wrong number of arguments to lambda expression " ++ show lab
         | otherwise = evalC c β' ve' b
             where β' = β `upd` [lab ↦ b]
                   ve' = ve `upd` zipWith (\v a -> (v,b) ↦ a) vs as
@@ -76,11 +76,11 @@ evalF (DP (If ct cf)) [DI v, contt, contf] ve b
     | v == 0 =  evalF contf [] ve b'
     where b' = succ b
 
-evalF Stop [DI int] _ _ = Right int 
+evalF Stop [DI int] _ _ = int 
 
-evalF Stop _ _ _ = Left $ "Stop called with wrong number or types of arguments"
-evalF (DP prim) _ _ _ = Left $ "Primop " ++ show prim ++ " called with wrong arguments"
-evalF (DI int) _ _ _ = Left $ "Cannot treat a constant value as a function"
+evalF Stop _ _ _ = error $ "Stop called with wrong number or types of arguments"
+evalF (DP prim) _ _ _ = error $ "Primop " ++ show prim ++ " called with wrong arguments"
+evalF (DI int) _ _ _ = error $ "Cannot treat a constant value as a function"
 
 -- | evalC evaluates the body of a function, which can either be an application
 --   (which is then evaluated using 'evalF') or a 'Let' statement.
