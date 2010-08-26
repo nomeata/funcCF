@@ -97,40 +97,46 @@ evalV (L lam) β ve = [PC (lam, β)]
 --   Because we want to memoize the results of the recursive calls, and do not
 --   want to separate that code, the that to be 
 evalF :: FState -> State Memo Ans
-evalF (PC (Lambda lab vs c, β), as, ve, b)
-        | length as /= length vs = error $ "Wrong number of arguments to lambda expression " ++ show lab
-        | otherwise = evalC (c,β',ve',b)
+evalF args = do
+    seen <- gets (S.member (Left args))
+    if seen then return empty else do
+    modify (S.insert (Left args))
+    case args of
+        (PC (Lambda lab vs c, β), as, ve, b)
+            -> if (length as /= length vs)
+               then error $ "Wrong number of arguments to lambda expression " ++ show lab
+               else evalC (c,β',ve',b)
             where β' = β `upd` [lab ↦ b]
                   ve' = ve `upd` zipWith (\v a -> (v,b) ↦ a) vs as
-
-evalF (PP (Plus c), [_, _, conts], ve, b) =
-            unionsM [ evalF (cont,[[]],ve,b') | cont <- conts ] `upd'` [ (c, β) ↦ conts ]
-    where b' = nb b
-          β  = empty `upd` [ c ↦  b ]
-
-evalF (PP (If ct cf), [_, contt, contf], ve, b) =
-            unionsM [ evalF (cont,[],ve,b') | cont <- contt ++ contf ]
+        (PP (Plus c), [_, _, conts], ve, b)
+            -> unionsM [ evalF (cont,[[]],ve,b') | cont <- conts ] `upd'` [ (c, β) ↦ conts ]
+            where b' = nb b
+                  β  = empty `upd` [ c ↦  b ]
+        (PP (If ct cf), [_, contt, contf], ve, b)
+            -> unionsM [ evalF (cont,[],ve,b') | cont <- contt ++ contf ]
             `upd'` [ (ct, βt) ↦ contt, (cf, βf) ↦ contf ]
-    where b' = nb b
-          βt  = empty `upd` [ ct ↦  b ]
-          βf  = empty `upd` [ cf ↦  b ]
-
-
-evalF (Stop,[_],_,_) = return empty 
-
-evalF (Stop,_,_,_) = error $ "Stop called with wrong number or types of arguments"
-evalF (PP prim,_,_,_) = error $ "Primop " ++ show prim ++ " called with wrong arguments"
+            where b' = nb b
+                  βt  = empty `upd` [ ct ↦  b ]
+                  βf  = empty `upd` [ cf ↦  b ]
+        (Stop,[_],_,_) -> return empty 
+        (Stop,_,_,_) -> error $ "Stop called with wrong number or types of arguments"
+        (PP prim,_,_,_) -> error $ "Primop " ++ show prim ++ " called with wrong arguments"
 
 -- | evalC evaluates the body of a function, which can either be an application
 --   (which is then evaluated using 'evalF') or a 'Let' statement.
 evalC :: CState -> State Memo Ans
-evalC (App lab f vs, β, ve, b) = do
-            unionsM [evalF (f',as,ve,b') | f' <- fs ] `upd'` [ (lab,β) ↦ fs ]
-  where fs = evalV f β ve
-        as = map (\v -> evalV v β ve) vs
-        b' = nb b
-
-evalC (Let lab ls c', β, ve, b) = evalC (c',β',ve',b')
-  where b' = nb b
-        β' = β `upd` [lab ↦ b']
-        ve' = ve `upd` [(v,b') ↦ evalV (L l) β' ve | (v,l) <- ls]
+evalC args = do
+    seen <- gets (S.member (Right args))
+    if seen then return empty else do
+    modify (S.insert (Right args))
+    case args of
+        (App lab f vs, β, ve, b)
+            -> unionsM [evalF (f',as,ve,b') | f' <- fs ] `upd'` [ (lab,β) ↦ fs ]
+            where fs = evalV f β ve
+                  as = map (\v -> evalV v β ve) vs
+                  b' = nb b
+        (Let lab ls c', β, ve, b)
+            -> evalC (c',β',ve',b')
+            where b' = nb b
+                  β' = β `upd` [lab ↦ b']
+                  ve' = ve `upd` [(v,b') ↦ evalV (L l) β' ve | (v,l) <- ls]
