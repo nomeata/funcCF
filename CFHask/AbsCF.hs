@@ -7,6 +7,10 @@
 module AbsCF where
 
 import Data.Map (empty, unions, fromList, (!))
+import Control.Monad.State
+import Control.Applicative ((<$>))
+import Data.Set (Set)
+import qualified Data.Set as S
 
 import CPSScheme
 import Common
@@ -61,6 +65,11 @@ type FState = (Proc, [D], VEnv, Contour)
 -- | The uncurried arguments of 'evalC'
 type CState = (Call, BEnv, VEnv, Contour)
 
+-- | We need memoization. This Data structure is used to remember all visited
+-- arguments
+type Memo = Set (Either FState CState)
+
+
 -- * Evaluation functions
 
 nb () = ()
@@ -68,7 +77,7 @@ nb () = ()
 -- | evalCPS evaluates a whole program, by initializing the envirnoments and
 --   passing the Stop continuation to the outermost lambda
 evalCPS :: Prog -> Ans
-evalCPS lam = evalF (f, [[Stop]], ve, ())
+evalCPS lam = evalState (evalF (f, [[Stop]], ve, ())) S.empty
  where  ve = empty
         β = empty
         [f] = evalV (L lam) β ve
@@ -87,7 +96,7 @@ evalV (L lam) β ve = [PC (lam, β)]
 --
 --   Because we want to memoize the results of the recursive calls, and do not
 --   want to separate that code, the that to be 
-evalF :: FState -> Ans
+evalF :: FState -> State Memo Ans
 evalF (PC (Lambda lab vs c, β), as, ve, b)
         | length as /= length vs = error $ "Wrong number of arguments to lambda expression " ++ show lab
         | otherwise = evalC (c,β',ve',b)
@@ -95,28 +104,28 @@ evalF (PC (Lambda lab vs c, β), as, ve, b)
                   ve' = ve `upd` zipWith (\v a -> (v,b) ↦ a) vs as
 
 evalF (PP (Plus c), [_, _, conts], ve, b) =
-            unions [ evalF (cont,[[]],ve,b') | cont <- conts ] `upd` [ (c, β) ↦ conts ]
+            unionsM [ evalF (cont,[[]],ve,b') | cont <- conts ] `upd'` [ (c, β) ↦ conts ]
     where b' = nb b
           β  = empty `upd` [ c ↦  b ]
 
 evalF (PP (If ct cf), [_, contt, contf], ve, b) =
-            unions [ evalF (cont,[],ve,b') | cont <- contt ++ contf ]
-            `upd` [ (ct, βt) ↦ contt, (cf, βf) ↦ contf ]
+            unionsM [ evalF (cont,[],ve,b') | cont <- contt ++ contf ]
+            `upd'` [ (ct, βt) ↦ contt, (cf, βf) ↦ contf ]
     where b' = nb b
           βt  = empty `upd` [ ct ↦  b ]
           βf  = empty `upd` [ cf ↦  b ]
 
 
-evalF (Stop,[_],_,_) = empty 
+evalF (Stop,[_],_,_) = return empty 
 
 evalF (Stop,_,_,_) = error $ "Stop called with wrong number or types of arguments"
 evalF (PP prim,_,_,_) = error $ "Primop " ++ show prim ++ " called with wrong arguments"
 
 -- | evalC evaluates the body of a function, which can either be an application
 --   (which is then evaluated using 'evalF') or a 'Let' statement.
-evalC :: CState -> Ans
-evalC (App lab f vs, β, ve, b) =
-            unions [evalF (f',as,ve,b') | f' <- fs ]  `upd` [ (lab,β) ↦ fs ]
+evalC :: CState -> State Memo Ans
+evalC (App lab f vs, β, ve, b) = do
+            unionsM [evalF (f',as,ve,b') | f' <- fs ] `upd'` [ (lab,β) ↦ fs ]
   where fs = evalV f β ve
         as = map (\v -> evalV v β ve) vs
         b' = nb b
