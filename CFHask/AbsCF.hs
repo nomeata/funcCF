@@ -18,73 +18,92 @@ import Common
 -- * Types
 
 -- | A closure is a lambda expression bound to a binding environment
-type Closure = (Lambda, BEnv)
+type Closure c = (Lambda, BEnv c)
 
--- | A contour is an identifier for the contours (or dynamic frames) generated
--- at each call of a lambda expression. For the abstract semantics, this is
--- chosen to be a finite set.
-type Contour = ()
+-- | The abstract semantics are parametrized by a (finite) set of contours.
+-- Here, this is modeled via a type class.
+class (Show c, Eq c, Ord c) => Contour c where
+    initial :: c -- ^ The initial contour, used by evalCPS, but not used
+    nb :: c -> Label -> c -- ^ Generating a new contour. This method has access
+                          -- to the label of the current call site, in case it
+                          -- wants to record this information. 
+
+-- | A possible contour set, the singleton set. Shivers calls this 0CFA, but in
+-- Haskell, types and constructor names have to start with an upper case
+-- letter.
+newtype CFA0 = CFA0 ()
+    deriving (Show, Eq, Ord)
+
+instance Contour CFA0 where
+    initial = CFA0 ()
+    nb _ _ = CFA0 ()
+
+-- | A more detailed contour set, remembering the call site. 
+newtype CFA1 = CFA1 Label
+    deriving (Show, Eq, Ord)
+
+instance Contour CFA1 where
+    initial = CFA1 (-1)
+    nb _ l = CFA1 l
 
 -- | A binding environment maps the labels of 'Lambda' and 'Let' bindings to the
 -- innermost contour generated for these expressions
-type BEnv = Label :⇀  Contour
+type BEnv c = Label :⇀ c
 
 -- | A variable environment maps variable names together with a contour to a
 -- value. The second parameter is required to allow for different, shadowed
 -- bindings of the same variable to coexist.
-type VEnv = Var :× Contour :⇀ D
+type VEnv c = Var :× c :⇀ D c
 
 -- | Here, we do not care about values any more, only about procedures:
-data Proc = PC Closure -- ^ A closed lambda expression
-          | PP Prim    -- ^ A primitive operation
-          | Stop
+data Proc c = PC (Closure c) -- ^ A closed lambda expression
+            | PP Prim        -- ^ A primitive operation
+            | Stop
     deriving (Show, Eq, Ord)
 
 
 -- | For variables, we only remember the set of possible program values. We use
 -- a list here instead of a set for the more convenient sytanx (list
 -- comprehension etc.).
-type D = [Proc]
+type D c = [Proc c]
 
 -- | The origin of an edge in the control graph is a call position bundled with
 -- the binding environment at that point.
-type CCtxt = Label :× BEnv
+type CCtxt c = Label :× BEnv c
 
 -- | The resulting control flow graph has edges from call sites (annotated by
 -- the current binding environment) to functions (e.g. lambdas with closure,
 -- primitive operations, or 'Stop')
-type CCache = CCtxt :⇀ D
+type CCache c = CCtxt c :⇀ D c
 
 -- | The result of evaluating a program is an approximation to the control flow
 -- graph.
-type Ans = CCache
+type Ans c = CCache c
 
 -- | The uncurried arguments of 'evalF'
-type FState = (Proc, [D], VEnv, Contour)
+type FState c = (Proc c, [D c], VEnv c, c)
 
 -- | The uncurried arguments of 'evalC'
-type CState = (Call, BEnv, VEnv, Contour)
+type CState c = (Call, BEnv c, VEnv c, c)
 
 -- | We need memoization. This Data structure is used to remember all visited
 -- arguments
-type Memo = Set (Either FState CState)
+type Memo c = Set (Either (FState c) (CState c))
 
 
 -- * Evaluation functions
 
-nb () = ()
-
 -- | evalCPS evaluates a whole program, by initializing the envirnoments and
 --   passing the Stop continuation to the outermost lambda
-evalCPS :: Prog -> Ans
-evalCPS lam = evalState (evalF (f, [[Stop]], ve, ())) S.empty
+evalCPS :: Contour c => Prog -> Ans c
+evalCPS lam = evalState (evalF (f, [[Stop]], ve, initial)) S.empty
  where  ve = empty
         β = empty
         [f] = evalV (L lam) β ve
 
 -- | evalC (called A by Shivers) evaluates a syntactical value to a semantical
 --   piece of data.
-evalV :: Val -> BEnv -> VEnv -> D
+evalV :: Contour c => Val -> BEnv c -> VEnv c -> D c
 evalV (C _ int) β ve = []
 evalV (P prim) β ve = [PP prim]
 evalV (R _ binder var) β ve = ve ! (var, β ! binder)
@@ -96,7 +115,7 @@ evalV (L lam) β ve = [PC (lam, β)]
 --
 --   Because we want to memoize the results of the recursive calls, and do not
 --   want to separate that code, the that to be 
-evalF :: FState -> State Memo Ans
+evalF :: Contour c => FState c -> State (Memo c) (Ans c)
 evalF args = do
     seen <- gets (S.member (Left args))
     if seen then return empty else do
@@ -110,12 +129,15 @@ evalF args = do
                   ve' = ve `upd` zipWith (\v a -> (v,b) ↦ a) vs as
         (PP (Plus c), [_, _, conts], ve, b)
             -> unionsM [ evalF (cont,[[]],ve,b') | cont <- conts ] `upd'` [ (c, β) ↦ conts ]
-            where b' = nb b
+            where b' = nb b c
                   β  = empty `upd` [ c ↦  b ]
         (PP (If ct cf), [_, contt, contf], ve, b)
-            -> unionsM [ evalF (cont,[],ve,b') | cont <- contt ++ contf ]
+            -> unionsM (
+                [ evalF (cont,[],ve,bt') | cont <- contt ] ++
+                [ evalF (cont,[],ve,bf') | cont <- contf ] )
             `upd'` [ (ct, βt) ↦ contt, (cf, βf) ↦ contf ]
-            where b' = nb b
+            where bt' = nb b ct
+                  bf' = nb b cf
                   βt  = empty `upd` [ ct ↦  b ]
                   βf  = empty `upd` [ cf ↦  b ]
         (Stop,[_],_,_) -> return empty 
@@ -124,7 +146,7 @@ evalF args = do
 
 -- | evalC evaluates the body of a function, which can either be an application
 --   (which is then evaluated using 'evalF') or a 'Let' statement.
-evalC :: CState -> State Memo Ans
+evalC :: Contour c => CState c -> State (Memo c) (Ans c)
 evalC args = do
     seen <- gets (S.member (Right args))
     if seen then return empty else do
@@ -134,9 +156,9 @@ evalC args = do
             -> unionsM [evalF (f',as,ve,b') | f' <- fs ] `upd'` [ (lab,β) ↦ fs ]
             where fs = evalV f β ve
                   as = map (\v -> evalV v β ve) vs
-                  b' = nb b
+                  b' = nb b lab
         (Let lab ls c', β, ve, b)
             -> evalC (c',β',ve',b')
-            where b' = nb b
+            where b' = nb b lab
                   β' = β `upd` [lab ↦ b']
                   ve' = ve `upd` [(v,b') ↦ evalV (L l) β' ve | (v,l) <- ls]
