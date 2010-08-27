@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeOperators #-}
 module AbsCF where
 
-import Data.Map (empty, unions, fromList, (!))
+import Data.Map (empty, unions, fromList, toList, (!))
 import Control.Monad.State
 import Control.Applicative ((<$>))
 import Data.Set (Set)
@@ -101,6 +101,13 @@ evalCPS lam = evalState (evalF (f, [[Stop]], ve, initial)) S.empty
         β = empty
         [f] = evalV (L lam) β ve
 
+-- | Variants fixing the coutour
+evalCPS_CFA0 :: Prog -> Ans CFA0
+evalCPS_CFA0 = evalCPS
+
+evalCPS_CFA1 :: Prog -> Ans CFA1
+evalCPS_CFA1 = evalCPS
+
 -- | evalC (called A by Shivers) evaluates a syntactical value to a semantical
 --   piece of data.
 evalV :: Contour c => Val -> BEnv c -> VEnv c -> D c
@@ -162,3 +169,13 @@ evalC args = do
             where b' = nb b lab
                   β' = β `upd` [lab ↦ b']
                   ve' = ve `upd` [(v,b') ↦ evalV (L l) β' ve | (v,l) <- ls]
+
+-- | For the visualization, we need a list of edges from Label to Label. TODO: Handle STOP
+graphToEdgelist :: Show c => Ans c -> [Label :× Label]
+graphToEdgelist = concat . map go . toList
+  where go ((l,_),ds) = concat $ map go' ds
+          where go' Stop = []
+                go' (PP (Plus l')) = [(l,l')]
+                go' (PP (If l' _)) = [(l,l')]
+                go' (PC (Lambda l' _ _ , _)) = [(l,l')]
+

@@ -11,5 +11,6 @@ Build-type:          Simple
 Cabal-version:       >=1.2
 
 Library
-  Build-depends:       containers, base >=4, mtl
-  Exposed-modules:     Eval, CPSScheme, ExCF, AbsCF
+  Build-depends:       containers, base >=4, mtl, process, directory,
+                       pretty, HPDF, language-dot
+  Exposed-modules:     Eval, CPSScheme, ExCF, AbsCF, CPSPrint, CFGraph
