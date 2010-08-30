@@ -64,7 +64,7 @@ evalCPS lam = evalF f [Stop] ve 0
 evalV :: Val -> BEnv -> VEnv -> D
 evalV (C _ int) β ve = DI int
 evalV (P prim) β ve = DP prim
-evalV (R _ binder var) β ve = ve ! (var, β ! binder)
+evalV (R _ var) β ve = ve ! (var, β ! binder var)
 evalV (L lam) β ve = DC (lam, β)
 
 -- | evalF evaluates a function call, distinguishing between lambda

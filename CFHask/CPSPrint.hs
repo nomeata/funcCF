@@ -27,7 +27,7 @@ renderProg el = render . ppProg el
 ppLambda :: Bool -> Lambda -> Doc
 ppLambda el (Lambda l vs c) = parens $ 
     embeddLabel el l <> text "λ" <+> sep
-       [ hsep (map (\(Var n) -> text n) vs) <> text "." 
+       [ hsep (map (\(Var _ n) -> text n) vs) <> text "." 
        , ppCall el c
        ]
 
@@ -42,11 +42,11 @@ ppCall el (App l f as) =
 ppCall el (Let l binds c) =
     embeddLabel el l <> text "let" <+> vcat (map ppBind binds) $$
     text "in" <+> ppCall el c
-    where ppBind (Var n,l) = text n <+> text "=" $$ nest 6 (ppLambda el l)
+    where ppBind (Var _ n,l) = text n <+> text "=" $$ nest 6 (ppLambda el l)
 
 ppVal :: Bool -> Val -> Doc
 ppVal el (L l)             = ppLambda el l
-ppVal el (R _ _ (Var v))   = text v
+ppVal el (R _ (Var _ v))   = text v
 ppVal el (C _ c)           = integer c
 ppVal el (P (Plus l))      = embeddLabel el l <> text "(+)"
 ppVal el (P (If l _))      = embeddLabel el l <> text "if"

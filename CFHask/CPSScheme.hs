@@ -26,9 +26,13 @@ newtype Label = Label Integer
     deriving (Show, Num, Eq, Ord, Enum)
 
 -- | Variable names are just strings. Again, they are wrapped so they can be
--- treated abstractly.
-newtype Var = Var String
-    deriving (IsString, Show, Eq, Ord)
+-- treated abstractly. They also carry the label of their binding position.
+data Var = Var Label String
+    deriving (Show, Eq, Ord)
+
+-- | The label of the 'Lambda' or 'Let' that bound this variable.
+binder :: Var -> Label
+binder (Var l _) = l
 
 -- | A lambda expression has a label, a list of abstract argument names and a body.
 data Lambda = Lambda Label [Var] Call
@@ -45,7 +49,7 @@ data Call = App Label Val [Val]
 
 -- | A value can either be
 data Val = L Lambda          -- ^ a lambda abstraction,
-         | R Label Label Var -- ^ a reference to a variable (which contains the
+         | R Label Var       -- ^ a reference to a variable (which contains the
                              -- label of the binding position of the variable
                              -- for convenience),
          | C Label Const     -- ^ a constant value or
@@ -63,8 +67,10 @@ data Prim = Plus Label -- ^ Integer addition. Expected parameters: two integers,
 
 -- * Smart constructors
 
+instance IsString Var where
+    fromString s = Var noProg s
 instance IsString Val where
-    fromString s = R noProg noProg (Var s)
+    fromString s = R noProg (Var noProg s)
 instance IsString a => IsString (Inv a) where
     fromString s = Inv $ fromString s
 
@@ -90,8 +96,10 @@ prog (Inv p) = evalState (pLambda M.empty p) [1..]
   where next = do {l <- gets head ; modify tail; return l}
         pLambda env (Lambda _ vs c) = do
             l <- next
-            c' <- pCall (env `upd` map (↦ l) vs) c
-            return $ Lambda l vs c'
+            let env' = env `upd` map (\(Var _ n) -> n ↦ l) vs
+            vs' <- mapM (pVar env') vs
+            c' <- pCall env' c
+            return $ Lambda l vs' c'
         pCall env (App _ v vs) = do
             l <- next
             v' <- pVal env v
@@ -99,17 +107,18 @@ prog (Inv p) = evalState (pLambda M.empty p) [1..]
             return $ App l v' vs'
         pCall env (Let _ binds c) = do
             l <- next
-            let env' = env `upd` map ((↦ l) . fst) binds
+            let env' = env `upd` map (\(Var _ n,_) -> (n ↦ l)) binds
             binds' <- forM binds $ \(v,l) -> do
+                v' <- pVar env' v
                 l' <- pLambda env' l
-                return (v, l')
+                return (v', l')
             c' <- pCall env' c
             return (Let l binds' c')
         pVal env (L lambda) = L <$> pLambda env lambda
-        pVal env (R _ _ var) = do
+        pVal env (R _ var) = do
             l <- next
-            let r = env M.! var
-            return $ R l r var
+            var' <- pVar env var
+            return $ R l var'
         pVal env (C _ i) = do
             l <- next
             return $ C l i
@@ -120,6 +129,9 @@ prog (Inv p) = evalState (pLambda M.empty p) [1..]
             l1 <- next
             l2 <- next
             return $ P (If l1 l2)
+        pVar env (Var _ n) = do
+            let r = env M.! n
+            return $ Var r n
 
 
 lambda :: [Inv Var] -> Inv Call -> Inv Lambda

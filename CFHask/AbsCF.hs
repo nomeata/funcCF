@@ -113,7 +113,7 @@ evalCPS_CFA1 = evalCPS
 evalV :: Contour c => Val -> BEnv c -> VEnv c -> D c
 evalV (C _ int) β ve = []
 evalV (P prim) β ve = [PP prim]
-evalV (R _ binder var) β ve = ve ! (var, β ! binder)
+evalV (R _ var) β ve = ve ! (var, β ! binder var)
 evalV (L lam) β ve = [PC (lam, β)]
 
 -- | evalF evaluates a function call, distinguishing between lambda
