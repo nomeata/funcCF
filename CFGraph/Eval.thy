@@ -39,8 +39,8 @@ function (sequential,tailrec,domintros)
           = (      let b' = Suc b
                    in if v \<noteq> 0 then evalF contt [] ve b'
                                else evalF contt [] ve b')"
-  |     "evalF Stop [DI i] _ _
-          = (i)"
+  |     "evalF Stop as _ _
+          = (case as of [DI i] \<Rightarrow> i)"
 
   |     "evalC (App lab f vs) \<beta> ve b
           = (let f' = evalV f \<beta> ve;
