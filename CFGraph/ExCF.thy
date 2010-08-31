@@ -1,28 +1,11 @@
 theory ExCF
-  imports CPSScheme 
+  imports CPSScheme Eval
 begin
 
-types contour = nat
-      benv = "label \<rightharpoonup> contour"
-      closure = "lambda \<times> benv"
-
-datatype d = DI int
-           | DC closure
-           | DP prim
-           | Stop
-
-types venv = "var \<times> contour \<rightharpoonup> d"
+(* Data types imported from Eval where possible *)
 
 types ccache = "label \<times> benv \<rightharpoonup> d"
       ans = ccache
-
-fun evalV :: "val \<Rightarrow> benv \<Rightarrow> venv \<Rightarrow> d"
-  where "evalV (C _ i) \<beta> ve = DI i"
-  |     "evalV (P prim) \<beta> ve = DP prim"
-  |     "evalV (R _ var) \<beta> ve =
-           (case \<beta> (binder var) of
-              Some l \<Rightarrow> (case ve (var,l) of Some d \<Rightarrow> d))"
-  |     "evalV (L lam) \<beta> ve = DC (lam, \<beta>)"
 
 function (sequential,domintros)
          evalF :: "d \<Rightarrow> (d list) \<Rightarrow> venv \<Rightarrow> contour \<Rightarrow> ans"
@@ -62,5 +45,9 @@ function (sequential,domintros)
   apply pat_completeness
   apply auto
 done
+
+lemma "ExCF.evalF_evalC_rel = Eval.evalF_evalC_rel"
+unfolding ExCF.evalF_evalC_rel_def and Eval.evalF_evalC_rel_def
+by auto
 
 end
