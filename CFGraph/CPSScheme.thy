@@ -7,8 +7,8 @@ begin
 types label = nat
 types var = "label \<times> string"
 
-definition "binder" :: "var \<Rightarrow> label" where "binder v = fst v"
-      
+definition "binder" :: "var \<Rightarrow> label" where  [simp]:"binder v = fst v"
+ 
 datatype lambda = Lambda label "var list" call
      and call = App label val "val list"
               | Let label "(var \<times> lambda) list" call
