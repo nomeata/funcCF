@@ -85,3 +85,46 @@ labelPositions rep = (unions *** unlines) . unzip . zipWith labelLines [1..] . l
 -- | HPDF can not print lambdas. Therefore, replace them by backslashes.
 removeLambdas :: String -> String
 removeLambdas = map (\c -> if c == 'λ' then '\\' else c)
+
+-- * Printing to Isablle-Expression
+
+-- | Converts the whole program into an expression that can be copy'n'pasted
+-- into an Isabelle source file
+ipProg :: Prog -> Doc
+ipProg = ipLambda
+
+-- | Renders to a String
+renderProgToIsa :: Prog -> String
+renderProgToIsa = renderStyle myStyle . ipProg
+  where myStyle = style { mode = OneLineMode }
+
+
+ipLambda :: Lambda -> Doc
+ipLambda (Lambda (Label i) vs c) = parens $ 
+    text "Lambda" <+> integer i <+> sep
+       [ brackets $ hsep (punctuate (char ',') (map ipVar vs))
+       , ipCall c
+       ]
+ipVar :: Var -> Doc
+ipVar (Var (Label i) n) = parens $ integer i <> char ',' <>
+                                   text "''" <> text (quote n) <> text "''"
+  where quote = map (\c -> if c == '\'' then '_' else c)
+
+ipCall :: Call -> Doc
+ipCall (App (Label l) f as) = parens $
+    text "App" <+> integer l <+> ipVal f <+> brackets (sep (punctuate (char ',') (map ipVal as)))
+ipCall (Let (Label l) binds c) = parens $
+    text "Let" <+> integer l <+> brackets (sep (punctuate (char ',') (map ipBind binds))) $$
+                   ipCall c
+    where ipBind (v,l) = parens $ ipVar v <> char ',' <> ipLambda l
+
+ipVal :: Val -> Doc
+ipVal (L l)             = parens $ text "L" <+> ipLambda l
+ipVal (R (Label l) v)   = parens $ text "R" <+> integer l <+> ipVar v
+ipVal (C (Label l) c)   = parens $ text "C" <+> integer l <+>  integer c
+ipVal (P prim)          = parens $ text "P" <+> ipPrim prim
+
+ipPrim :: Prim -> Doc
+ipPrim (Plus (Label l))            = parens $ text "Plus" <+> integer l
+ipPrim (If (Label lt) (Label lf))  = parens $ text "If" <+> integer lt <+> integer lf
+
