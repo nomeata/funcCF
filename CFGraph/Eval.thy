@@ -32,13 +32,14 @@ function (sequential,tailrec,domintros)
                           ve' = map_upds ve (map (\<lambda>v.(v,b)) vs) as
                       in evalC c \<beta>' ve' b
             )"
-  |     "evalF (DP (Plus c)) [DI a1, DI a2, cont] ve b
-          = (let b' = Suc b
+  |     "evalF (DP (Plus c)) as ve b
+          = (case as of  [DI a1, DI a2, cont] \<Rightarrow>
+                   let b' = Suc b
                    in evalF cont [DI (a1 + a2)] ve b')"
   |     "evalF (DP (If ct cf)) [DI v, contt, contf] ve b
           = (      let b' = Suc b
                    in if v \<noteq> 0 then evalF contt [] ve b'
-                               else evalF contt [] ve b')"
+                                else evalF contf [] ve b')"
   |     "evalF Stop as _ _
           = (case as of [DI i] \<Rightarrow> i)"
 
@@ -82,6 +83,10 @@ unfolding evalCPS_def
 by simp
 
 lemma ex2_correct: "evalCPS ex2 = 2"
+unfolding evalCPS_def
+by simp
+
+lemma ex3_correct: "evalCPS ex3 = 55"
 unfolding evalCPS_def
 by simp
 
