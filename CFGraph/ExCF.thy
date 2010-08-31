@@ -50,4 +50,25 @@ lemma "ExCF.evalF_evalC_rel = Eval.evalF_evalC_rel"
 unfolding ExCF.evalF_evalC_rel_def and Eval.evalF_evalC_rel_def
 by auto
 
+definition evalCPS :: "prog \<Rightarrow> ans"
+  where "evalCPS l = (let ve = empty;
+                          \<beta> = empty;
+                          f = evalV (L l) \<beta> ve
+                      in  evalF f [Stop] ve 0)"
+
+termination sorry
+lemma correct_ex1: "evalCPS ex1 = [(2,[1 \<mapsto> 0]) \<mapsto> Stop]"
+unfolding evalCPS_def
+by simp
+
+lemma correct_ex2: "evalCPS ex2 = [(2, [1 \<mapsto> 0]) \<mapsto> DP (Plus 3), (3, [3 \<mapsto> 1]) \<mapsto> Stop]"
+unfolding evalCPS_def
+apply (rule ext) (* Otherwise simp fails because the order of entries differs *)
+by simp
+
+
+
+
+
+
 end
