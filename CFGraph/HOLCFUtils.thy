@@ -69,4 +69,35 @@ by default simp
 
 end
 
+instantiation int :: discrete_cpo
+begin
+
+definition
+  [simp]: "(x::int) \<sqsubseteq> y \<longleftrightarrow> x = y"
+
+instance
+by default simp
+
+end
+
+
+lemma cont2cont_Let_simple[simp,cont2cont]:
+  assumes "cont (\<lambda>x. g x t)"
+  shows "cont (\<lambda>x. let y = t in g x y)"
+unfolding Let_def using assms by assumption
+
+
+lemma cont2cont_list_case [simp, cont2cont]:
+  assumes "\<And>y. cont (\<lambda>x. f1 x)"
+     and  "\<And>y z. cont (\<lambda>x. f2 x y z)"
+  shows "cont (\<lambda>x. list_case (f1 x) (f2 x) l)"
+using assms
+by (cases l) auto
+
+lemma cont2cont_prod_case [simp, cont2cont]:
+  assumes "\<And>y z. cont (\<lambda>x. f x y z)"
+  shows "cont (\<lambda>x. prod_case (f x) p)"
+using assms
+by (cases p) auto
+
 end
