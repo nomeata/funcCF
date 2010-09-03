@@ -84,7 +84,7 @@ end
 lemma cont2cont_Let_simple[simp,cont2cont]:
   assumes "cont (\<lambda>x. g x t)"
   shows "cont (\<lambda>x. let y = t in g x y)"
-unfolding Let_def using assms by assumption
+unfolding Let_def using assms .
 
 
 lemma cont2cont_list_case [simp, cont2cont]:
