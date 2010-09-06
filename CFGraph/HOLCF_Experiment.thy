@@ -19,13 +19,6 @@ by (intro cont2cont)
 
 thm Let_def
 
-
-lemma cont2cont_Let_simple[simp,cont2cont]:
-  assumes g: "cont (\<lambda>x. g x t)"
-  shows "cont (\<lambda>x. let y = t in g x y)"
-unfolding Let_def using assms by assumption
-
-
 lemma "cont (\<lambda>x. let y = True in x\<cdot>(Discr y))"
 by (intro cont2cont)
 

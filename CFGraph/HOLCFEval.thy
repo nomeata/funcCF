@@ -35,24 +35,6 @@ fun evalV :: "val \<Rightarrow> benv \<Rightarrow> venv \<Rightarrow> d"
 types ccache = "((label \<times> benv) \<times> d) set"
       ans = "int option"
 
-(*
-definition covers :: "prog \<Rightarrow> benv \<Rightarrow>venv \<Rightarrow> bool" where
-     "covers prog \<beta> ve = (\<forall> l\<in>dom \<beta>. \<forall> v \<in> vars prog. (binder v = l \<longrightarrow> (case \<beta> l of Some cnt \<Rightarrow> (v,cnt) \<in> dom ve)))"
-
-definition ve_consistent :: "prog \<Rightarrow> call \<Rightarrow> benv \<Rightarrow> venv \<Rightarrow> bool" where
-     "ve_consistent prog c \<beta> ve =
-        ((\<forall> ctx \<in> subterms (Inl prog). (Inr c \<in> subterms ctx \<longrightarrow> label ctx \<in> dom \<beta>))
-         \<and> covers prog \<beta> ve)"
-
-definition closure_consistent :: "prog \<Rightarrow> closure \<Rightarrow> venv \<Rightarrow> bool" where
-     "closure_consistent prog cls ve =
-        ((\<forall> ctx \<in> subterms (Inl prog). (Inl (fst cls) \<in> subterms ctx \<longrightarrow> label ctx \<in> dom (snd cls)))
-         \<and> covers prog (snd cls) ve)"
-
-definition cstate_ok :: "cstate \<Rightarrow> bool" where
-     "cstate_ok s = (case s of (c,\<beta>,ve,_) \<Rightarrow> ve_consistent c \<beta> ve)"
-*)
-
 types fstate = "(d \<times> d list \<times> venv \<times> contour)"
       cstate = "(call \<times> benv \<times> venv \<times> contour)"
 
