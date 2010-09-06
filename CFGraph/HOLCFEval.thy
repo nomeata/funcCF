@@ -1,4 +1,4 @@
-theory ExCF
+theory HOLCFEval
   imports CPSUtils HOLCF HOLCFUtils HOLCFList HOLCFOption CPSScheme
 begin
 
@@ -109,6 +109,7 @@ fixrec   evalF :: "fstate discr \<rightarrow> ans"
                             \<beta> = [cf \<mapsto> b]
                         in evalF\<cdot>(Discr (contf,[],ve,b')))
             | (Stop,[DI i],_,_) \<Rightarrow> Some i
+            | _ \<Rightarrow> \<bottom>
         )"
       | "evalC\<cdot>cstate = (case undiscr cstate of
              (App lab f vs,\<beta>,ve,b) \<Rightarrow>
@@ -125,20 +126,24 @@ fixrec   evalF :: "fstate discr \<rightarrow> ans"
 
 print_theorems
 
-
 definition evalCPS :: "prog \<Rightarrow> ans"
   where "evalCPS l = (let ve = empty;
                           \<beta> = empty;
                           f = evalV (L l) \<beta> ve
                       in  evalF\<cdot>(Discr (f,[Stop],ve,0)))"
 
-(*
-lemma correct_ex1: "evalCPS ex1 \<sqsubseteq> Some 0"
+lemma correct_ex1: "evalCPS ex1 = Some 0"
 unfolding evalCPS_def
-proof(induct rule:evalF_evalC.induct)
-print_cases
-  case 2 show ?case by simp
-  next
+by simp
+
+lemma correct_ex2: "evalCPS ex2 = Some 2"
+unfolding evalCPS_def
+by simp
+
+(* Dauert lange, klappt aber\<dots>
+lemma correct_ex3: "evalCPS ex3 = Some 55"
+unfolding evalCPS_def
+by simp
 *)
 
 
