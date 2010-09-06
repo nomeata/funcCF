@@ -145,4 +145,192 @@ lemma correct_ex2: "evalCPS ex2 = {((2, [1 \<mapsto> 0]), DP (Plus 3)),
 unfolding evalCPS_def
 by simp
 
+lemma single_valued_empty[simp]:"single_valued {}"
+by (rule single_valuedI) auto
+
+lemma "\<lbrakk> ((lab,\<beta>),t) \<in> evalF\<cdot>(Discr (d,ds,ve, b)); Some b' \<in> range \<beta> \<rbrakk> \<Longrightarrow> b \<le> b'"
+  and "\<lbrakk> ((lab,\<beta>),t) \<in> evalC\<cdot>(Discr (c,\<beta>',ve,b)); Some b' \<in> range \<beta> \<rbrakk> \<Longrightarrow> b < b'"
+proof(induct arbitrary:d ds ve b \<beta> c \<beta>' lab b' t rule:evalF_evalC.induct)
+print_cases
+case 1 show ?case
+  (* admissibility *)
+  by (intro adm_lemmas adm_prod_split adm_not_conj adm_not_mem cont2cont)
+next
+  case 2 case 1 thus ?case
+  by (auto simp add:mem_def)
+next
+  case 2 case 2 thus ?case
+  by (auto simp add:mem_def)
+next
+  case (3 evalF evalC)
+  print_cases
+  case (1 d ds ve b \<beta> lab b' t)
+  show ?case
+  proof (cases d)
+  print_cases
+    case (DI i)
+    thus ?thesis using "3.prems" by simp
+    next 
+    case (DC closure)
+    show ?thesis
+    proof (cases closure)
+    case (Pair lambda cnt)
+      show ?thesis
+      proof (cases lambda)
+      case (Lambda lab' as c)
+        (* from "3.prems" Lambda Pair DC  *)
+        have "length as = length ds"
+        proof(rule ccontr)
+          assume "length as \<noteq> length ds"
+          with "3.prems" Lambda Pair DC show False by simp
+        qed
+        with "3.prems" Lambda Pair DC
+        have "((lab, \<beta>), t)
+         \<in> evalC\<cdot>(Discr (c, cnt(lab' \<mapsto> b), ve(map (\<lambda>v. (v, b)) as [\<mapsto>] ds), b))"
+          by simp
+        with "3.hyps"(2) "3.prems"(2)
+        have "b < b'" by auto
+        thus ?thesis by auto
+      qed
+    qed
+  next
+  case (DP prim)
+    show ?thesis
+    proof (cases prim)
+      case (Plus cp)
+      show ?thesis
+      proof (cases "\<exists> i1 i2 cnt. ds = [DI i1, DI i2, cnt]")
+        case True then obtain i1 i2 cnt where "ds = [DI i1, DI i2, cnt]" by auto
+        with "3.prems" DP Plus 
+        have "((lab, \<beta>), t) = ((cp, [cp \<mapsto> b]), cnt)
+            \<or> ((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, Suc b))"
+        by (simp)
+        thus ?thesis using assms
+        proof
+          assume "((lab, \<beta>), t) = ((cp, [cp \<mapsto> b]), cnt)"
+          with "3.prems"(2)
+          have "b' = b" by auto
+          thus ?thesis by simp
+        next
+          assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, Suc b))"
+          with "3.prems"(2) "3.hyps"(1)
+          have "Suc b \<le> b'" by auto
+          thus ?thesis by auto
+        qed
+      next
+        case False
+        show ?thesis using "3.prems" DP Plus False
+          by(simp split: list.split_asm d.split_asm) 
+      qed
+    next
+      case (If cp1 cp2)
+      show ?thesis
+      proof (cases "\<exists> i cntt cntf. ds = [DI i, cntt, cntf]")
+        case True then obtain i cntt cntf where ds:"ds = [DI i, cntt, cntf]" by auto
+        show ?thesis proof(cases "i\<noteq>0")
+        case True
+          with ds "3.prems" DP If
+          have "((lab, \<beta>), t) = ((cp1, [cp1 \<mapsto> b]), cntt)
+              \<or> ((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, Suc b))"
+          by simp
+          thus ?thesis using assms
+          proof
+            assume "((lab, \<beta>), t) = ((cp1, [cp1 \<mapsto> b]), cntt)"
+            with "3.prems"(2)
+            have "b' = b" by auto
+            thus ?thesis by simp
+          next
+            assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, Suc b))"
+            with "3.prems"(2) "3.hyps"(1)
+            have "Suc b \<le> b'" by auto
+            thus ?thesis by auto
+          qed
+        next
+        case False
+          with ds "3.prems" DP If
+          have "((lab, \<beta>), t) = ((cp2, [cp2 \<mapsto> b]), cntf)
+              \<or> ((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntf, [], ve, Suc b))"
+          by simp
+          thus ?thesis using assms
+          proof
+            assume "((lab, \<beta>), t) = ((cp2, [cp2 \<mapsto> b]), cntf)"
+            with "3.prems"(2)
+            have "b' = b" by auto
+            thus ?thesis by simp
+          next
+            assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntf, [], ve, Suc b))"
+            with "3.prems"(2) "3.hyps"(1)
+            have "Suc b \<le> b'" by auto
+            thus ?thesis by auto
+          qed
+        qed
+      next
+        case False
+        show ?thesis using "3.prems" DP If False
+          by(simp split: list.split_asm d.split_asm)
+      qed
+    qed
+  next
+    case Stop
+    thus ?thesis using "3.prems" 
+      by (simp split: list.split_asm d.split_asm)
+  qed
+next
+  case (3 evalF evalC)
+  case (2 ve b \<beta> c \<beta>' lab b' t)
+  show ?case
+  proof (cases c)
+  case (App lab' f vs)
+    with "3.prems"
+    have "((lab, \<beta>), t)
+         \<in> {((lab', \<beta>'), evalV f \<beta>' ve)}
+         \<union> evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, Suc b))"
+    by (simp add: HOL.Let_def)
+    hence "((lab, \<beta>), t) = ((lab', \<beta>'), evalV f \<beta>' ve)
+          \<or> ((lab, \<beta>), t) \<in> (evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, Suc b)))"
+    by simp
+    thus ?thesis proof
+      assume "((lab, \<beta>), t) = ((lab', \<beta>'), evalV f \<beta>' ve)"
+      hence "\<beta>' = \<beta>" by simp
+      print_facts
+
+
+lemma  "single_valued (evalF\<cdot>fstate)"
+   and "single_valued (evalC\<cdot>cstate)"
+unfolding evalCPS_def
+proof(induct arbitrary:fstate cstate rule:evalF_evalC.induct)
+print_cases
+  case 1 (*Admissibility*)
+  show ?case
+  by (intro adm_prod_split adm_conj adm_all adm_single_valued cont2cont)
+next
+  case 2 (* True for bottom *)
+  {
+    print_cases
+    case 1
+    show ?case by (auto simp add: empty_def)
+    next
+    case 2
+    show ?case by (auto simp add: empty_def)
+  }
+  next 
+  case (3 evalF evalC)
+  { 
+    case (1 fstate)
+    show ?case
+    (* Now I need something about b *)
+
+
+  unfolding single_valued
+
+
+
+  apply(rule adm_subst)
+  apply simp
+
+  apply (auto intro:single_valuedI)
+
+
+
+
 end
