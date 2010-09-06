@@ -19,7 +19,7 @@ proof
   thus "\<exists>x::bool. \<forall>y. x \<sqsubseteq> y" ..
 qed
 
-lemma bottom_eq_False: "\<bottom> = False"
+lemma bottom_eq_False[simp]: "\<bottom> = False"
 apply (rule below_antisym [OF minimal])
 apply (simp add: below_bool_def)
 done
@@ -99,5 +99,58 @@ lemma cont2cont_prod_case [simp, cont2cont]:
   shows "cont (\<lambda>x. prod_case (f x) p)"
 using assms
 by (cases p) auto
+
+
+text {* Some rules about admissibility *}
+
+lemma adm_not_mem:
+  assumes "cont (\<lambda>x. f x)"
+  shows "adm (\<lambda>x. y \<notin> f x)"
+using assms
+apply (erule_tac t = f in adm_subst)
+proof (rule admI)
+fix Y :: "nat \<Rightarrow> 'b \<Rightarrow> bool"
+assume chain: "chain Y"
+assume "\<forall>i. y \<notin> Y i" hence  "(\<Squnion> i. Y i y) = False" unfolding mem_def by auto
+thus "y \<notin> (\<Squnion> i. Y i)" using chain unfolding mem_def by (subst thelub_fun) auto
+qed
+
+lemma adm_id[simp]: "adm (\<lambda>x . x)"
+proof(rule admI)
+fix Y :: "nat \<Rightarrow> bool"
+assume "\<forall>i. Y i" hence "Y = (\<lambda>i. True)" by -(rule ext, auto)
+hence "range Y <<| True" by simp (rule lub_const)
+hence "lub (range Y) = True" by (rule thelubI)
+thus "\<Squnion> i. Y i" by simp
+qed
+
+lemma adm_Not[simp]: "adm Not"
+proof(rule admI)
+fix Y :: "nat \<Rightarrow> bool"
+assume "\<forall>i. \<not> Y i" hence "Y = (\<lambda>i. False)" by -(rule ext, auto)
+hence "range Y <<| False" by simp (rule lub_const)
+hence "lub (range Y) = False" by (rule thelubI)
+thus "\<not> (\<Squnion> i. Y i)" by simp
+qed
+
+lemma adm_prod_split:
+  assumes "adm (\<lambda>p. f (fst p) (snd p))"
+  shows "adm (\<lambda>(x,y). f x y)"
+using assms unfolding split_def .
+
+
+lemma adm_single_valued:
+ assumes "cont (\<lambda>x. f x)"
+ shows "adm (\<lambda>x. single_valued (f x))"
+using assms
+apply (erule_tac t = f in adm_subst)
+unfolding single_valued_def
+by (intro adm_lemmas adm_not_mem cont2cont)
+
+lemma const_False_is_bot[simp]: "(\<lambda>a. False) = {}" 
+by (rule ext, auto)
+
+lemma bot_bool_is_emptyset[simp]: "\<bottom> = {}"
+by (simp add:inst_fun_pcpo)
 
 end
