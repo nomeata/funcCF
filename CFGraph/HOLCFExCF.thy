@@ -202,9 +202,10 @@ by simp
 lemma single_valued_empty[simp]:"single_valued {}"
 by (rule single_valuedI) auto
 
-(*
-lemma "\<lbrakk> ((lab,\<beta>),t) \<in> evalF\<cdot>(Discr (d,ds,ve, b)); Some b' \<in> range \<beta> \<rbrakk> \<Longrightarrow> b \<le> b'"
-  and "\<lbrakk> ((lab,\<beta>),t) \<in> evalC\<cdot>(Discr (c,\<beta>',ve,b)); Some b' \<in> range \<beta> \<rbrakk> \<Longrightarrow> b < b'"
+lemma beta_b_bound:
+      "((lab,\<beta>),t) \<in> evalF\<cdot>(Discr (d,ds,ve, b)) \<Longrightarrow> \<exists> b'. Some b' \<in> range \<beta> \<and> b \<le> b'"
+  and "\<lbrakk> ((lab,\<beta>),t) \<in> evalC\<cdot>(Discr (c,\<beta>',ve,b)) ; \<exists> b'. Some b' \<in> range \<beta>' \<and> b \<le> b' \<rbrakk>
+       \<Longrightarrow> \<exists> b' . Some b' \<in> range \<beta> \<and> b \<le> b'"
 proof(induct arbitrary:d ds ve b \<beta> c \<beta>' lab b' t rule:evalF_evalC.induct)
 print_cases
 case 1 show ?case
@@ -219,7 +220,7 @@ next
 next
   case (3 evalF evalC)
   print_cases
-  case (1 d ds ve b \<beta> lab b' t)
+  case (1 d ds ve b \<beta> lab t)
   show ?case
   proof (cases d)
   print_cases
@@ -229,7 +230,7 @@ next
     case (DC closure)
     show ?thesis
     proof (cases closure)
-    case (Pair lambda cnt)
+    case (Pair lambda \<beta>')
       show ?thesis
       proof (cases lambda)
       case (Lambda lab' as c)
@@ -241,11 +242,15 @@ next
         qed
         with "3.prems" Lambda Pair DC
         have "((lab, \<beta>), t)
-         \<in> evalC\<cdot>(Discr (c, cnt(lab' \<mapsto> b), ve(map (\<lambda>v. (v, b)) as [\<mapsto>] ds), b))"
+         \<in> evalC\<cdot>(Discr (c, \<beta>'(lab' \<mapsto> b), ve(map (\<lambda>v. (v, b)) as [\<mapsto>] ds), b))"
           by simp
-        with "3.hyps"(2) "3.prems"(2)
-        have "b < b'" by auto
-        thus ?thesis by auto
+        moreover 
+        have "\<exists>b'. Some b' \<in> range (\<beta>'(lab' \<mapsto> b)) \<and> b \<le> b'"
+         by (rule_tac x = b in exI) auto
+        ultimately
+        show ?thesis
+          using "3.hyps"(2) "3.prems"
+          by simp
       qed
     qed
   next
@@ -262,14 +267,13 @@ next
         by (simp)
         thus ?thesis using assms
         proof
-          assume "((lab, \<beta>), t) = ((cp, [cp \<mapsto> b]), cnt)"
-          with "3.prems"(2)
-          have "b' = b" by auto
-          thus ?thesis by simp
+          assume "((lab, \<beta>), t) = ((cp, [cp \<mapsto> b]), cnt)"          
+          hence "\<exists>b'. Some b' \<in> range \<beta> \<and> b = b'" by auto
+          thus ?thesis by blast
         next
           assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, Suc b))"
-          with "3.prems"(2) "3.hyps"(1)
-          have "Suc b \<le> b'" by auto
+          with "3.hyps"(1) "3.prems"
+          have "\<exists>b'. Some b' \<in> range \<beta> \<and> Suc b \<le> b'" by auto
           thus ?thesis by auto
         qed
       next
@@ -291,13 +295,12 @@ next
           thus ?thesis using assms
           proof
             assume "((lab, \<beta>), t) = ((cp1, [cp1 \<mapsto> b]), cntt)"
-            with "3.prems"(2)
-            have "b' = b" by auto
-            thus ?thesis by simp
+            hence "\<exists>b'. Some b' \<in> range \<beta> \<and> b = b'" by auto
+            thus ?thesis by blast
           next
             assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, Suc b))"
-            with "3.prems"(2) "3.hyps"(1)
-            have "Suc b \<le> b'" by auto
+            with "3.hyps"(1)
+            have "\<exists>b'. Some b' \<in> range \<beta> \<and> Suc b \<le> b'" by auto
             thus ?thesis by auto
           qed
         next
@@ -309,13 +312,12 @@ next
           thus ?thesis using assms
           proof
             assume "((lab, \<beta>), t) = ((cp2, [cp2 \<mapsto> b]), cntf)"
-            with "3.prems"(2)
-            have "b' = b" by auto
-            thus ?thesis by simp
+            hence "\<exists>b'. Some b' \<in> range \<beta> \<and> b = b'" by auto
+            thus ?thesis by blast
           next
             assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntf, [], ve, Suc b))"
-            with "3.prems"(2) "3.hyps"(1)
-            have "Suc b \<le> b'" by auto
+            with "3.hyps"(1)
+            have "\<exists>b'. Some b' \<in> range \<beta> \<and> Suc b \<le> b'" by auto
             thus ?thesis by auto
           qed
         qed
@@ -332,11 +334,11 @@ next
   qed
 next
   case (3 evalF evalC)
-  case (2 ve b \<beta> c \<beta>' lab b' t)
+  case (2 ve b \<beta> c \<beta>' lab t)
   show ?case
   proof (cases c)
   case (App lab' f vs)
-    with "3.prems"
+    with "3.prems"(1)
     have "((lab, \<beta>), t)
          \<in> {((lab', \<beta>'), evalV f \<beta>' ve)}
          \<union> evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, Suc b))"
@@ -347,8 +349,34 @@ next
     thus ?thesis proof
       assume "((lab, \<beta>), t) = ((lab', \<beta>'), evalV f \<beta>' ve)"
       hence "\<beta>' = \<beta>" by simp
-      print_facts
-*)
+      with "3.prems"(2)
+      show ?thesis by simp
+    next
+      assume "((lab, \<beta>), t) \<in> (evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, Suc b)))"
+      with "3.hyps"(1)
+      have "\<exists>b'. Some b' \<in> range \<beta> \<and> Suc b \<le> b'" by auto
+      thus ?thesis by auto
+    qed
+  next
+  case (Let lab' binds c)
+    with "3.prems"(1)
+    have "((lab, \<beta>), t)
+         \<in> evalC\<cdot>(Discr (c, \<beta>'(lab' \<mapsto> Suc b),ve ++
+                               map_of (map (\<lambda>(v, l). ((v, Suc b), evalV (L l) (\<beta>'(lab' \<mapsto> Suc b)) ve)) binds), Suc b))" by (simp add: HOL.Let_def)
+    moreover
+    have "\<exists>b'. Some b' \<in> range (\<beta>'(lab' \<mapsto> Suc b)) \<and> Suc b \<le> b'" by (rule_tac x="Suc b" in exI) auto
+    ultimately 
+    have "\<exists>b'. Some b' \<in> range \<beta> \<and> Suc b \<le> b'" using "3.hyps"(2) by simp
+    thus ?thesis by auto
+  qed
+qed
+
+lemma single_valued_insert:
+  assumes "single_valued rel" 
+      and "\<And> x y . \<lbrakk>(x,y) \<in> rel; x=a\<rbrakk> \<Longrightarrow> y = b"
+  shows "single_valued (rel \<union> {(a,b)})"
+using assms
+by (auto intro:single_valuedI dest:single_valuedD)
 
 lemma  "single_valued (evalF\<cdot>fstate)"
    and "single_valued (evalC\<cdot>cstate)"
