@@ -196,3 +196,16 @@ ex4 :: Prog
 ex4 = prog $ lambda ["cont"] $
         let_ [("rec", lambda ["c"] $ app "rec" ["c"])] $
            app "rec" ["cont"]
+
+-- | The puzzle from Shiver's dissertation
+puzzle :: Prog
+puzzle = prog $ lambda ["k"] $
+        app (l $ lambda ["f"] $ app "f" [0, 42, l $ lambda ["v"] $ app "f" [1,"v","k"]])
+            [l $ lambda ["x","h","k1"] $
+                app if_ [ "x"
+                        , l $ lambda [] $ app "h" ["k1"]
+                        , l $ lambda [] $ app "k1" [l $ lambda ["k2"] $ app "k2" ["x"]]
+                        ]
+            ]
+               
+
