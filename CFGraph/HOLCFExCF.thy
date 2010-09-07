@@ -130,6 +130,71 @@ fixrec   evalF :: "fstate discr \<rightarrow> ans"
 
 print_theorems
 
+find_theorems name: ".induct"
+
+lemma eval_induct[consumes 2]:
+  assumes prem1: "retF = evalF\<cdot>fstate"
+      and prem2: "retC = evalC\<cdot>cstate"
+(*    and bottomF: "PF {}"
+      and bottomC: "PC {}"
+      and lamF: "\<And> (evalC::cstate discr \<rightarrow> ans) lab vs c \<beta> as ve b.
+        \<lbrakk> PC (evalC\<cdot>(Discr (c, \<beta>(lab \<mapsto> b), ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] as), b)))
+        ;  length vs = length as
+        \<rbrakk>
+        \<Longrightarrow> PF (evalC\<cdot>(Discr (c, \<beta>(lab \<mapsto> b), ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] as), b)))"
+      and plusF: "\<And> (evalF::fstate discr \<rightarrow> ans) c a1 a2 cnt ve b.
+        PF (evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, Suc b)))
+         \<Longrightarrow> PF (evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, Suc b)) \<union> {((c, [c \<mapsto> b]), cnt)})"
+      and ifF_True:  "\<And> (evalF::fstate discr \<rightarrow> ans) ct (v::int) cntt ve b.
+        \<lbrakk> PF (evalF\<cdot>(Discr (cntt, [], ve, Suc b)))
+        ; v \<noteq> 0
+        \<rbrakk>
+         \<Longrightarrow> PF (evalF\<cdot>(Discr (cntt, [], ve, Suc b)) \<union> {((ct, [ct \<mapsto> b]), cntt)})"
+      and ifF_False:  "\<And> (evalF::fstate discr \<rightarrow> ans) cf  cntf ve b.
+        PF (evalF\<cdot>(Discr (cntf, [], ve, Suc b)))
+         \<Longrightarrow> PF (evalF\<cdot>(Discr (cntf, [], ve, Suc b)) \<union> {((cf, [cf \<mapsto> b]), cntf)})"
+      and appC: "\<And> (evalF::fstate discr \<rightarrow> ans) c f vs ve \<beta> b.
+         PF (evalF\<cdot>(Discr (evalV f \<beta> ve, map (\<lambda>v. evalV v \<beta> ve) vs, ve, Suc b)))
+         \<Longrightarrow> PC ((evalF\<cdot>(Discr (evalV f \<beta> ve, map (\<lambda>v. evalV v \<beta> ve) vs, ve, Suc b)))
+                  \<union> {((c, \<beta>), evalV f \<beta> ve)})"
+      and *)
+   shows "PF fstate retF &&& PC cstate retC"
+using prem1 and prem2
+proof(induct arbitrary: retC retF fstate cstate rule:evalF_evalC.induct)
+  case 1 show ?case 
+   apply (intro adm_prod_split adm_all adm_imp adm_subst[of snd] adm_subst[of fst] adm_not_free cont2cont)
+   apply (rule_tac xa = xa in adm_subst[of _ "op \<noteq> xa"])
+   apply (auto intro:ext)
+               
+
+  case 2
+
+proof(induct arbitrary: fstate cstate rule: evalF_evalC.induct)
+print_cases
+case 1 from admF and amdC show ?case
+ by (intro adm_lemmas adm_prod_split)
+    (auto intro:adm_subst[of _ "PF"] adm_subst[of _ "PC"])
+next
+case 2 case 1 from bottomF show ?case by simp next
+case 2 case 2 from bottomC show ?case by simp next
+case (3 evalF evalC)
+{
+  print_cases
+  case (1 fstate)
+  from "3.hyps" and bottomF and bottomC and plusF and ifF_True and ifF_False and lamF
+  show ?case
+    apply (auto split: d.split prod.split lambda.split)
+    apply (auto split: d.split prod.split list.split prim.split lambda.split)
+    done
+  next
+  case (2 cstate)
+  from "3.hyps" and appC 
+  show ?case
+    by (auto split: call.split prod.split simp add:HOL.Let_def)
+} 
+qed
+*)
+
 definition evalCPS :: "prog \<Rightarrow> ans"
   where "evalCPS l = (let ve = empty;
                           \<beta> = empty;
@@ -148,6 +213,33 @@ by simp
 lemma single_valued_empty[simp]:"single_valued {}"
 by (rule single_valuedI) auto
 
+lemma
+assumes "retF = evalF\<cdot>fstate" and "retC = evalC\<cdot>cstate"
+shows "\<lbrakk> ((lab,\<beta>),t) \<in> retF; fstate = Discr (d,ds,ve,b) \<rbrakk>
+        \<Longrightarrow> \<exists> b'. Some b' \<in> range \<beta> \<and> b' \<ge> b"
+  and "\<lbrakk> ((lab',\<beta>'),t') \<in> retC; cstate = Discr (c,\<beta>',ve',b'') \<rbrakk>
+        \<Longrightarrow> \<exists> b'. Some b' \<in> range \<beta> \<and> b' \<ge> b"
+thm eval_induct
+using assms
+proof(induct arbitrary: lab \<beta> t lab' \<beta>' t' ve' b'' c \<beta>' d ds ve b rule:eval_induct)
+
+lemma "\<And> lab \<beta> t d ds ve b. \<lbrakk>((lab,\<beta>),t) \<in> evalF\<cdot>fstate ; fstate = Discr (d,ds,ve,b) \<rbrakk> \<Longrightarrow> \<exists> b'. Some b' \<in> range \<beta> \<and> b' \<ge> b"
+  and "\<And> lab \<beta> t c \<beta>' ve b. \<lbrakk>((lab,\<beta>),t) \<in> evalC\<cdot>cstate ; cstate = Discr (c,\<beta>',ve,b) \<rbrakk> \<Longrightarrow> \<exists> b'. Some b' \<in> range \<beta> \<and> b' \<ge> b"
+thm eval_induct
+proof(induct rule:eval_induct)
+print_cases
+case 1 show ?case by(intro adm_lemmas adm_not_mem cont2cont) next
+case 2 show ?case by(intro adm_lemmas adm_not_mem cont2cont) next
+case 3 thus ?case by auto next 
+case 4 thus ?case by auto next
+case 5 thus ?case
+ apply auto
+
+
+end
+*)
+
+(*
 lemma "\<lbrakk> ((lab,\<beta>),t) \<in> evalF\<cdot>(Discr (d,ds,ve, b)); Some b' \<in> range \<beta> \<rbrakk> \<Longrightarrow> b \<le> b'"
   and "\<lbrakk> ((lab,\<beta>),t) \<in> evalC\<cdot>(Discr (c,\<beta>',ve,b)); Some b' \<in> range \<beta> \<rbrakk> \<Longrightarrow> b < b'"
 proof(induct arbitrary:d ds ve b \<beta> c \<beta>' lab b' t rule:evalF_evalC.induct)
@@ -293,6 +385,24 @@ next
       assume "((lab, \<beta>), t) = ((lab', \<beta>'), evalV f \<beta>' ve)"
       hence "\<beta>' = \<beta>" by simp
       print_facts
+*)
+
+lemma  "single_valued (evalF\<cdot>fstate)"
+   and "single_valued (evalC\<cdot>cstate)"
+proof(induct rule:eval_induct)
+print_cases
+  case 1 show ?case by (auto intro: adm_single_valued)
+next
+  case 2 show ?case by (auto intro: adm_single_valued)
+next
+  case 3 show ?case by simp
+next
+  case 4 show ?case by simp
+next
+  case (5 evalC lab vs c \<beta> as ve b) thus ?case by auto
+next
+  case (6 evalF c a1 a2 cnt ve b) thus ?case
+  apply auto
 
 
 lemma  "single_valued (evalF\<cdot>fstate)"
