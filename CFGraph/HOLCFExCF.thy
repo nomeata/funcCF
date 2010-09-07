@@ -128,10 +128,6 @@ fixrec   evalF :: "fstate discr \<rightarrow> ans"
                  in evalC\<cdot>(Discr (c',\<beta>',ve',b'))
         )"
 
-print_theorems
-
-find_theorems name: ".induct"
-
 lemma eval_induct:
   assumes admF: "adm PF"
       and amdC: "adm PC"
@@ -202,31 +198,59 @@ by simp
 lemma single_valued_empty[simp]:"single_valued {}"
 by (rule single_valuedI) auto
 
-lemma beta_b_bound:
-      "((lab,\<beta>),t) \<in> evalF\<cdot>(Discr (d,ds,ve, b)) \<Longrightarrow> \<exists> b'. Some b' \<in> range \<beta> \<and> b \<le> b'"
-  and "\<lbrakk> ((lab,\<beta>),t) \<in> evalC\<cdot>(Discr (c,\<beta>',ve,b)) ; \<exists> b'. Some b' \<in> range \<beta>' \<and> b \<le> b' \<rbrakk>
-       \<Longrightarrow> \<exists> b' . Some b' \<in> range \<beta> \<and> b \<le> b'"
+lemma single_valued_insert:
+  assumes "single_valued rel" 
+      and "\<And> x y . \<lbrakk>(x,y) \<in> rel; x=a\<rbrakk> \<Longrightarrow> y = b"
+  shows "single_valued (insert (a,b) rel)"
+using assms
+by (auto intro:single_valuedI dest:single_valuedD)
+
+lemma ran_upd[simp]: "ran (m (k \<mapsto> v)) \<subseteq> ran m \<union> {v}"
+unfolding ran_def by auto
+
+lemma ran_upd_mem[simp]: "v \<in> ran (m (k \<mapsto> v))"
+unfolding ran_def by auto
+
+fun contours_in_d
+  where "contours_in_d (DC (l,\<beta>)) = ran \<beta>"
+      | "contours_in_d _ = {}"
+
+definition contours_in_ve :: "venv \<Rightarrow> nat set"
+  where "contours_in_ve ve = \<Union>{contours_in_d d | d . d \<in> ran ve}"
+
+lemma cc_single_valued':
+      "\<forall>b' \<in> contours_in_ve ve. b' < b
+       \<Longrightarrow> single_valued (evalF\<cdot>(Discr (d,ds,ve,b)))"
+  and "((lab,\<beta>),t) \<in> evalF\<cdot>(Discr (d,ds,ve, b))
+       \<Longrightarrow> \<exists> b'. b' \<in> ran \<beta> \<and> b \<le> b'"
+  and "\<exists> b'. b' \<in> ran \<beta>' \<and> b \<le> b'
+       \<Longrightarrow> single_valued (evalC\<cdot>(Discr (c,\<beta>',ve,b)))"
+  and "\<lbrakk> ((lab,\<beta>),t) \<in> evalC\<cdot>(Discr (c,\<beta>',ve,b))
+       ; \<exists> b'. b' \<in> ran \<beta>' \<and> b \<le> b'
+       \<rbrakk>
+       \<Longrightarrow> \<exists> b'. b' \<in> ran \<beta> \<and> b \<le> b'"
 proof(induct arbitrary:d ds ve b \<beta> c \<beta>' lab b' t rule:evalF_evalC.induct)
 print_cases
 case 1 show ?case
   (* admissibility *)
-  by (intro adm_lemmas adm_prod_split adm_not_conj adm_not_mem cont2cont)
+  by (intro adm_lemmas adm_prod_split adm_not_conj adm_not_mem adm_single_valued cont2cont)
 next
-  case 2 case 1 thus ?case
-  by (auto simp add:mem_def)
-next
-  case 2 case 2 thus ?case
-  by (auto simp add:mem_def)
+  case 2 {
+    case 1 thus ?case by (auto simp add:mem_def) next
+    case 2 thus ?case by (auto simp add:mem_def) next
+    case 3 thus ?case by (auto simp add:mem_def) next
+    case 4 thus ?case by (auto simp add:mem_def)
+  }
 next
   case (3 evalF evalC)
+  {
   print_cases
-  case (1 d ds ve b \<beta> lab t)
+  case (1 d ds ve b)
   show ?case
   proof (cases d)
-  print_cases
     case (DI i)
-    thus ?thesis using "3.prems" by simp
-    next 
+    thus ?thesis by simp
+  next
     case (DC closure)
     show ?thesis
     proof (cases closure)
@@ -234,7 +258,96 @@ next
       show ?thesis
       proof (cases lambda)
       case (Lambda lab' as c)
-        (* from "3.prems" Lambda Pair DC  *)
+        show ?thesis
+        proof (cases "length as = length ds")
+          case False with Lambda Pair DC show ?thesis by simp next
+          case True 
+            have "\<exists>b'. b' \<in> ran (\<beta>'(lab' \<mapsto> b)) \<and> b \<le> b'"
+              by (rule_tac x = b in exI) auto
+            with True Lambda Pair DC "3.hyps"(3) show ?thesis by simp
+        qed
+      qed
+    qed
+  next
+  case (DP prim)
+    show ?thesis
+    proof (cases prim)
+      case (Plus cp)
+      show ?thesis
+      proof (cases "\<exists> i1 i2 cnt. ds = [DI i1, DI i2, cnt]")
+        case True then obtain i1 i2 cnt where ds: "ds = [DI i1, DI i2, cnt]" by auto
+        
+        {
+          fix t
+          assume "((cp,[cp \<mapsto> b]), t) \<in> evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, Suc b))"
+          hence "\<exists>b'. b' \<in> ran [cp \<mapsto> b] \<and> Suc b \<le> b'" by (rule "3.hyps"(2))
+          hence False by simp
+        }
+        with "3.hyps"(1)
+        have "single_valued ((evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, Suc b)))
+                            \<union> {((cp, [cp \<mapsto> b]), cnt)})"
+        by (auto intro!:single_valued_insert split:prod.split)blast
+        thus ?thesis using ds Plus DP by auto
+      next
+        case False
+        show ?thesis using DP Plus False by (simp split: list.split d.split) 
+      qed
+    next
+      case (If cp1 cp2)
+      show ?thesis
+      proof (cases "\<exists> i cntt cntf. ds = [DI i, cntt, cntf]")
+        case True then obtain i cntt cntf where ds:"ds = [DI i, cntt, cntf]" by auto
+        show ?thesis proof(cases "i\<noteq>0")
+        case True
+        {
+          fix t
+          assume "((cp1,[cp1 \<mapsto> b]), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, Suc b))"
+          hence "\<exists>b'. b' \<in> ran [cp1 \<mapsto> b] \<and> Suc b \<le> b'" by (rule "3.hyps"(2))
+          hence False by simp
+        }
+        with "3.hyps"(1)
+        have "single_valued ((evalF\<cdot>(Discr (cntt, [], ve, Suc b)))
+                            \<union> {((cp1, [cp1 \<mapsto> b]), cntt)})"
+        by (auto intro!:single_valued_insert split:prod.split)blast
+        thus ?thesis using ds If DP True by auto
+      next
+        case False
+        {
+          fix t
+          assume "((cp2,[cp2 \<mapsto> b]), t) \<in> evalF\<cdot>(Discr (cntf, [], ve, Suc b))"
+          hence "\<exists>b'. b' \<in> ran [cp2 \<mapsto> b] \<and> Suc b \<le> b'" by (rule "3.hyps"(2))
+          hence False by simp
+        }
+        with "3.hyps"(1)
+        have "single_valued ((evalF\<cdot>(Discr (cntf, [], ve, Suc b)))
+                            \<union> {((cp2, [cp2 \<mapsto> b]), cntf)})"
+        by (auto intro!:single_valued_insert split:prod.split)blast
+        thus ?thesis using ds If DP False by auto
+      qed
+    next
+        case False
+        show ?thesis using DP If False
+          by(simp split: list.split d.split)
+      qed
+    qed
+  next
+    case Stop
+    thus ?thesis by (simp split: list.split d.split)
+  qed
+next
+  case (2 d ds ve b \<beta> lab t)
+  show ?case
+  proof (cases d)
+    case (DI i)
+    thus ?thesis using "3.prems" by simp
+  next 
+    case (DC closure)
+    show ?thesis
+    proof (cases closure)
+    case (Pair lambda \<beta>')
+      show ?thesis
+      proof (cases lambda)
+      case (Lambda lab' as c)        
         have "length as = length ds"
         proof(rule ccontr)
           assume "length as \<noteq> length ds"
@@ -245,11 +358,11 @@ next
          \<in> evalC\<cdot>(Discr (c, \<beta>'(lab' \<mapsto> b), ve(map (\<lambda>v. (v, b)) as [\<mapsto>] ds), b))"
           by simp
         moreover 
-        have "\<exists>b'. Some b' \<in> range (\<beta>'(lab' \<mapsto> b)) \<and> b \<le> b'"
+        have "\<exists>b'. b' \<in> ran (\<beta>'(lab' \<mapsto> b)) \<and> b \<le> b'"
          by (rule_tac x = b in exI) auto
         ultimately
         show ?thesis
-          using "3.hyps"(2) "3.prems"
+          using "3.hyps"(4) "3.prems"
           by simp
       qed
     qed
@@ -268,12 +381,12 @@ next
         thus ?thesis using assms
         proof
           assume "((lab, \<beta>), t) = ((cp, [cp \<mapsto> b]), cnt)"          
-          hence "\<exists>b'. Some b' \<in> range \<beta> \<and> b = b'" by auto
+          hence "\<exists>b'. b' \<in> ran \<beta> \<and> b = b'" by auto
           thus ?thesis by blast
         next
           assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, Suc b))"
-          with "3.hyps"(1) "3.prems"
-          have "\<exists>b'. Some b' \<in> range \<beta> \<and> Suc b \<le> b'" by auto
+          with "3.hyps"(2) "3.prems"
+          have "\<exists>b'. b' \<in> ran \<beta> \<and> Suc b \<le> b'" by auto
           thus ?thesis by auto
         qed
       next
@@ -295,12 +408,12 @@ next
           thus ?thesis using assms
           proof
             assume "((lab, \<beta>), t) = ((cp1, [cp1 \<mapsto> b]), cntt)"
-            hence "\<exists>b'. Some b' \<in> range \<beta> \<and> b = b'" by auto
+            hence "\<exists>b'. b' \<in> ran \<beta> \<and> b = b'" by auto
             thus ?thesis by blast
           next
             assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, Suc b))"
-            with "3.hyps"(1)
-            have "\<exists>b'. Some b' \<in> range \<beta> \<and> Suc b \<le> b'" by auto
+            with "3.hyps"(2)
+            have "\<exists>b'. b' \<in> ran \<beta> \<and> Suc b \<le> b'" by auto
             thus ?thesis by auto
           qed
         next
@@ -312,12 +425,12 @@ next
           thus ?thesis using assms
           proof
             assume "((lab, \<beta>), t) = ((cp2, [cp2 \<mapsto> b]), cntf)"
-            hence "\<exists>b'. Some b' \<in> range \<beta> \<and> b = b'" by auto
+            hence "\<exists>b'. b' \<in> ran \<beta> \<and> b = b'" by auto
             thus ?thesis by blast
           next
             assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntf, [], ve, Suc b))"
-            with "3.hyps"(1)
-            have "\<exists>b'. Some b' \<in> range \<beta> \<and> Suc b \<le> b'" by auto
+            with "3.hyps"(2)
+            have "\<exists>b'. b' \<in> ran \<beta> \<and> Suc b \<le> b'" by auto
             thus ?thesis by auto
           qed
         qed
@@ -333,8 +446,30 @@ next
       by (simp split: list.split_asm d.split_asm)
   qed
 next
-  case (3 evalF evalC)
-  case (2 ve b \<beta> c \<beta>' lab t)
+  case (3 ve b c \<beta>')
+  show ?case
+  proof (cases c)
+  case (App lab' f vs)
+     print_facts
+
+     { fix y
+       assume "((lab', \<beta>'), y) \<in> evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, Suc b))"
+       hence "\<exists>b'. b' \<in> ran \<beta>' \<and> Suc b \<le> b'"
+         by (rule "3.hyps"(2))
+     }
+
+     from App show ?thesis using "3.hyps"(1)
+     apply(auto simp add:HOL.Let_def intro!:single_valued_insert)
+
+        with "3.hyps"(1)
+        have "single_valued ((evalF\<cdot>(Discr (cntf, [], ve, Suc b)))
+                            \<union> {((cp2, [cp2 \<mapsto> b]), cntf)})"
+        by (auto intro!:single_valued_insert split:prod.split)blast
+        thus ?thesis using ds If DP False by auto
+
+
+next
+  case (4 ve b \<beta> c \<beta>' lab t)
   show ?case
   proof (cases c)
   case (App lab' f vs)
@@ -353,8 +488,8 @@ next
       show ?thesis by simp
     next
       assume "((lab, \<beta>), t) \<in> (evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, Suc b)))"
-      with "3.hyps"(1)
-      have "\<exists>b'. Some b' \<in> range \<beta> \<and> Suc b \<le> b'" by auto
+      with "3.hyps"(2)
+      have "\<exists>b'. b' \<in> ran \<beta> \<and> Suc b \<le> b'" by auto
       thus ?thesis by auto
     qed
   next
@@ -364,19 +499,13 @@ next
          \<in> evalC\<cdot>(Discr (c, \<beta>'(lab' \<mapsto> Suc b),ve ++
                                map_of (map (\<lambda>(v, l). ((v, Suc b), evalV (L l) (\<beta>'(lab' \<mapsto> Suc b)) ve)) binds), Suc b))" by (simp add: HOL.Let_def)
     moreover
-    have "\<exists>b'. Some b' \<in> range (\<beta>'(lab' \<mapsto> Suc b)) \<and> Suc b \<le> b'" by (rule_tac x="Suc b" in exI) auto
+    have "\<exists>b'. b' \<in> ran (\<beta>'(lab' \<mapsto> Suc b)) \<and> Suc b \<le> b'" by (rule_tac x="Suc b" in exI) auto
     ultimately 
-    have "\<exists>b'. Some b' \<in> range \<beta> \<and> Suc b \<le> b'" using "3.hyps"(2) by simp
+    have "\<exists>b'. b' \<in> ran \<beta> \<and> Suc b \<le> b'" using "3.hyps"(4) by simp
     thus ?thesis by auto
   qed
+}
 qed
-
-lemma single_valued_insert:
-  assumes "single_valued rel" 
-      and "\<And> x y . \<lbrakk>(x,y) \<in> rel; x=a\<rbrakk> \<Longrightarrow> y = b"
-  shows "single_valued (rel \<union> {(a,b)})"
-using assms
-by (auto intro:single_valuedI dest:single_valuedD)
 
 lemma  "single_valued (evalF\<cdot>fstate)"
    and "single_valued (evalC\<cdot>cstate)"
@@ -393,7 +522,13 @@ next
   case (5 evalC lab vs c \<beta> as ve b) thus ?case by auto
 next
   case (6 evalF c a1 a2 cnt ve b) thus ?case
-  apply auto
+  proof(rule single_valued_insert)
+    fix lab \<beta> t
+    assume "((lab,\<beta>), t) \<in> evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, Suc b))"
+    hence "\<exists>b'. Some b' \<in> range \<beta> \<and> Suc b \<le> b'"
+    apply -
+    apply (rule beta_b_bound)
+
 
 
 lemma  "single_valued (evalF\<cdot>fstate)"
