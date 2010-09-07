@@ -143,9 +143,8 @@ lemma adm_single_valued:
  assumes "cont (\<lambda>x. f x)"
  shows "adm (\<lambda>x. single_valued (f x))"
 using assms
-apply (erule_tac t = f in adm_subst)
 unfolding single_valued_def
-by (intro adm_lemmas adm_not_mem cont2cont)
+by (intro adm_lemmas adm_not_mem cont2cont adm_subst[of f])
 
 lemma const_False_is_bot[simp]: "(\<lambda>a. False) = {}" 
 by (rule ext, auto)
