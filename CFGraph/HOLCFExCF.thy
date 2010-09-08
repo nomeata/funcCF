@@ -341,6 +341,7 @@ lemma cc_single_valued':
        &&& (\<And> lab \<beta> t. ((lab,\<beta>),t) \<in> evalF\<cdot>(Discr (d,ds,ve, b)) \<Longrightarrow> \<exists> b'. b' \<in> ran \<beta> \<and> b \<le> b')
        )"
   and "\<lbrakk> \<beta>' \<notin> benv_in_ve ve
+       ; \<forall>b'\<in>ran \<beta>'. b' < b
        ; \<forall>b' \<in> contours_in_ve ve. b' < b
        \<rbrakk>
        \<Longrightarrow>
@@ -401,6 +402,8 @@ next
             have "\<forall> \<beta> \<in> benv_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). (\<beta>'(lab' \<mapsto> b)) \<noteq> \<beta>"
               using True by-(rule benv_in_ve_upds)
             hence "\<beta>'(lab' \<mapsto> b) \<notin> benv_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds))" by auto
+            moreover
+              have "\<forall>b'\<in> ran (\<beta>'(lab' \<mapsto> b)). b' < b" sorry
             moreover
               have "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' < b"
                 using "3.prems"(1) and "3.prems"(3) and True
@@ -510,8 +513,28 @@ next
          \<in> evalC\<cdot>(Discr (c, \<beta>'(lab' \<mapsto> b), ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds), b))"
           by simp
         moreover 
-        have "\<exists>b'. b' \<in> ran (\<beta>'(lab' \<mapsto> b)) \<and> b \<le> b'"
-         by (rule_tac x = b in exI) auto
+        {
+            have "\<forall>\<beta>\<in>benv_in_ve ve. \<beta>'(lab' \<mapsto> b) \<noteq> \<beta>"
+            proof
+              fix \<beta> assume "\<beta> \<in> benv_in_ve ve"
+              then obtain d where "\<beta> \<in> benv_in_d d" and "d\<in>ran ve" unfolding benv_in_ve_def by auto
+              from `d\<in>ran ve` and "3.prems"(1) have "\<forall>b'\<in>contours_in_d d. b' < b" unfolding contours_in_ve_def by auto
+              with `\<beta> \<in> benv_in_d d` have "\<forall>b'\<in>ran \<beta>. b' < b" by (cases d)auto
+              thus "\<beta>'(lab' \<mapsto> b) \<noteq> \<beta>" by auto
+            qed
+            moreover
+            have "\<forall>d'\<in>set ds. \<forall>\<beta>\<in>benv_in_d d'. \<beta>'(lab' \<mapsto> b) \<noteq> \<beta>"
+            proof(intro ballI)
+              fix d \<beta> assume "d \<in> set ds" and "\<beta> \<in> benv_in_d d"
+              from `d \<in> set ds` and "3.prems"(3) have "\<forall>b'\<in>contours_in_d d. b' < b" by simp
+              with `\<beta> \<in> benv_in_d d` have "\<forall>b'\<in>ran \<beta>. b' < b" by (cases d)auto
+              thus "\<beta>'(lab' \<mapsto> b) \<noteq> \<beta>" by auto
+            qed
+            ultimately
+            have "\<forall> \<beta> \<in> benv_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). (\<beta>'(lab' \<mapsto> b)) \<noteq> \<beta>"
+              using eq_length by-(rule benv_in_ve_upds)
+            hence "\<beta>'(lab' \<mapsto> b) \<notin> benv_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds))" by auto
+        }
         moreover
         have "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' < b"
           using "3.prems"(1) and "3.prems"(3) and eq_length
@@ -619,30 +642,19 @@ next
   case (App lab' f vs)
     print_facts
 
-    have b_dom_d: "\<forall>b'\<in>contours_in_d (evalV f \<beta>' ve). b' < Suc b" using "3.prems"
-     thm contours_in_eval
-     apply (rule contours_in_eval)
+    from "3.prems"(3) have "\<forall>b'\<in>contours_in_ve ve. b' < Suc b" by auto
+    moreover have "\<forall>b'\<in>ran \<beta>'. b' < Suc b" using "3.prems"(2) by auto
+    ultimately have b_dom_d: "\<forall>b'\<in>contours_in_d (evalV f \<beta>' ve). b' < Suc b" by(rule contours_in_eval)
 
+    thm "3.hyps"(1)
 
-    have b_dom_ds: "\<forall>d' \<in> (map (\<lambda>v. evalV v \<beta>' ve)). \<forall>b'\<in>contours_in_d d'. b' < Suc b" by auto
-    have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < Suc b" using "3.prems"(1) by auto
-
-
-     { fix y
-       assume "((lab', \<beta>'), y) \<in> evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, Suc b))"
-       hence "\<exists>b'. b' \<in> ran \<beta>' \<and> Suc b \<le> b'"
-         by (rule "3.hyps"(2))
-     }
-
-     from App show ?thesis using "3.hyps"(1)
-     apply(auto simp add:HOL.Let_def intro!:single_valued_insert)
-
-        with "3.hyps"(1)
-        have "single_valued ((evalF\<cdot>(Discr (cntf, [], ve, Suc b)))
-                            \<union> {((cp2, [cp2 \<mapsto> b]), cntf)})"
-        by (auto intro!:single_valued_insert split:prod.split)blast
-        thus ?thesis using ds If DP False by auto
-
+    have b_dom_ds: "\<forall>d' \<in> set (map (\<lambda>v. evalV v \<beta>' ve) vs). \<forall>b'\<in>contours_in_d d'. b' < Suc b" sorry
+    have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < Suc b" using "3.prems"(1) sorry
+    have new_elem: "\<forall>y. ((lab', \<beta>'), y) \<notin> evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, Suc b))" sorry
+     
+    from App show ?thesis using "3.hyps"(1)  b_dom_d b_dom_ve b_dom_ds new_elem
+      by(auto simp add:HOL.Let_def intro!:single_valued_insert)
+  next
 
 next
   case (4 ve b \<beta> c \<beta>' lab t)
