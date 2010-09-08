@@ -340,7 +340,7 @@ lemma cc_single_valued':
        (   single_valued (evalF\<cdot>(Discr (d,ds,ve,b)))
        &&& (\<And> lab \<beta> t. ((lab,\<beta>),t) \<in> evalF\<cdot>(Discr (d,ds,ve, b)) \<Longrightarrow> \<exists> b'. b' \<in> ran \<beta> \<and> b \<le> b')
        )"
-  and "\<lbrakk> \<exists> b'. b' \<in> ran \<beta>' \<and> b \<le> b'
+  and "\<lbrakk> \<beta>' \<notin> benv_in_ve ve
        ; \<forall>b' \<in> contours_in_ve ve. b' < b
        \<rbrakk>
        \<Longrightarrow>
@@ -380,8 +380,27 @@ next
         proof (cases "length vs = length ds")
           case False with Lambda Pair DC show ?thesis by simp next
           case True 
-            have "\<exists>b'. b' \<in> ran (\<beta>'(lab' \<mapsto> b)) \<and> b \<le> b'"
-              by (rule_tac x = b in exI) auto
+            print_facts
+            have "\<forall>\<beta>\<in>benv_in_ve ve. \<beta>'(lab' \<mapsto> b) \<noteq> \<beta>"
+            proof
+              fix \<beta> assume "\<beta> \<in> benv_in_ve ve"
+              then obtain d where "\<beta> \<in> benv_in_d d" and "d\<in>ran ve" unfolding benv_in_ve_def by auto
+              from `d\<in>ran ve` and "3.prems"(1) have "\<forall>b'\<in>contours_in_d d. b' < b" unfolding contours_in_ve_def by auto
+              with `\<beta> \<in> benv_in_d d` have "\<forall>b'\<in>ran \<beta>. b' < b" by (cases d)auto
+              thus "\<beta>'(lab' \<mapsto> b) \<noteq> \<beta>" by auto
+            qed
+            moreover
+            have "\<forall>d'\<in>set ds. \<forall>\<beta>\<in>benv_in_d d'. \<beta>'(lab' \<mapsto> b) \<noteq> \<beta>"
+            proof(intro ballI)
+              fix d \<beta> assume "d \<in> set ds" and "\<beta> \<in> benv_in_d d"
+              from `d \<in> set ds` and "3.prems"(3) have "\<forall>b'\<in>contours_in_d d. b' < b" by simp
+              with `\<beta> \<in> benv_in_d d` have "\<forall>b'\<in>ran \<beta>. b' < b" by (cases d)auto
+              thus "\<beta>'(lab' \<mapsto> b) \<noteq> \<beta>" by auto
+            qed
+            ultimately
+            have "\<forall> \<beta> \<in> benv_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). (\<beta>'(lab' \<mapsto> b)) \<noteq> \<beta>"
+              using True by-(rule benv_in_ve_upds)
+            hence "\<beta>'(lab' \<mapsto> b) \<notin> benv_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds))" by auto
             moreover
               have "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' < b"
                 using "3.prems"(1) and "3.prems"(3) and True
