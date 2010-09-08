@@ -128,6 +128,8 @@ fixrec   evalF :: "fstate discr \<rightarrow> ans"
                  in evalC\<cdot>(Discr (c',\<beta>',ve',b'))
         )"
 
+print_theorems
+
 lemma eval_induct:
   assumes admF: "adm PF"
       and amdC: "adm PC"
@@ -205,8 +207,36 @@ lemma single_valued_insert:
 using assms
 by (auto intro:single_valuedI dest:single_valuedD)
 
-lemma ran_upd[simp]: "ran (m (k \<mapsto> v)) \<subseteq> ran m \<union> {v}"
+lemma ran_upd: "ran (m (k \<mapsto> v)) \<subseteq> ran m \<union> {v}"
 unfolding ran_def by auto
+
+lemma ran_map_of: "ran (map_of xs) \<subseteq> snd ` set xs"
+unfolding ran_def
+by (induct xs)auto
+
+lemma ran_concat: "ran (m1 ++ m2) \<subseteq> ran m1 \<union> ran m2"
+unfolding ran_def
+by auto
+
+lemma map_fst_zip: "length xs = length ys ==> map fst (zip xs ys) = xs"
+apply (induct xs ys rule:list_induct2) by auto
+
+lemma map_snd_zip: "length xs = length ys ==> map snd (zip xs ys) = ys"
+apply (induct xs ys rule:list_induct2) by auto
+
+lemma ran_upds:
+  assumes eq_length: "length ks = length vs"
+  shows "ran (map_upds m ks vs) \<subseteq> ran m \<union> set vs"
+proof-
+  have "ran (map_upds m ks vs) \<subseteq> ran (m++map_of (rev (zip ks vs)))"
+    unfolding map_upds_def by simp
+  also have "\<dots> \<subseteq> ran m \<union> ran (map_of (rev (zip ks vs)))" by (rule ran_concat)
+  also have "\<dots> \<subseteq> ran m \<union> snd ` set (rev (zip ks vs))"
+    by (intro Un_mono[of "ran m" "ran m"] subset_refl ran_map_of)
+  also have "\<dots>\<subseteq> ran m \<union> set vs"
+    by (auto intro:Un_mono[of "ran m" "ran m"] subset_refl simp del:set_map simp add:set_map[THEN sym] map_snd_zip[OF eq_length])
+  finally show ?thesis .
+qed
 
 lemma ran_upd_mem[simp]: "v \<in> ran (m (k \<mapsto> v))"
 unfolding ran_def by auto
@@ -218,18 +248,44 @@ fun contours_in_d
 definition contours_in_ve :: "venv \<Rightarrow> nat set"
   where "contours_in_ve ve = \<Union>{contours_in_d d | d . d \<in> ran ve}"
 
+lemma contours_in_ve_upds:
+  assumes eq_length: "length vs = length ds"
+      and "\<forall>b'\<in>contours_in_ve ve. b' < b"
+      and "\<forall>d'\<in>set ds. \<forall>b'\<in>contours_in_d d'. b' < b"
+  shows   "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b'')) vs [\<mapsto>] ds)). b' < b"
+proof
+  have subset: "ran (ve(map (\<lambda>v. (v, b'')) vs [\<mapsto>] ds)) \<subseteq> ran ve \<union> set ds" using eq_length by(auto intro!:ran_upds) 
+  fix b'
+  assume "b' \<in> contours_in_ve (ve(map (\<lambda>v. (v, b'')) vs [\<mapsto>] ds))"
+  then obtain d where "d \<in> ran (ve(map (\<lambda>v. (v, b'')) vs [\<mapsto>] ds))" and "b' \<in> contours_in_d d"
+         unfolding contours_in_ve_def by auto
+  hence "d \<in> ran ve \<or>  d \<in> set ds" using subset by auto
+  thus "b' < b"
+  proof
+   assume "d \<in> ran ve" hence 
+
+thus ?thesis using assms(2,3)
+unfolding contours_in_ve_def
+apply simp
+
+
 lemma cc_single_valued':
-      "\<forall>b' \<in> contours_in_ve ve. b' < b
-       \<Longrightarrow> single_valued (evalF\<cdot>(Discr (d,ds,ve,b)))"
-  and "((lab,\<beta>),t) \<in> evalF\<cdot>(Discr (d,ds,ve, b))
-       \<Longrightarrow> \<exists> b'. b' \<in> ran \<beta> \<and> b \<le> b'"
-  and "\<exists> b'. b' \<in> ran \<beta>' \<and> b \<le> b'
-       \<Longrightarrow> single_valued (evalC\<cdot>(Discr (c,\<beta>',ve,b)))"
-  and "\<lbrakk> ((lab,\<beta>),t) \<in> evalC\<cdot>(Discr (c,\<beta>',ve,b))
-       ; \<exists> b'. b' \<in> ran \<beta>' \<and> b \<le> b'
+      "\<lbrakk> \<forall>b' \<in> contours_in_ve ve. b' < b
+       ; \<forall>b' \<in> contours_in_d d. b' < b
+       ; \<forall>d' \<in> set ds. \<forall>b' \<in> contours_in_d d'. b' < b
        \<rbrakk>
-       \<Longrightarrow> \<exists> b'. b' \<in> ran \<beta> \<and> b \<le> b'"
-proof(induct arbitrary:d ds ve b \<beta> c \<beta>' lab b' t rule:evalF_evalC.induct)
+       \<Longrightarrow>
+       (   single_valued (evalF\<cdot>(Discr (d,ds,ve,b)))
+       &&& (\<And> lab \<beta> t. ((lab,\<beta>),t) \<in> evalF\<cdot>(Discr (d,ds,ve, b)) \<Longrightarrow> \<exists> b'. b' \<in> ran \<beta> \<and> b \<le> b')
+       )"
+  and "\<lbrakk> \<exists> b'. b' \<in> ran \<beta>' \<and> b \<le> b'
+       ; \<forall>b' \<in> contours_in_ve ve. b' < b
+       \<rbrakk>
+       \<Longrightarrow>
+       (   single_valued (evalC\<cdot>(Discr (c,\<beta>',ve,b)))
+       &&& (\<And> lab \<beta> t. ((lab,\<beta>),t) \<in> evalC\<cdot>(Discr (c,\<beta>',ve,b)) \<Longrightarrow> \<exists> b'. b' \<in> ran \<beta> \<and> b \<le> b' )
+       )"
+proof(induct arbitrary:d ds ve b c \<beta>' b' rule:evalF_evalC.induct)
 print_cases
 case 1 show ?case
   (* admissibility *)
@@ -257,14 +313,22 @@ next
     case (Pair lambda \<beta>')
       show ?thesis
       proof (cases lambda)
-      case (Lambda lab' as c)
+      case (Lambda lab' vs c)
         show ?thesis
-        proof (cases "length as = length ds")
+        proof (cases "length vs = length ds")
           case False with Lambda Pair DC show ?thesis by simp next
           case True 
             have "\<exists>b'. b' \<in> ran (\<beta>'(lab' \<mapsto> b)) \<and> b \<le> b'"
               by (rule_tac x = b in exI) auto
-            with True Lambda Pair DC "3.hyps"(3) show ?thesis by simp
+            print_facts
+            moreover
+
+              have "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' < b"
+              using "3.prems"(1) and "3.prems"(3)
+              unfolding contours_in_ve_def apply auto
+
+            ultimately
+            show ?thesis using True Lambda Pair DC "3.hyps"(3) by simp
         qed
       qed
     qed
