@@ -212,8 +212,7 @@ lemma ran_upd: "ran (m (k \<mapsto> v)) \<subseteq> ran m \<union> {v}"
 unfolding ran_def by auto
 
 lemma ran_map_of: "ran (map_of xs) \<subseteq> snd ` set xs"
-unfolding ran_def
-by (induct xs)auto
+ by (induct xs)(auto simp del:fun_upd_apply dest: ran_upd[THEN subsetD])
 
 lemma ran_concat: "ran (m1 ++ m2) \<subseteq> ran m1 \<union> ran m2"
 unfolding ran_def
@@ -294,21 +293,44 @@ proof(cases v)
   case P thus ?thesis by simp
 qed
 
+lemma contours_in_ve_empty[simp]: "contours_in_ve empty = {}"
+  unfolding contours_in_ve_def by auto
 
 lemma contours_in_ve_upds:
   assumes eq_length: "length vs = length ds"
-      and "\<forall>b'\<in>contours_in_ve ve. b' < b"
-      and "\<forall>d'\<in>set ds. \<forall>b'\<in>contours_in_d d'. b' < b"
-  shows   "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b'')) vs [\<mapsto>] ds)). b' < b"
+      and "\<forall>b'\<in>contours_in_ve ve. Q b'"
+      and "\<forall>d'\<in>set ds. \<forall>b'\<in>contours_in_d d'. Q b'"
+  shows   "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b'')) vs [\<mapsto>] ds)). Q b'"
 proof-
-  have "ran (ve(map (\<lambda>v. (v, b'')) vs [\<mapsto>] ds)) \<subseteq> ran ve \<union> set ds" using eq_length by(auto intro!:ran_upds) 
-  thus ?thesis using `\<forall>b'\<in>contours_in_ve ve. b' < b` and `\<forall>d'\<in>set ds. \<forall>b'\<in>contours_in_d d'. b' < b` unfolding contours_in_ve_def  by blast
+  have "ran (ve(map (\<lambda>v. (v, b'')) vs [\<mapsto>] ds)) \<subseteq> ran ve \<union> set ds" using eq_length by(auto intro!:ran_upds)
+  thus ?thesis using assms(2,3) unfolding contours_in_ve_def  by blast
+qed
+
+lemma contours_in_ve_upds_binds:
+  assumes "\<forall>b'\<in>contours_in_ve ve. Q b'"
+      and "\<forall>b'\<in>ran \<beta>'. Q b'"
+  shows   "\<forall>b'\<in>contours_in_ve (ve ++ map_of (map (\<lambda>(v,l). ((v,b''), evalV (L l) \<beta>' ve)) ls)). Q b'"
+proof
+  fix b' assume "b'\<in>contours_in_ve (ve ++ map_of (map (\<lambda>(v,l). ((v,b''), evalV (L l) \<beta>' ve)) ls))"
+  then obtain d where d:"d \<in> ran (ve ++ map_of (map (\<lambda>(v,l). ((v,b''), evalV (L l) \<beta>' ve)) ls))" and b:"b' \<in> contours_in_d d" unfolding contours_in_ve_def by auto
+  
+  have "ran (ve ++ map_of (map (\<lambda>(v,l). ((v,b''), evalV (L l) \<beta>' ve)) ls)) \<subseteq> ran ve \<union> ran (map_of (map (\<lambda>(v,l). ((v,b''), evalV (L l) \<beta>' ve)) ls))"
+    by(auto intro!:ran_concat)
+  also
+  have "\<dots> \<subseteq> ran ve \<union> snd ` set (map (\<lambda>(v,l). ((v,b''), evalV (L l) \<beta>' ve)) ls)"
+    by (rule Un_mono[of "ran ve" "ran ve", OF subset_refl ran_map_of])
+  also
+  have "\<dots> \<subseteq> ran ve \<union> set (map (\<lambda>(v,l). (evalV (L l) \<beta>' ve)) ls)"
+    by (rule Un_mono[of "ran ve" "ran ve", OF subset_refl ])auto
+  finally
+  have "d \<in>  ran ve \<union> set (map (\<lambda>(v,l). (evalV (L l) \<beta>' ve)) ls)" using d by auto
+  thus "Q b'"  using assms b unfolding contours_in_ve_def by auto
 qed
 
 lemma contours_in_eval:
-  assumes "\<forall>b'\<in>contours_in_ve ve. b' < b"
-      and "\<forall>b'\<in> ran \<beta>. b' < b"
-  shows "\<forall>b'\<in>contours_in_d (evalV f \<beta> ve). b' < b"
+  assumes "\<forall>b'\<in>contours_in_ve ve. Q b'"
+      and "\<forall>b'\<in> ran \<beta>. Q b'"
+  shows "\<forall>b'\<in>contours_in_d (evalV f \<beta> ve). Q b'"
 unfolding contours_in_ve_def
 proof(cases f)
   case (R _ var)
@@ -320,12 +342,12 @@ proof(cases f)
       case None with Some R show ?thesis by simp next
       case (Some d)
         hence "d \<in> ran ve" unfolding ran_def by blast
-        thus ?thesis using Some `\<beta> (fst var) = Some cnt` R `\<forall>b'\<in>contours_in_ve ve. b' < b`
+        thus ?thesis using Some `\<beta> (fst var) = Some cnt` R `\<forall>b'\<in>contours_in_ve ve. Q b'`
           unfolding contours_in_ve_def
           by auto
     qed
   qed next
-  case (L l) thus ?thesis using `\<forall>b'\<in> ran \<beta>. b' < b` by simp next
+  case (L l) thus ?thesis using `\<forall>b'\<in> ran \<beta>. Q b'` by simp next
   case C thus ?thesis by simp next
   case P thus ?thesis by simp
 qed
@@ -340,9 +362,9 @@ lemma cc_single_valued':
        (   single_valued (evalF\<cdot>(Discr (d,ds,ve,b)))
        &&& (\<And> lab \<beta> t. ((lab,\<beta>),t) \<in> evalF\<cdot>(Discr (d,ds,ve, b)) \<Longrightarrow> \<exists> b'. b' \<in> ran \<beta> \<and> b \<le> b')
        )"
-  and "\<lbrakk> \<beta>' \<notin> benv_in_ve ve
-       ; \<forall>b'\<in>ran \<beta>'. b' < b
-       ; \<forall>b' \<in> contours_in_ve ve. b' < b
+  and "\<lbrakk> b \<in> ran \<beta>'
+       ; \<forall>b'\<in>ran \<beta>'. b' \<le> b
+       ; \<forall>b' \<in> contours_in_ve ve. b' \<le> b
        \<rbrakk>
        \<Longrightarrow>
        (   single_valued (evalC\<cdot>(Discr (c,\<beta>',ve,b)))
@@ -381,35 +403,22 @@ next
         proof (cases "length vs = length ds")
           case False with Lambda Pair DC show ?thesis by simp next
           case True 
-            print_facts
-            have "\<forall>\<beta>\<in>benv_in_ve ve. \<beta>'(lab' \<mapsto> b) \<noteq> \<beta>"
-            proof
-              fix \<beta> assume "\<beta> \<in> benv_in_ve ve"
-              then obtain d where "\<beta> \<in> benv_in_d d" and "d\<in>ran ve" unfolding benv_in_ve_def by auto
-              from `d\<in>ran ve` and "3.prems"(1) have "\<forall>b'\<in>contours_in_d d. b' < b" unfolding contours_in_ve_def by auto
-              with `\<beta> \<in> benv_in_d d` have "\<forall>b'\<in>ran \<beta>. b' < b" by (cases d)auto
-              thus "\<beta>'(lab' \<mapsto> b) \<noteq> \<beta>" by auto
+            have new: "b\<in>ran (\<beta>'(lab' \<mapsto> b))" by simp
+
+            have b_dom_beta: "\<forall>b'\<in> ran (\<beta>'(lab' \<mapsto> b)). b' \<le> b"
+            proof fix b' assume "b' \<in> ran (\<beta>'(lab' \<mapsto> b))"
+              hence "b' \<in> ran \<beta>' \<or> b' \<le> b" by (auto dest:ran_upd[THEN subsetD])
+              thus "b' \<le> b" using  "3.prems"(2) DC Pair by auto
             qed
-            moreover
-            have "\<forall>d'\<in>set ds. \<forall>\<beta>\<in>benv_in_d d'. \<beta>'(lab' \<mapsto> b) \<noteq> \<beta>"
-            proof(intro ballI)
-              fix d \<beta> assume "d \<in> set ds" and "\<beta> \<in> benv_in_d d"
-              from `d \<in> set ds` and "3.prems"(3) have "\<forall>b'\<in>contours_in_d d. b' < b" by simp
-              with `\<beta> \<in> benv_in_d d` have "\<forall>b'\<in>ran \<beta>. b' < b" by (cases d)auto
-              thus "\<beta>'(lab' \<mapsto> b) \<noteq> \<beta>" by auto
-            qed
-            ultimately
-            have "\<forall> \<beta> \<in> benv_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). (\<beta>'(lab' \<mapsto> b)) \<noteq> \<beta>"
-              using True by-(rule benv_in_ve_upds)
-            hence "\<beta>'(lab' \<mapsto> b) \<notin> benv_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds))" by auto
-            moreover
-              have "\<forall>b'\<in> ran (\<beta>'(lab' \<mapsto> b)). b' < b" sorry
-            moreover
-              have "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' < b"
-                using "3.prems"(1) and "3.prems"(3) and True
-                  by -(erule contours_in_ve_upds)
-            ultimately
-            show ?thesis using True Lambda Pair DC "3.hyps"(3) by simp
+            
+            have "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' < b"
+              by (rule contours_in_ve_upds[OF True "3.prems"(1) "3.prems"(3)])
+            hence b_dom_ve: "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' \<le> b"
+                by auto
+            
+            from "3.hyps"(3)[OF new b_dom_beta b_dom_ve, of c]
+            show ?thesis using True Lambda Pair DC
+               by (auto simp del:fun_upd_apply)
         qed
       qed
     qed
@@ -508,41 +517,23 @@ next
         have eq_length: "length vs = length ds" 
           using "3.prems" Lambda Pair DC
           by -(rule ccontr,simp)
-        with "3.prems" Lambda Pair DC
-        have "((lab, \<beta>), t)
-         \<in> evalC\<cdot>(Discr (c, \<beta>'(lab' \<mapsto> b), ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds), b))"
-          by simp
-        moreover 
-        {
-            have "\<forall>\<beta>\<in>benv_in_ve ve. \<beta>'(lab' \<mapsto> b) \<noteq> \<beta>"
-            proof
-              fix \<beta> assume "\<beta> \<in> benv_in_ve ve"
-              then obtain d where "\<beta> \<in> benv_in_d d" and "d\<in>ran ve" unfolding benv_in_ve_def by auto
-              from `d\<in>ran ve` and "3.prems"(1) have "\<forall>b'\<in>contours_in_d d. b' < b" unfolding contours_in_ve_def by auto
-              with `\<beta> \<in> benv_in_d d` have "\<forall>b'\<in>ran \<beta>. b' < b" by (cases d)auto
-              thus "\<beta>'(lab' \<mapsto> b) \<noteq> \<beta>" by auto
-            qed
-            moreover
-            have "\<forall>d'\<in>set ds. \<forall>\<beta>\<in>benv_in_d d'. \<beta>'(lab' \<mapsto> b) \<noteq> \<beta>"
-            proof(intro ballI)
-              fix d \<beta> assume "d \<in> set ds" and "\<beta> \<in> benv_in_d d"
-              from `d \<in> set ds` and "3.prems"(3) have "\<forall>b'\<in>contours_in_d d. b' < b" by simp
-              with `\<beta> \<in> benv_in_d d` have "\<forall>b'\<in>ran \<beta>. b' < b" by (cases d)auto
-              thus "\<beta>'(lab' \<mapsto> b) \<noteq> \<beta>" by auto
-            qed
-            ultimately
-            have "\<forall> \<beta> \<in> benv_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). (\<beta>'(lab' \<mapsto> b)) \<noteq> \<beta>"
-              using eq_length by-(rule benv_in_ve_upds)
-            hence "\<beta>'(lab' \<mapsto> b) \<notin> benv_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds))" by auto
-        }
-        moreover
+
+        have new: "b\<in>ran (\<beta>'(lab' \<mapsto> b))" by simp
+        
+        have b_dom_beta: "\<forall>b'\<in> ran (\<beta>'(lab' \<mapsto> b)). b' \<le> b"
+        proof fix b' assume "b' \<in> ran (\<beta>'(lab' \<mapsto> b))"
+          hence "b' \<in> ran \<beta>' \<or> b' \<le> b" by (auto dest:ran_upd[THEN subsetD])
+          thus "b' \<le> b" using  "3.prems"(2) DC Pair by auto
+        qed
+        
         have "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' < b"
-          using "3.prems"(1) and "3.prems"(3) and eq_length
-          by -(erule contours_in_ve_upds)
-        ultimately
-        show ?thesis
-          using "3.hyps"(4) "3.prems"
-          by simp
+          by (rule contours_in_ve_upds[OF eq_length "3.prems"(1) "3.prems"(3)])
+        hence b_dom_ve: "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' \<le> b"
+           by auto
+        
+        from "3.hyps"(4)[OF new b_dom_beta b_dom_ve]
+        show ?thesis using eq_length Lambda Pair DC "3.prems"(4)
+          by (auto simp del:fun_upd_apply)
       qed
     qed
   next
@@ -642,26 +633,63 @@ next
   case (App lab' f vs)
     print_facts
 
-    from "3.prems"(3) have "\<forall>b'\<in>contours_in_ve ve. b' < Suc b" by auto
-    moreover have "\<forall>b'\<in>ran \<beta>'. b' < Suc b" using "3.prems"(2) by auto
-    ultimately have b_dom_d: "\<forall>b'\<in>contours_in_d (evalV f \<beta>' ve). b' < Suc b" by(rule contours_in_eval)
+    have prem2': "\<forall>b'\<in>ran \<beta>'. b' < Suc b" using "3.prems"(2) by auto
+    have prem3': "\<forall>b'\<in>contours_in_ve ve. b' < Suc b" using "3.prems"(3) by auto
+    note c_in_e = contours_in_eval[OF prem3' prem2']
 
-    thm "3.hyps"(1)
-
-    have b_dom_ds: "\<forall>d' \<in> set (map (\<lambda>v. evalV v \<beta>' ve) vs). \<forall>b'\<in>contours_in_d d'. b' < Suc b" sorry
-    have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < Suc b" using "3.prems"(1) sorry
-    have new_elem: "\<forall>y. ((lab', \<beta>'), y) \<notin> evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, Suc b))" sorry
+    have b_dom_d: "\<forall>b'\<in>contours_in_d (evalV f \<beta>' ve). b' < Suc b" by(rule c_in_e)
+    have b_dom_ds: "\<forall>d' \<in> set (map (\<lambda>v. evalV v \<beta>' ve) vs). \<forall>b'\<in>contours_in_d d'. b' < Suc b"
+      using c_in_e by auto
+    have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < Suc b" by (rule prem3')
+   
+    have new_elem: "\<forall>y. ((lab', \<beta>'), y) \<notin> evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, Suc b))" 
+    proof(rule allI, rule notI)
+      fix y assume e: "((lab', \<beta>'), y) \<in> evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, Suc b))"
+      from e b_dom_d b_dom_ve b_dom_ds
+      have "\<exists>b'. b' \<in> ran \<beta>' \<and> Suc b \<le> b'" by(auto elim!:"3.hyps"(2))
+      thus False using prem2' by auto
+    qed
      
-    from App show ?thesis using "3.hyps"(1)  b_dom_d b_dom_ve b_dom_ds new_elem
-      by(auto simp add:HOL.Let_def intro!:single_valued_insert)
+    from "3.hyps"(1)[OF b_dom_ve b_dom_d b_dom_ds]
+    show ?thesis using App new_elem
+      by(auto simp add:HOL.Let_def intro!:single_valued_insert)     
   next
+  case (Let lab' ls c')
+    have prem2': "\<forall>b'\<in>ran (\<beta>'(lab' \<mapsto> Suc b)). b' \<le> Suc b"
+    proof
+      fix b' assume "b'\<in>ran (\<beta>'(lab' \<mapsto> Suc b))"
+      hence "b' \<in> ran \<beta>' \<or> b' = Suc b" by (auto dest:ran_upd[THEN subsetD])
+      thus "b' \<le> Suc b" using  "3.prems"(2) by auto
+    qed
+    have prem3': "\<forall>b'\<in>contours_in_ve ve. b' \<le> Suc b" using "3.prems"(3) by auto
 
+    note c_in_e = contours_in_eval[OF prem3' prem2']
+    note c_in_ve' = contours_in_ve_upds_binds[OF prem3' prem2']
+
+    have b_dom_ve: "\<forall>b' \<in> contours_in_ve (ve ++ map_of (map (\<lambda>(v,l). ((v,Suc b), evalV (L l) ((\<beta>'(lab' \<mapsto> Suc b))) ve)) ls)). b' \<le> Suc b"
+      by (rule c_in_ve')
+    have b_dom_beta: "\<forall>b'\<in>ran (\<beta>'(lab' \<mapsto> Suc b)). b' \<le> Suc b" by (rule prem2')
+    have new: "Suc b \<in> ran (\<beta>'(lab' \<mapsto> Suc b))" by simp
+      
+    from "3.hyps"(3)[OF new b_dom_beta b_dom_ve]
+    show ?thesis using Let
+      by(auto simp add:HOL.Let_def simp del: fun_upd_apply)
+  qed
 next
-  case (4 ve b \<beta> c \<beta>' lab t)
+  case (4 ve b c \<beta>' lab \<beta> t)
   show ?case
   proof (cases c)
   case (App lab' f vs)
-    with "3.prems"(1)
+    have prem2': "\<forall>b'\<in>ran \<beta>'. b' < Suc b" using "3.prems"(2) by auto
+    have prem3': "\<forall>b'\<in>contours_in_ve ve. b' < Suc b" using "3.prems"(3) by auto
+    note c_in_e = contours_in_eval[OF prem3' prem2']
+
+    have b_dom_d: "\<forall>b'\<in>contours_in_d (evalV f \<beta>' ve). b' < Suc b" by(rule c_in_e)
+    have b_dom_ds: "\<forall>d' \<in> set (map (\<lambda>v. evalV v \<beta>' ve) vs). \<forall>b'\<in>contours_in_d d'. b' < Suc b"
+      using c_in_e by auto
+    have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < Suc b" by (rule prem3')
+
+    from App "3.prems"(4)
     have "((lab, \<beta>), t)
          \<in> {((lab', \<beta>'), evalV f \<beta>' ve)}
          \<union> evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, Suc b))"
@@ -672,89 +700,45 @@ next
     thus ?thesis proof
       assume "((lab, \<beta>), t) = ((lab', \<beta>'), evalV f \<beta>' ve)"
       hence "\<beta>' = \<beta>" by simp
-      with "3.prems"(2)
-      show ?thesis by simp
+      with "3.prems"(1)
+      show ?thesis by auto
     next
       assume "((lab, \<beta>), t) \<in> (evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, Suc b)))"
-      with "3.hyps"(2)
+      with "3.hyps"(2)[OF b_dom_ve b_dom_d b_dom_ds]
       have "\<exists>b'. b' \<in> ran \<beta> \<and> Suc b \<le> b'" by auto
       thus ?thesis by auto
     qed
   next
-  case (Let lab' binds c)
-    with "3.prems"(1)
+  case (Let lab' ls c)
+    have prem2': "\<forall>b'\<in>ran (\<beta>'(lab' \<mapsto> Suc b)). b' \<le> Suc b"
+    proof
+      fix b' assume "b'\<in>ran (\<beta>'(lab' \<mapsto> Suc b))"
+      hence "b' \<in> ran \<beta>' \<or> b' = Suc b" by (auto dest:ran_upd[THEN subsetD])
+      thus "b' \<le> Suc b" using  "3.prems"(2) by auto
+    qed
+    have prem3': "\<forall>b'\<in>contours_in_ve ve. b' \<le> Suc b" using "3.prems"(3) by auto
+
+    note c_in_e = contours_in_eval[OF prem3' prem2']
+    note c_in_ve' = contours_in_ve_upds_binds[OF prem3' prem2']
+
+    have b_dom_ve: "\<forall>b' \<in> contours_in_ve (ve ++ map_of (map (\<lambda>(v,l). ((v,Suc b), evalV (L l) ((\<beta>'(lab' \<mapsto> Suc b))) ve)) ls)). b' \<le> Suc b"
+      by (rule c_in_ve')
+    have b_dom_beta: "\<forall>b'\<in>ran (\<beta>'(lab' \<mapsto> Suc b)). b' \<le> Suc b" by (rule prem2')
+    have new: "Suc b \<in> ran (\<beta>'(lab' \<mapsto> Suc b))" by simp
+
+    from Let and "3.prems"(4)
     have "((lab, \<beta>), t)
          \<in> evalC\<cdot>(Discr (c, \<beta>'(lab' \<mapsto> Suc b),ve ++
-                               map_of (map (\<lambda>(v, l). ((v, Suc b), evalV (L l) (\<beta>'(lab' \<mapsto> Suc b)) ve)) binds), Suc b))" by (simp add: HOL.Let_def)
-    moreover
-    have "\<exists>b'. b' \<in> ran (\<beta>'(lab' \<mapsto> Suc b)) \<and> Suc b \<le> b'" by (rule_tac x="Suc b" in exI) auto
-    ultimately 
-    have "\<exists>b'. b' \<in> ran \<beta> \<and> Suc b \<le> b'" using "3.hyps"(4) by simp
+                               map_of (map (\<lambda>(v, l). ((v, Suc b), evalV (L l) (\<beta>'(lab' \<mapsto> Suc b)) ve)) ls), Suc b))" by (simp add: HOL.Let_def)
+    with "3.hyps"(4)[OF new b_dom_beta b_dom_ve]
+    have "\<exists>b'. b' \<in> ran \<beta> \<and> Suc b \<le> b'"  by(auto simp add:HOL.Let_def simp del: fun_upd_apply)
     thus ?thesis by auto
   qed
 }
 qed
+print_theorems (* Unselect-blocker *)
 
-lemma  "single_valued (evalF\<cdot>fstate)"
-   and "single_valued (evalC\<cdot>cstate)"
-proof(induct rule:eval_induct)
-print_cases
-  case 1 show ?case by (auto intro: adm_single_valued)
-next
-  case 2 show ?case by (auto intro: adm_single_valued)
-next
-  case 3 show ?case by simp
-next
-  case 4 show ?case by simp
-next
-  case (5 evalC lab vs c \<beta> as ve b) thus ?case by auto
-next
-  case (6 evalF c a1 a2 cnt ve b) thus ?case
-  proof(rule single_valued_insert)
-    fix lab \<beta> t
-    assume "((lab,\<beta>), t) \<in> evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, Suc b))"
-    hence "\<exists>b'. Some b' \<in> range \<beta> \<and> Suc b \<le> b'"
-    apply -
-    apply (rule beta_b_bound)
-
-
-
-lemma  "single_valued (evalF\<cdot>fstate)"
-   and "single_valued (evalC\<cdot>cstate)"
+lemma "single_valued (evalCPS prog)"
 unfolding evalCPS_def
-proof(induct arbitrary:fstate cstate rule:evalF_evalC.induct)
-print_cases
-  case 1 (*Admissibility*)
-  show ?case
-  by (intro adm_prod_split adm_conj adm_all adm_single_valued cont2cont)
-next
-  case 2 (* True for bottom *)
-  {
-    print_cases
-    case 1
-    show ?case by (auto simp add: empty_def)
-    next
-    case 2
-    show ?case by (auto simp add: empty_def)
-  }
-  next 
-  case (3 evalF evalC)
-  { 
-    case (1 fstate)
-    show ?case
-    (* Now I need something about b *)
-
-
-  unfolding single_valued
-
-
-
-  apply(rule adm_subst)
-  apply simp
-
-  apply (auto intro:single_valuedI)
-
-
-
-
+by ((subst HOL.Let_def)+, rule cc_single_valued'[THEN conjunctionD1], auto)
 end
