@@ -72,7 +72,6 @@ lemma cont2cont_d_case [simp, cont2cont]:
 using assms
 by (cases d) auto
 
-value call_case
 lemma cont2cont_call_case [simp, cont2cont]:
   assumes "\<And>a b c. cont (\<lambda>x. f1 x a b c)"
      and  "\<And>a b c. cont (\<lambda>x. f2 x a b c)"
@@ -130,6 +129,71 @@ fixrec   evalF :: "fstate discr \<rightarrow> ans"
         )"
 
 print_theorems
+
+lemma fstate_case:
+ assumes "\<And>lab vs c \<beta>. length vs = length as \<Longrightarrow> Q (DC (Lambda lab vs c, \<beta>)) as ve b"
+     and "\<And> cp a1 a2 cnt. Q (DP (Plus cp)) [DI a1, DI a2, cnt] ve b"
+     and "\<And> cp1 cp2 v cntt cntf. v \<noteq> 0 \<Longrightarrow> Q (DP (prim.If cp1 cp2)) [DI v,cntt,cntf] ve b"
+     and "\<And> cp1 cp2 cntt cntf. Q (DP (prim.If cp1 cp2)) [DI 0,cntt,cntf] ve b"
+     and "\<And> v. Q Stop [DI v] ve b"
+
+     and "\<And> v. Q (DI v) as ve b"
+     and "\<And>lab vs c \<beta>. length vs \<noteq> length as \<Longrightarrow> Q (DC (Lambda lab vs c, \<beta>)) as ve b"
+     and "\<And> cp. Q (DP (Plus cp)) [] ve b"
+     and "\<And> cp x. Q (DP (Plus cp)) [x] ve b"
+     and "\<And> cp x y. Q (DP (Plus cp)) [x,y] ve b"
+     and "\<And> cp x y  z a list. Q (DP (Plus cp)) (x#y#z#a#list) ve b"
+     and "\<And> cp x y a list. Q (DP (Plus cp)) [DC a,x,y] ve b"
+     and "\<And> cp x y a list. Q (DP (Plus cp)) [DP a,x,y] ve b"
+     and "\<And> cp x y a list. Q (DP (Plus cp)) [Stop,x,y] ve b"
+     and "\<And> cp x y a list. Q (DP (Plus cp)) [x,DC a,y] ve b"
+     and "\<And> cp x y a list. Q (DP (Plus cp)) [x,DP a,y] ve b"
+     and "\<And> cp x y a list. Q (DP (Plus cp)) [x,Stop,y] ve b"
+     and "\<And> cp1 cp2. Q (DP (prim.If cp1 cp2)) [] ve b"
+     and "\<And> cp1 cp2 x. Q (DP (prim.If cp1 cp2)) [x] ve b"
+     and "\<And> cp1 cp2 x y. Q (DP (prim.If cp1 cp2)) [x,y] ve b"
+     and "\<And> cp1 cp2 x y  z a list. Q (DP (prim.If cp1 cp2)) (x#y#z#a#list) ve b"
+     and "\<And> cp1 cp2 x y a list. Q (DP (prim.If cp1 cp2)) [DC a,x,y] ve b"
+     and "\<And> cp1 cp2 x y a list. Q (DP (prim.If cp1 cp2)) [DP a,x,y] ve b"
+     and "\<And> cp1 cp2 x y a list. Q (DP (prim.If cp1 cp2)) [Stop,x,y] ve b"
+     and "Q Stop [] ve b"
+     and "\<And> x y list. Q Stop (x#y#list) ve b"
+     and "\<And> a. Q Stop [DC a] ve b"
+     and "\<And> a. Q Stop [DP a] ve b"
+     and  "Q Stop [Stop] ve b"
+     (*
+     and "\<not>(\<exists> lab vs c \<beta>. length as = length bs \<and> d = (DC (Lambda lab vs c, \<beta>)))
+         \<and>\<not>(\<exists> a1 a2 cp cnt. d = (DP (Plus cp)) \<and> as = [DI a1, DI a2, cnt])
+         \<and>\<not>(\<exists> v cp1 cp2 cntt cntf. d = (DP (IF cp1 cp2)) \<and> as = [DI v, cntt, cnff])
+         \<and>\<not>(\<exists> v. d = Stop \<and> as = [DI v])
+         \<Longrightarrow> Q d as ve b"
+*)
+ shows "Q d as ve b"
+using assms
+apply (cases d, auto)
+apply (case_tac a, auto)
+apply (case_tac "length list = length as", auto)
+apply (case_tac prim, auto)
+apply (case_tac as, auto)
+apply (case_tac list, auto)
+apply (case_tac lista, auto)
+apply (case_tac list, auto)
+apply (case_tac a, auto)
+apply (case_tac aa, auto)
+
+apply (case_tac as, auto)
+apply (case_tac list, auto)
+apply (case_tac lista, auto)
+apply (case_tac list, auto)
+apply (case_tac a, auto)
+apply (case_tac "int\<noteq>0", auto)
+
+apply (cases as, auto)
+apply (case_tac list, auto)
+apply (case_tac a, auto)
+done
+
+
 
 lemma eval_induct:
   assumes admF: "adm PF"
