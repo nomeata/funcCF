@@ -24,7 +24,7 @@ fun evalV :: "val \<Rightarrow> benv \<Rightarrow> venv \<Rightarrow> d"
   |     "evalV (L lam) \<beta> ve = DC (lam, \<beta>)"
 
 declare id_apply[simp del]
-function (sequential,domintros,tailrec)
+function (sequential,domintros)
          evalF :: "d \<Rightarrow> (d list) \<Rightarrow> venv \<Rightarrow> contour \<Rightarrow> ans"
      and evalC :: "call \<Rightarrow> benv \<Rightarrow> venv \<Rightarrow> contour \<Rightarrow> ans"
   where "evalF (DC (Lambda lab vs c, \<beta>)) as ve b
@@ -61,7 +61,6 @@ function (sequential,domintros,tailrec)
 done
 declare id_apply[simp]
 
-
 definition evalCPS :: "prog \<Rightarrow> int"
   where "evalCPS l = (let ve = empty;
                           \<beta> = empty;
@@ -83,6 +82,8 @@ lemma ex2_terminates[simp]: "eval_terminates ex2"
 unfolding eval_terminates_def
 by (auto intro!:evalF_evalC.domintros)
 
+(* Does not work without termination or tailrec *)
+(*
 lemma ex1_correct: "evalCPS ex1 = 0"
 unfolding evalCPS_def
 by simp
@@ -90,6 +91,7 @@ by simp
 lemma ex2_correct: "evalCPS ex2 = 2"
 unfolding evalCPS_def
 by simp
+*)
 
 (* These lemmas take some time, thus skipping them *)
 (*
@@ -100,6 +102,5 @@ by simp
 lemma ex3_terminates[simp]: "eval_terminates ex3"
 unfolding eval_terminates_def
 by (auto intro!:evalF_evalC.domintros)
-
 *)
 end
