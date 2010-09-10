@@ -356,121 +356,85 @@ next
   print_cases
   case (1 d ds ve b)
   show ?case
-  proof (cases rule:fstate_case)
+  proof (cases "(d,ds,ve,b)" rule:fstate_case)
   print_cases
+  case (Closure lab' vs c \<beta>')
+    hence eq_length: "length vs = length ds" by simp
+    have new: "b\<in>ran (\<beta>'(lab' \<mapsto> b))" by simp
 
-  proof (cases d)
-    case (DI i)
-    thus ?thesis by simp
-  next
-    case (DC closure)
-    show ?thesis
-    proof (cases closure)
-    case (Pair lambda \<beta>')
-      show ?thesis
-      proof (cases lambda)
-      case (Lambda lab' vs c)
-        show ?thesis
-        proof (cases "length vs = length ds")
-          case False with Lambda Pair DC show ?thesis by simp next
-          case True 
-            have new: "b\<in>ran (\<beta>'(lab' \<mapsto> b))" by simp
-
-            have b_dom_beta: "\<forall>b'\<in> ran (\<beta>'(lab' \<mapsto> b)). b' \<le> b"
-            proof fix b' assume "b' \<in> ran (\<beta>'(lab' \<mapsto> b))"
-              hence "b' \<in> ran \<beta>' \<or> b' \<le> b" by (auto dest:ran_upd[THEN subsetD])
-              thus "b' \<le> b" using  "3.prems"(2) DC Pair by auto
-            qed
-            
-            have "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' < b"
-              by (rule contours_in_ve_upds[OF True "3.prems"(1) "3.prems"(3)])
-            hence b_dom_ve: "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' \<le> b"
-                by auto
-            
-            from "3.hyps"(3)[OF new b_dom_beta b_dom_ve, of c]
-            show ?thesis using True Lambda Pair DC
-               by (auto simp del:fun_upd_apply)
-        qed
-      qed
+    have b_dom_beta: "\<forall>b'\<in> ran (\<beta>'(lab' \<mapsto> b)). b' \<le> b"
+    proof fix b' assume "b' \<in> ran (\<beta>'(lab' \<mapsto> b))"
+      hence "b' \<in> ran \<beta>' \<or> b' \<le> b" by (auto dest:ran_upd[THEN subsetD])
+      thus "b' \<le> b" using  "3.prems"(2) Closure by auto
     qed
+            
+    have "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' < b"
+      by (rule contours_in_ve_upds[OF eq_length "3.prems"(1) "3.prems"(3)])
+    hence b_dom_ve: "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' \<le> b"
+      by auto
+            
+    from "3.hyps"(3)[OF new b_dom_beta b_dom_ve, of c]
+    show ?thesis using Closure by (auto simp del:fun_upd_apply)
   next
-  case (DP prim)
-    show ?thesis
-    proof (cases prim)
-      case (Plus cp)
-      show ?thesis
-      proof (cases "\<exists> i1 i2 cnt. ds = [DI i1, DI i2, cnt]")
-        case True then obtain i1 i2 cnt where ds: "ds = [DI i1, DI i2, cnt]" by auto
+  case (Plus cp i1 i2 cnt)
+        (* case True then obtain i1 i2 cnt where ds: "ds = [DI i1, DI i2, cnt]" by auto *)
         
-        have b_dom_d: "\<forall>b'\<in>contours_in_d cnt. b' < Suc b" using "3.prems"(3) and ds by auto
-        have b_dom_ds: "\<forall>d' \<in> set [DI (i1+i2)]. \<forall>b'\<in>contours_in_d d'. b' < Suc b" by auto
-        have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < Suc b" using "3.prems"(1) by auto
-        {
-          fix t
-          assume "((cp,[cp \<mapsto> b]), t) \<in> evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, Suc b))"
-          hence "\<exists>b'. b' \<in> ran [cp \<mapsto> b] \<and> Suc b \<le> b'" using b_dom_d b_dom_ds b_dom_ve
-          by -(rule "3.hyps"(2)[rotated 3])
-          hence False by simp
-        }
-        with "3.hyps"(1) and  b_dom_d b_dom_ds b_dom_ve
-        have "single_valued ((evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, Suc b)))
-                            \<union> {((cp, [cp \<mapsto> b]), cnt)})"
-        by (auto intro!:single_valued_insert split:prod.split)blast
-        thus ?thesis using ds Plus DP by auto
-      next
-        case False
-        show ?thesis using DP Plus False by (simp split: list.split d.split) 
-      qed
-    next
-      case (If cp1 cp2)
-      show ?thesis
-      proof (cases "\<exists> i cntt cntf. ds = [DI i, cntt, cntf]")
-        case True then obtain i cntt cntf where ds:"ds = [DI i, cntt, cntf]" by auto
+    have b_dom_d: "\<forall>b'\<in>contours_in_d cnt. b' < Suc b" using "3.prems"(3) and Plus by auto
+    have b_dom_ds: "\<forall>d' \<in> set [DI (i1+i2)]. \<forall>b'\<in>contours_in_d d'. b' < Suc b" by auto
+    have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < Suc b" using "3.prems"(1) by auto
+    {
+      fix t
+      assume "((cp,[cp \<mapsto> b]), t) \<in> evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, Suc b))"
+      hence "\<exists>b'. b' \<in> ran [cp \<mapsto> b] \<and> Suc b \<le> b'"
+        by (rule "3.hyps"(2)[OF b_dom_ve b_dom_d b_dom_ds])
+      hence False by simp
+    }
+    with "3.hyps"(1) and  b_dom_d b_dom_ds b_dom_ve
+    have "single_valued ((evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, Suc b)))
+                      \<union> {((cp, [cp \<mapsto> b]), cnt)})"
+      by (auto intro!:single_valued_insert split:prod.split)blast
+    thus ?thesis using Plus by auto
+   next
+   case (If_True cp1 cp2 i cntt cntf)
+     have b_dom_d1: "\<forall>b'\<in>contours_in_d cntt. b' < Suc b" using "3.prems"(3) and If_True by auto
+     have b_dom_d2: "\<forall>b'\<in>contours_in_d cntf. b' < Suc b" using "3.prems"(3) and If_True by auto
+     have b_dom_ds: "\<forall>d' \<in> set []. \<forall>b'\<in>contours_in_d d'. b' < Suc b" by auto
+     have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < Suc b" using "3.prems"(1) by auto
 
-        have b_dom_d1: "\<forall>b'\<in>contours_in_d cntt. b' < Suc b" using "3.prems"(3) and ds by auto
-        have b_dom_d2: "\<forall>b'\<in>contours_in_d cntf. b' < Suc b" using "3.prems"(3) and ds by auto
-        have b_dom_ds: "\<forall>d' \<in> set []. \<forall>b'\<in>contours_in_d d'. b' < Suc b" by auto
-        have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < Suc b" using "3.prems"(1) by auto
-
-        show ?thesis proof(cases "i\<noteq>0")
-        case True
-        {
-          fix t
-          assume "((cp1,[cp1 \<mapsto> b]), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, Suc b))"
-          hence "\<exists>b'. b' \<in> ran [cp1 \<mapsto> b] \<and> Suc b \<le> b'" using b_dom_d1 b_dom_ds b_dom_ve
-            by -(rule "3.hyps"(2)[rotated 3])
-          hence False by simp
-        }
-        with "3.hyps"(1)
-        have "single_valued ((evalF\<cdot>(Discr (cntt, [], ve, Suc b)))
+     {
+       fix t
+       assume "((cp1,[cp1 \<mapsto> b]), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, Suc b))"
+       hence "\<exists>b'. b' \<in> ran [cp1 \<mapsto> b] \<and> Suc b \<le> b'"
+         by -(rule "3.hyps"(2)[OF b_dom_ve b_dom_d1 b_dom_ds])
+       hence False by simp
+     }
+     with "3.hyps"(1)
+     have "single_valued ((evalF\<cdot>(Discr (cntt, [], ve, Suc b)))
                             \<union> {((cp1, [cp1 \<mapsto> b]), cntt)})"  using b_dom_d1 b_dom_ds b_dom_ve
-        by (auto intro!:single_valued_insert split:prod.split)blast 
-        thus ?thesis using ds If DP True by auto
-      next
-        case False
-        {
-          fix t
-          assume "((cp2,[cp2 \<mapsto> b]), t) \<in> evalF\<cdot>(Discr (cntf, [], ve, Suc b))"
-          hence "\<exists>b'. b' \<in> ran [cp2 \<mapsto> b] \<and> Suc b \<le> b'" using b_dom_d2 b_dom_ds b_dom_ve
-            by -(rule "3.hyps"(2)[rotated 3])
-          hence False by simp
-        }
-        with "3.hyps"(1)
-        have "single_valued ((evalF\<cdot>(Discr (cntf, [], ve, Suc b)))
-                            \<union> {((cp2, [cp2 \<mapsto> b]), cntf)})"  using b_dom_d2 b_dom_ds b_dom_ve
-        by (auto intro!:single_valued_insert split:prod.split)blast
-        thus ?thesis using ds If DP False by auto
-      qed
-    next
-        case False
-        show ?thesis using DP If False
-          by(simp split: list.split d.split)
-      qed
-    qed
-  next
-    case Stop
-    thus ?thesis by (simp split: list.split d.split)
-  qed
+       by (auto intro!:single_valued_insert split:prod.split)blast 
+     thus ?thesis using If_True by auto
+   next
+   case (If_False cp1 cp2 i cntt cntf)
+     have b_dom_d: "\<forall>b'\<in>contours_in_d cntf. b' < Suc b" using "3.prems"(3) and If_False by auto
+     have b_dom_ds: "\<forall>d' \<in> set []. \<forall>b'\<in>contours_in_d d'. b' < Suc b" by auto
+     have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < Suc b" using "3.prems"(1) by auto
+
+     {
+       fix t
+       assume "((cp2,[cp2 \<mapsto> b]), t) \<in> evalF\<cdot>(Discr (cntf, [], ve, Suc b))"
+       hence "\<exists>b'. b' \<in> ran [cp2 \<mapsto> b] \<and> Suc b \<le> b'"
+         by -(rule "3.hyps"(2)[OF b_dom_ve b_dom_d b_dom_ds])
+       hence False by simp
+     }
+     with "3.hyps"(1)
+     have "single_valued ((evalF\<cdot>(Discr (cntf, [], ve, Suc b)))
+                            \<union> {((cp2, [cp2 \<mapsto> b]), cntf)})"  using b_dom_d b_dom_ds b_dom_ve
+       by (auto intro!:single_valued_insert split:prod.split)blast 
+     thus ?thesis using If_False by auto
+   next
+    case (Stop i)
+    thus ?thesis by simp
+  qed (auto split:d.split prim.split)
 next
   case (2 d ds ve b lab \<beta> t)
   show ?case
