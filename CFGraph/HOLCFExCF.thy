@@ -320,7 +320,6 @@ proof(cases f)
   case P thus ?thesis by simp
 qed
 
-
 lemma cc_single_valued':
       "\<lbrakk> \<forall>b' \<in> contours_in_ve ve. b' < b
        ; \<forall>b' \<in> contours_in_d d. b' < b
@@ -353,11 +352,9 @@ next
 next
   case (3 evalF evalC)
   {
-  print_cases
   case (1 d ds ve b)
   show ?case
   proof (cases "(d,ds,ve,b)" rule:fstate_case)
-  print_cases
   case (Closure lab' vs c \<beta>')
     hence eq_length: "length vs = length ds" by simp
     have new: "b\<in>ran (\<beta>'(lab' \<mapsto> b))" by simp
@@ -436,131 +433,93 @@ next
     thus ?thesis by simp
   qed (auto split:d.split prim.split)
 next
-  case (2 d ds ve b lab \<beta> t)
+  case (2 d ds ve b)
   show ?case
-  proof (cases d)
-    case (DI i)
-    thus ?thesis using "3.prems" by simp
-  next 
-    case (DC closure)
-    show ?thesis
-    proof (cases closure)
-    case (Pair lambda \<beta>')
-      show ?thesis
-      proof (cases lambda)
-      case (Lambda lab' vs c)        
-        have eq_length: "length vs = length ds" 
-          using "3.prems" Lambda Pair DC
-          by -(rule ccontr,simp)
+  proof (cases "(d,ds,ve,b)" rule:fstate_case)
+  case (Closure lab' vs c \<beta>')
+    hence eq_length: "length vs = length ds" by simp
+    have new: "b\<in>ran (\<beta>'(lab' \<mapsto> b))" by simp
 
-        have new: "b\<in>ran (\<beta>'(lab' \<mapsto> b))" by simp
-        
-        have b_dom_beta: "\<forall>b'\<in> ran (\<beta>'(lab' \<mapsto> b)). b' \<le> b"
-        proof fix b' assume "b' \<in> ran (\<beta>'(lab' \<mapsto> b))"
-          hence "b' \<in> ran \<beta>' \<or> b' \<le> b" by (auto dest:ran_upd[THEN subsetD])
-          thus "b' \<le> b" using  "3.prems"(2) DC Pair by auto
-        qed
-        
-        have "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' < b"
-          by (rule contours_in_ve_upds[OF eq_length "3.prems"(1) "3.prems"(3)])
-        hence b_dom_ve: "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' \<le> b"
-           by auto
-        
-        from "3.hyps"(4)[OF new b_dom_beta b_dom_ve]
-        show ?thesis using eq_length Lambda Pair DC "3.prems"(4)
-          by (auto simp del:fun_upd_apply)
-      qed
+    have b_dom_beta: "\<forall>b'\<in> ran (\<beta>'(lab' \<mapsto> b)). b' \<le> b"
+    proof fix b' assume "b' \<in> ran (\<beta>'(lab' \<mapsto> b))"
+      hence "b' \<in> ran \<beta>' \<or> b' \<le> b" by (auto dest:ran_upd[THEN subsetD])
+      thus "b' \<le> b" using "3.prems"(2) Closure by auto
     qed
-  next
-  case (DP prim)
-    show ?thesis
-    proof (cases prim)
-      case (Plus cp)
-      show ?thesis
-      proof (cases "\<exists> i1 i2 cnt. ds = [DI i1, DI i2, cnt]")
-        case True then obtain i1 i2 cnt where ds: "ds = [DI i1, DI i2, cnt]" by auto
-        with "3.prems" DP Plus 
-        have "((lab, \<beta>), t) = ((cp, [cp \<mapsto> b]), cnt)
-            \<or> ((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, Suc b))"
-        by (simp)
-        thus ?thesis using assms
-        proof
-          assume "((lab, \<beta>), t) = ((cp, [cp \<mapsto> b]), cnt)"          
-          hence "\<exists>b'. b' \<in> ran \<beta> \<and> b = b'" by auto
-          thus ?thesis by blast
-        next
-        have b_dom_d: "\<forall>b'\<in>contours_in_d cnt. b' < Suc b" using "3.prems"(3) and ds by auto
-        have b_dom_ds: "\<forall>d' \<in> set [DI (i1+i2)]. \<forall>b'\<in>contours_in_d d'. b' < Suc b" by auto
-        have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < Suc b" using "3.prems"(1) by auto
 
-          assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, Suc b))"
-          hence "\<exists>b'. b' \<in> ran \<beta> \<and> Suc b \<le> b'" 
-            using b_dom_d b_dom_ds b_dom_ve
-            by -(rule "3.hyps"(2)[rotated 3])
-          thus ?thesis by auto
-        qed
-      next
-        case False
-        show ?thesis using "3.prems" DP Plus False
-          by(simp split: list.split_asm d.split_asm) 
-      qed
+    have "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' < b"
+      by (rule contours_in_ve_upds[OF eq_length "3.prems"(1) "3.prems"(3)])
+    hence b_dom_ve: "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' \<le> b"
+      by auto
+
+    from "3.hyps"(4)[OF new b_dom_beta b_dom_ve]
+    show ?thesis using Closure "3.prems"(4) by (auto simp del:fun_upd_apply)
+  next
+  case (Plus cp i1 i2 cnt)
+    with "3.prems"
+    have "((lab, \<beta>), t) = ((cp, [cp \<mapsto> b]), cnt)
+        \<or> ((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, Suc b))"
+      by simp
+    thus ?thesis using assms
+    proof
+      assume "((lab, \<beta>), t) = ((cp, [cp \<mapsto> b]), cnt)"
+      hence "\<exists>b'. b' \<in> ran \<beta> \<and> b = b'" by auto
+      thus ?thesis by blast
     next
-      case (If cp1 cp2)
-      show ?thesis
-      proof (cases "\<exists> i cntt cntf. ds = [DI i, cntt, cntf]")
-        case True then obtain i cntt cntf where ds:"ds = [DI i, cntt, cntf]" by auto
+      have b_dom_d: "\<forall>b'\<in>contours_in_d cnt. b' < Suc b" using "3.prems"(3) and Plus by auto
+      have b_dom_ds: "\<forall>d' \<in> set [DI (i1+i2)]. \<forall>b'\<in>contours_in_d d'. b' < Suc b" by auto
+      have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < Suc b" using "3.prems"(1) by auto
 
-        have b_dom_d1: "\<forall>b'\<in>contours_in_d cntt. b' < Suc b" using "3.prems"(3) and ds by auto
-        have b_dom_d2: "\<forall>b'\<in>contours_in_d cntf. b' < Suc b" using "3.prems"(3) and ds by auto
-        have b_dom_ds: "\<forall>d' \<in> set []. \<forall>b'\<in>contours_in_d d'. b' < Suc b" by auto
-        have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < Suc b" using "3.prems"(1) by auto
-
-        show ?thesis proof(cases "i\<noteq>0")
-        case True
-          with ds "3.prems" DP If
-          have "((lab, \<beta>), t) = ((cp1, [cp1 \<mapsto> b]), cntt)
-              \<or> ((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, Suc b))"
-          by simp
-          thus ?thesis using assms
-          proof
-            assume "((lab, \<beta>), t) = ((cp1, [cp1 \<mapsto> b]), cntt)"
-            hence "\<exists>b'. b' \<in> ran \<beta> \<and> b = b'" by auto
-            thus ?thesis by blast
-          next
-            assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, Suc b))"
-            with "3.hyps"(2) b_dom_d1 b_dom_ds b_dom_ve
-            have "\<exists>b'. b' \<in> ran \<beta> \<and> Suc b \<le> b'" by blast
-            thus ?thesis by auto
-          qed
-        next
-        case False
-          with ds "3.prems" DP If
-          have "((lab, \<beta>), t) = ((cp2, [cp2 \<mapsto> b]), cntf)
-              \<or> ((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntf, [], ve, Suc b))"
-          by simp
-          thus ?thesis using assms
-          proof
-            assume "((lab, \<beta>), t) = ((cp2, [cp2 \<mapsto> b]), cntf)"
-            hence "\<exists>b'. b' \<in> ran \<beta> \<and> b = b'" by auto
-            thus ?thesis by blast
-          next
-            assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntf, [], ve, Suc b))"
-            with "3.hyps"(2) b_dom_d2 b_dom_ds b_dom_ve
-            have "\<exists>b'. b' \<in> ran \<beta> \<and> Suc b \<le> b'" by blast
-            thus ?thesis by auto
-          qed
-        qed
-      next
-        case False
-        show ?thesis using "3.prems" DP If False
-          by(simp split: list.split_asm d.split_asm)
-      qed
+      assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, Suc b))"
+      hence "\<exists>b'. b' \<in> ran \<beta> \<and> Suc b \<le> b'" 
+        by (rule "3.hyps"(2)[OF b_dom_ve b_dom_d b_dom_ds])
+      thus ?thesis by auto
     qed
   next
-    case Stop
-    thus ?thesis using "3.prems" 
-      by (simp split: list.split_asm d.split_asm)
-  qed
+  case (If_True cp1 cp2 i cntt cntf)
+    with "3.prems"(4)
+    have "((lab, \<beta>), t) = ((cp1, [cp1 \<mapsto> b]), cntt)
+        \<or> ((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, Suc b))"
+      by simp
+    thus ?thesis using assms
+    proof
+      assume "((lab, \<beta>), t) = ((cp1, [cp1 \<mapsto> b]), cntt)"
+      hence "\<exists>b'. b' \<in> ran \<beta> \<and> b = b'" by auto
+      thus ?thesis by blast
+    next
+      have b_dom_d: "\<forall>b'\<in>contours_in_d cntt. b' < Suc b" using "3.prems"(3) and If_True by auto
+      have b_dom_ds: "\<forall>d' \<in> set []. \<forall>b'\<in>contours_in_d d'. b' < Suc b" by auto
+      have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < Suc b" using "3.prems"(1) by auto
+
+      assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, Suc b))"
+      hence "\<exists>b'. b' \<in> ran \<beta> \<and> Suc b \<le> b'"
+        by (rule "3.hyps"(2)[OF b_dom_ve b_dom_d b_dom_ds])
+      thus ?thesis by auto
+    qed
+  next
+  case (If_False cp2 cp1 i cntf cntt) (* Reorder variables to allow copy’n’paste *)
+    with "3.prems"(4)
+    have "((lab, \<beta>), t) = ((cp1, [cp1 \<mapsto> b]), cntt)
+          \<or> ((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, Suc b))"
+      by simp
+    thus ?thesis using assms
+    proof
+      assume "((lab, \<beta>), t) = ((cp1, [cp1 \<mapsto> b]), cntt)"
+      hence "\<exists>b'. b' \<in> ran \<beta> \<and> b = b'" by auto
+      thus ?thesis by blast
+    next
+      have b_dom_d: "\<forall>b'\<in>contours_in_d cntt. b' < Suc b" using "3.prems"(3) and If_False by auto
+      have b_dom_ds: "\<forall>d' \<in> set []. \<forall>b'\<in>contours_in_d d'. b' < Suc b" by auto
+      have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < Suc b" using "3.prems"(1) by auto
+
+      assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, Suc b))"
+      hence "\<exists>b'. b' \<in> ran \<beta> \<and> Suc b \<le> b'"
+        by (rule "3.hyps"(2)[OF b_dom_ve b_dom_d b_dom_ds])
+      thus ?thesis by auto
+    qed
+  next
+  case (Stop i)
+    thus ?thesis using "3.prems"(4) by simp
+  qed(insert "3.prems"(4), auto split:d.split_asm prim.split_asm)
 next
   case (3 ve b c \<beta>')
   show ?case
