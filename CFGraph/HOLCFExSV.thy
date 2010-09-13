@@ -35,27 +35,36 @@ next
   print_cases
   {
   case (1 d ds ve b)
-  show ?case
-  proof (cases "(d,ds,ve,b)" rule:fstate_case)
-  case (Closure lab' vs c \<beta>')
-    hence eq_length: "length vs = length ds" by simp
+  thus ?case
+find_theorems name:Set.singleton
+  proof (cases "(d,ds,ve,b)" rule:fstate_case,
+       auto split:d.split prim.split simp del:Un_insert_left Un_insert_right)
+  (* Closure *) fix lab' and vs :: "var list" and c and \<beta>' :: benv
+    assume prem_d: "\<forall>b'\<in>ran \<beta>'. b' < b"
+    assume eq_length: "length vs = length ds"
     have new: "b\<in>ran (\<beta>'(lab' \<mapsto> b))" by simp
 
     have b_dom_beta: "\<forall>b'\<in> ran (\<beta>'(lab' \<mapsto> b)). b' \<le> b"
     proof fix b' assume "b' \<in> ran (\<beta>'(lab' \<mapsto> b))"
       hence "b' \<in> ran \<beta>' \<or> b' \<le> b" by (auto dest:ran_upd[THEN subsetD])
-      thus "b' \<le> b" using  Next.prems(2) Closure by auto
+      thus "b' \<le> b" using prem_d by auto
     qed
-
     from contours_in_ve_upds[OF eq_length Next.prems(1) Next.prems(3)]
     have b_dom_ve: "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' \<le> b"
       by auto
 
     from Next.hyps(2)[OF new b_dom_beta b_dom_ve, of c]
-    show ?thesis using Closure by (auto simp del:fun_upd_apply)
+    show "single_valued (evalC\<cdot>(Discr (c, \<beta>'(lab' \<mapsto> b), ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds), b)))"
+      by (auto simp del:fun_upd_apply)
+
+    fix lab and \<beta> and t
+    assume "((lab, \<beta>), t)\<in> evalC\<cdot>(Discr(c, \<beta>'(lab' \<mapsto> b), ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds),b))"
+    with Next.hyps(2)[OF new b_dom_beta b_dom_ve, of c, THEN conjunct2, rule_format]
+    show "\<exists>b'. b' \<in> ran \<beta> \<and> b \<le> b'" by auto
   next
-  case (Plus cp i1 i2 cnt)
-    have b_dom_d: "\<forall>b'\<in>contours_in_d cnt. b' < nb b cp" using Next.prems(3) and Plus by auto
+  (* Plus *) fix cp and i1 and i2 and cnt
+    assume "\<forall>b'\<in>contours_in_d cnt. b' < b"
+    hence b_dom_d: "\<forall>b'\<in>contours_in_d cnt. b' < nb b cp" by auto
     have b_dom_ds: "\<forall>d' \<in> set [DI (i1+i2)]. \<forall>b'\<in>contours_in_d d'. b' < nb b cp" by auto
     have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < nb b cp" using Next.prems(1) by auto
     {
@@ -66,22 +75,19 @@ next
       hence False by simp
     }
     with Next.hyps(1)[OF b_dom_ve b_dom_d b_dom_ds, THEN conjunct1]
-    have "single_valued ((evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, nb b cp)))
+    show "single_valued ((evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, nb b cp)))
                       \<union> {((cp, [cp \<mapsto> b]), cnt)})"
       by (auto intro:single_valued_insert)
-    moreover
-    {
-      fix lab \<beta> t
-      assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, nb b cp))"
-      with Next.hyps(1)[OF b_dom_ve b_dom_d b_dom_ds, THEN conjunct2, rule_format]
-      have "\<exists>b'. b' \<in> ran \<beta> \<and> nb b cp \<le> b'" by auto
-      hence "\<exists>b'. b' \<in> ran \<beta> \<and> b \<le> b'" by auto
-    }
-    ultimately
-    show ?thesis using Plus by auto
+
+    fix lab \<beta> t
+    assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, nb b cp))"
+    with Next.hyps(1)[OF b_dom_ve b_dom_d b_dom_ds, THEN conjunct2, rule_format]
+    have "\<exists>b'. b' \<in> ran \<beta> \<and> nb b cp \<le> b'" by auto
+    thus "\<exists>b'. b' \<in> ran \<beta> \<and> b \<le> b'" by auto
   next
-  case (If_True cp1 cp2 i cntt cntf)
-    have b_dom_d: "\<forall>b'\<in>contours_in_d cntt. b' < nb b cp1" using Next.prems(3) and If_True by auto
+  (* If_True *) fix cp1 cp2 i cntt cntf
+    assume "\<forall>b'\<in>contours_in_d cntt. b' < b"
+    hence b_dom_d: "\<forall>b'\<in>contours_in_d cntt. b' < nb b cp1" by auto
     have b_dom_ds: "\<forall>d' \<in> set []. \<forall>b'\<in>contours_in_d d'. b' < nb b cp1" by auto
     have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < nb b cp1" using Next.prems(1) by auto
     {
@@ -92,22 +98,19 @@ next
       hence False by simp
     }
     with Next.hyps(1)[OF b_dom_ve b_dom_d b_dom_ds, THEN conjunct1]
-    have "single_valued ((evalF\<cdot>(Discr (cntt, [], ve, nb b cp1)))
+    show "single_valued ((evalF\<cdot>(Discr (cntt, [], ve, nb b cp1)))
                        \<union> {((cp1, [cp1 \<mapsto> b]), cntt)})"
       by (auto intro:single_valued_insert)
-    moreover
-    {
-      fix lab \<beta> t
-      assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, nb b cp1))"
-      with Next.hyps(1)[OF b_dom_ve b_dom_d b_dom_ds, THEN conjunct2, rule_format]
-      have "\<exists>b'. b' \<in> ran \<beta> \<and> nb b cp1 \<le> b'" by auto
-      hence "\<exists>b'. b' \<in> ran \<beta> \<and> b \<le> b'" by auto
-    }
-    ultimately
-    show ?thesis using If_True by auto
+
+    fix lab \<beta> t
+    assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, nb b cp1))"
+    with Next.hyps(1)[OF b_dom_ve b_dom_d b_dom_ds, THEN conjunct2, rule_format]
+    have "\<exists>b'. b' \<in> ran \<beta> \<and> nb b cp1 \<le> b'" by auto
+    thus "\<exists>b'. b' \<in> ran \<beta> \<and> b \<le> b'" by auto
    next
-   case (If_False cp2 cp1 i cntf cntt)
-    have b_dom_d: "\<forall>b'\<in>contours_in_d cntt. b' < nb b cp1" using Next.prems(3) and If_False by auto
+   (*  If_False *) fix cp2 cp1 i cntf cntt
+    assume "\<forall>b'\<in>contours_in_d cntt. b' < b"
+    hence b_dom_d: "\<forall>b'\<in>contours_in_d cntt. b' < nb b cp1" by auto
     have b_dom_ds: "\<forall>d' \<in> set []. \<forall>b'\<in>contours_in_d d'. b' < nb b cp1" by auto
     have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < nb b cp1" using Next.prems(1) by auto
     {
@@ -118,29 +121,21 @@ next
       hence False by simp
     }
     with Next.hyps(1)[OF b_dom_ve b_dom_d b_dom_ds, THEN conjunct1]
-    have "single_valued ((evalF\<cdot>(Discr (cntt, [], ve, nb b cp1)))
+    show "single_valued ((evalF\<cdot>(Discr (cntt, [], ve, nb b cp1)))
                        \<union> {((cp1, [cp1 \<mapsto> b]), cntt)})"
       by (auto intro:single_valued_insert)
-    moreover
-    {
-      fix lab \<beta> t
-      assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, nb b cp1))"
-      with Next.hyps(1)[OF b_dom_ve b_dom_d b_dom_ds, THEN conjunct2, rule_format]
-      have "\<exists>b'. b' \<in> ran \<beta> \<and> nb b cp1 \<le> b'" by auto
-      hence "\<exists>b'. b' \<in> ran \<beta> \<and> b \<le> b'" by auto
-    }
-    ultimately
-    show ?thesis using If_False by auto
-  next
-    case (Stop i)
-    thus ?thesis by simp
-  qed (auto split:d.split prim.split)
+
+    fix lab \<beta> t
+    assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, nb b cp1))"
+    with Next.hyps(1)[OF b_dom_ve b_dom_d b_dom_ds, THEN conjunct2, rule_format]
+    have "\<exists>b'. b' \<in> ran \<beta> \<and> nb b cp1 \<le> b'" by auto
+    thus "\<exists>b'. b' \<in> ran \<beta> \<and> b \<le> b'" by auto
+  qed
 next
   case (2 ve b c \<beta>')
-  show ?case
-  proof (cases c)
-  case (App lab' f vs)
-    print_facts
+  thus ?case
+  proof (cases c, auto simp add:HOL.Let_def simp del:Un_insert_left Un_insert_right evalV.simps)
+  (* App *) fix lab' f vs
 
     have prem2': "\<forall>b'\<in>ran \<beta>'. b' < nb b lab'" using Next.prems(2) by auto
     have prem3': "\<forall>b'\<in>contours_in_ve ve. b' < nb b lab'" using Next.prems(3) by auto
@@ -160,35 +155,18 @@ next
     qed
 
     from Next.hyps(1)[OF b_dom_ve b_dom_d b_dom_ds, THEN conjunct1]
-    have "single_valued (evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, nb b lab'))
+    show "single_valued (evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, nb b lab'))
                        \<union> {((lab', \<beta>'), evalV f \<beta>' ve)})"
       using new_elem
-    by(auto intro:single_valued_insert)
-    moreover
-    {
-      fix lab \<beta> t
-      assume "((lab, \<beta>), t) \<in> (evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, nb b lab'))
-                            \<union> {((lab', \<beta>'), evalV f \<beta>' ve)})"
-      hence "((lab, \<beta>), t) = ((lab', \<beta>'), evalV f \<beta>' ve)
-             \<or> ((lab, \<beta>), t) \<in> (evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, nb b lab')))"
-        by simp
-      hence "\<exists>b'. b' \<in> ran \<beta> \<and> b \<le> b'"
-      proof
-        assume "((lab, \<beta>), t) = ((lab', \<beta>'), evalV f \<beta>' ve)"
-        hence "\<beta>' = \<beta>" by simp
-        with Next.prems(1)
-        show ?thesis by auto
-      next
-        assume "((lab, \<beta>), t) \<in> (evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, nb b lab')))"
-        with Next.hyps(1)[OF b_dom_ve b_dom_d b_dom_ds, THEN conjunct2, rule_format]
-        have "\<exists>b'. b' \<in> ran \<beta> \<and> nb b lab' \<le> b'" by auto
-        thus ?thesis by auto
-      qed
-    }
-    ultimately
-    show ?thesis using App by(auto simp add:HOL.Let_def)
+      by(auto intro:single_valued_insert)
+
+    fix lab \<beta> t
+    assume "((lab, \<beta>), t) \<in> (evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, nb b lab')))"
+    with Next.hyps(1)[OF b_dom_ve b_dom_d b_dom_ds, THEN conjunct2, rule_format]
+    have "\<exists>b'. b' \<in> ran \<beta> \<and> nb b lab' \<le> b'" by auto
+    thus "\<exists>b'. b' \<in> ran \<beta> \<and> b \<le> b'" by auto
   next
-  case (Let lab' ls c')
+  (* Let *) fix lab' ls c'
     have prem2': "\<forall>b'\<in>ran (\<beta>'(lab' \<mapsto> nb b lab')). b' \<le> nb b lab'"
     proof
       fix b' assume "b'\<in>ran (\<beta>'(lab' \<mapsto> nb b lab'))"
@@ -206,9 +184,17 @@ next
     have b_dom_beta: "\<forall>b'\<in>ran (\<beta>'(lab' \<mapsto> nb b lab')). b' \<le> nb b lab'" by (rule prem2')
     have new: "nb b lab' \<in> ran (\<beta>'(lab' \<mapsto> nb b lab'))" by simp
       
-    from Next.hyps(2)[OF new b_dom_beta b_dom_ve, of c']
-    show ?thesis using Let
-      by(auto simp add:HOL.Let_def simp del: fun_upd_apply)blast
+    from Next.hyps(2)[OF new b_dom_beta b_dom_ve, of c', THEN conjunct1]
+    show "single_valued (evalC\<cdot>(Discr (c', \<beta>'(lab' \<mapsto> nb b lab'),
+       ve ++ map_of (map (\<lambda>(v, l).((v, nb b lab'), evalV (L l) (\<beta>'(lab' \<mapsto> nb b lab')) ve))ls),
+       nb b lab')))".
+    
+    fix lab \<beta> t 
+    assume "((lab, \<beta>), t) \<in> evalC\<cdot>(Discr (c', \<beta>'(lab' \<mapsto> nb b lab'),
+       ve ++ map_of (map (\<lambda>(v, l).((v, nb b lab'), evalV (L l) (\<beta>'(lab' \<mapsto> nb b lab')) ve))ls),
+       nb b lab'))"
+    with Next.hyps(2)[OF new b_dom_beta b_dom_ve, of c', THEN conjunct2, rule_format]
+    show "\<exists>b'. b' \<in> ran \<beta> \<and> b \<le> b'" by blast
   qed
  }
 qed
