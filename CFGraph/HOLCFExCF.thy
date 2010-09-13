@@ -26,6 +26,8 @@ lemma nb_less[iff]: "b' < nb b c \<longleftrightarrow> b' \<le> b"
   unfolding nb_def
   by (auto simp add:le_contour_def less_contour_def Rep_contour_inverse Abs_contour_inverse contour_def)
 
+declare less_imp_le[where 'a = contour, intro]
+
 types benv = "label \<rightharpoonup> contour"
       closure = "lambda \<times> benv"
 
@@ -387,13 +389,13 @@ next
     have b_dom_beta: "\<forall>b'\<in> ran (\<beta>'(lab' \<mapsto> b)). b' \<le> b"
     proof fix b' assume "b' \<in> ran (\<beta>'(lab' \<mapsto> b))"
       hence "b' \<in> ran \<beta>' \<or> b' \<le> b" by (auto dest:ran_upd[THEN subsetD])
-      thus "b' \<le> b" using  Next.prems(2) Closure by (auto intro:less_imp_le)
+      thus "b' \<le> b" using  Next.prems(2) Closure by auto
     qed
 
     have "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' < b"
       by (rule contours_in_ve_upds[OF eq_length Next.prems(1) Next.prems(3)])
     hence b_dom_ve: "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' \<le> b"
-      by (auto intro:less_imp_le)
+      by auto
             
     from Next.hyps(3)[OF new b_dom_beta b_dom_ve, of c]
     show ?thesis using Closure by (auto simp del:fun_upd_apply)
@@ -401,12 +403,9 @@ next
   case (Plus cp i1 i2 cnt)
         (* case True then obtain i1 i2 cnt where ds: "ds = [DI i1, DI i2, cnt]" by auto *)
         
-    have b_dom_d: "\<forall>b'\<in>contours_in_d cnt. b' < nb b cp" using Next.prems(3) and Plus
-      by (auto intro:less_imp_le)
-    have b_dom_ds: "\<forall>d' \<in> set [DI (i1+i2)]. \<forall>b'\<in>contours_in_d d'. b' < nb b cp"
-      by (auto intro:less_imp_le)
-    have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < nb b cp" using Next.prems(1)
-      by (auto intro:less_imp_le)
+    have b_dom_d: "\<forall>b'\<in>contours_in_d cnt. b' < nb b cp" using Next.prems(3) and Plus by auto
+    have b_dom_ds: "\<forall>d' \<in> set [DI (i1+i2)]. \<forall>b'\<in>contours_in_d d'. b' < nb b cp" by auto
+    have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < nb b cp" using Next.prems(1) by auto
     {
       fix t
       assume "((cp,[cp \<mapsto> b]), t) \<in> evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, nb b cp))"
@@ -421,12 +420,9 @@ next
     thus ?thesis using Plus by auto
    next
    case (If_True cp1 cp2 i cntt cntf)
-     have b_dom_d: "\<forall>b'\<in>contours_in_d cntt. b' < nb b cp1" using Next.prems(3) and If_True
-      by (auto dest:less_imp_le)
-     have b_dom_ds: "\<forall>d' \<in> set []. \<forall>b'\<in>contours_in_d d'. b' < nb b cp1"
-      by (auto dest:less_imp_le)
-     have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < nb b cp1" using Next.prems(1)
-      by (auto dest:less_imp_le)
+     have b_dom_d: "\<forall>b'\<in>contours_in_d cntt. b' < nb b cp1" using Next.prems(3) and If_True by auto 
+     have b_dom_ds: "\<forall>d' \<in> set []. \<forall>b'\<in>contours_in_d d'. b' < nb b cp1" by auto
+     have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < nb b cp1" using Next.prems(1) by auto
      {
        fix t
        assume "((cp1,[cp1 \<mapsto> b]), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, nb b cp1))"
@@ -441,12 +437,9 @@ next
      thus ?thesis using If_True by auto
    next
    case (If_False cp2 cp1 i cntf cntt)
-     have b_dom_d: "\<forall>b'\<in>contours_in_d cntt. b' < nb b cp1" using Next.prems(3) and If_False
-      by (auto dest:less_imp_le)
-     have b_dom_ds: "\<forall>d' \<in> set []. \<forall>b'\<in>contours_in_d d'. b' < nb b cp1"
-      by (auto dest:less_imp_le)
-     have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < nb b cp1" using Next.prems(1)
-      by (auto dest:less_imp_le)
+     have b_dom_d: "\<forall>b'\<in>contours_in_d cntt. b' < nb b cp1" using Next.prems(3) and If_False by auto
+     have b_dom_ds: "\<forall>d' \<in> set []. \<forall>b'\<in>contours_in_d d'. b' < nb b cp1"by auto
+     have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < nb b cp1" using Next.prems(1) by auto
      {
        fix t
        assume "((cp1,[cp1 \<mapsto> b]), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, nb b cp1))"
@@ -474,13 +467,13 @@ next
     have b_dom_beta: "\<forall>b'\<in> ran (\<beta>'(lab' \<mapsto> b)). b' \<le> b"
     proof fix b' assume "b' \<in> ran (\<beta>'(lab' \<mapsto> b))"
       hence "b' \<in> ran \<beta>' \<or> b' \<le> b" by (auto dest:ran_upd[THEN subsetD])
-      thus "b' \<le> b" using Next.prems(2) Closure by (auto intro:less_imp_le)
+      thus "b' \<le> b" using Next.prems(2) Closure by auto
     qed
 
     have "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' < b"
       by (rule contours_in_ve_upds[OF eq_length Next.prems(1) Next.prems(3)])
     hence b_dom_ve: "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)). b' \<le> b"
-      by (auto intro:less_imp_le)
+      by auto
 
     from Next.hyps(4)[OF new b_dom_beta b_dom_ve]
     show ?thesis using Closure Next.prems(4) by (auto simp del:fun_upd_apply)
@@ -496,17 +489,14 @@ next
       hence "\<exists>b'. b' \<in> ran \<beta> \<and> b = b'" by auto
       thus ?thesis by blast
     next
-      have b_dom_d: "\<forall>b'\<in>contours_in_d cnt. b' < nb b cp" using Next.prems(3) and Plus
-        by (auto dest:less_imp_le)
-      have b_dom_ds: "\<forall>d' \<in> set [DI (i1+i2)]. \<forall>b'\<in>contours_in_d d'. b' < nb b cp"
-        by (auto dest:less_imp_le)
-      have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < nb b cp" using Next.prems(1)
-        by (auto dest:less_imp_le)
+      have b_dom_d: "\<forall>b'\<in>contours_in_d cnt. b' < nb b cp" using Next.prems(3) and Plus by auto
+      have b_dom_ds: "\<forall>d' \<in> set [DI (i1+i2)]. \<forall>b'\<in>contours_in_d d'. b' < nb b cp" by auto
+      have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < nb b cp" using Next.prems(1) by auto
 
       assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cnt, [DI (i1 + i2)], ve, nb b cp))"
       hence "\<exists>b'. b' \<in> ran \<beta> \<and> nb b cp \<le> b'" 
         by (rule Next.hyps(2)[OF b_dom_ve b_dom_d b_dom_ds])
-      thus ?thesis by (auto intro:less_imp_le)
+      thus ?thesis by auto
     qed
   next
   case (If_True cp1 cp2 i cntt cntf)
@@ -520,17 +510,14 @@ next
       hence "\<exists>b'. b' \<in> ran \<beta> \<and> b = b'" by auto
       thus ?thesis by blast
     next
-      have b_dom_d: "\<forall>b'\<in>contours_in_d cntt. b' < nb b cp1" using Next.prems(3) and If_True
-        by (auto dest:less_imp_le)
-      have b_dom_ds: "\<forall>d' \<in> set []. \<forall>b'\<in>contours_in_d d'. b' < nb b cp1"
-        by (auto dest:less_imp_le)
-      have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < nb b cp1" using Next.prems(1)
-        by (auto dest:less_imp_le)
+      have b_dom_d: "\<forall>b'\<in>contours_in_d cntt. b' < nb b cp1" using Next.prems(3) and If_True by auto
+      have b_dom_ds: "\<forall>d' \<in> set []. \<forall>b'\<in>contours_in_d d'. b' < nb b cp1" by auto
+      have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < nb b cp1" using Next.prems(1) by auto
 
       assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, nb b cp1))"
       hence "\<exists>b'. b' \<in> ran \<beta> \<and> nb b cp1 \<le> b'"
         by (rule Next.hyps(2)[OF b_dom_ve b_dom_d b_dom_ds])
-      thus ?thesis by (auto intro:less_imp_le)
+      thus ?thesis by auto
     qed
   next
   case (If_False cp2 cp1 i cntf cntt) (* Reorder variables to allow copy’n’paste *)
@@ -544,17 +531,14 @@ next
       hence "\<exists>b'. b' \<in> ran \<beta> \<and> b = b'" by auto
       thus ?thesis by blast
     next
-      have b_dom_d: "\<forall>b'\<in>contours_in_d cntt. b' < nb b cp1" using Next.prems(3) and If_False
-        by (auto dest:less_imp_le)
-      have b_dom_ds: "\<forall>d' \<in> set []. \<forall>b'\<in>contours_in_d d'. b' < nb b cp1"
-        by (auto dest:less_imp_le)
-      have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < nb b cp1" using Next.prems(1)
-        by (auto dest:less_imp_le)
+      have b_dom_d: "\<forall>b'\<in>contours_in_d cntt. b' < nb b cp1" using Next.prems(3) and If_False by auto
+      have b_dom_ds: "\<forall>d' \<in> set []. \<forall>b'\<in>contours_in_d d'. b' < nb b cp1" by auto
+      have b_dom_ve: "\<forall>b' \<in> contours_in_ve ve. b' < nb b cp1" using Next.prems(1) by auto
 
       assume "((lab, \<beta>), t) \<in> evalF\<cdot>(Discr (cntt, [], ve, nb b cp1))"
       hence "\<exists>b'. b' \<in> ran \<beta> \<and> nb b cp1 \<le> b'"
         by (rule Next.hyps(2)[OF b_dom_ve b_dom_d b_dom_ds])
-      thus ?thesis by (auto intro:less_imp_le)
+      thus ?thesis by auto
     qed
   next
   case (Stop i)
@@ -593,10 +577,10 @@ next
     proof
       fix b' assume "b'\<in>ran (\<beta>'(lab' \<mapsto> nb b lab'))"
       hence "b' \<in> ran \<beta>' \<or> b' = nb b lab'" by (auto dest:ran_upd[THEN subsetD])
-      thus "b' \<le> nb b lab'" using  Next.prems(2) by (auto intro:less_imp_le)
+      thus "b' \<le> nb b lab'" using  Next.prems(2) by auto
     qed
     have prem3': "\<forall>b'\<in>contours_in_ve ve. b' \<le> nb b lab'" using Next.prems(3)
-      by (auto intro: less_imp_le)
+      by auto
 
     note c_in_e = contours_in_eval[OF prem3' prem2']
     note c_in_ve' = contours_in_ve_upds_binds[OF prem3' prem2']
@@ -641,7 +625,7 @@ next
       assume "((lab, \<beta>), t) \<in> (evalF\<cdot>(Discr (evalV f \<beta>' ve, map (\<lambda>v. evalV v \<beta>' ve) vs, ve, nb b lab')))"
       with Next.hyps(2)[OF b_dom_ve b_dom_d b_dom_ds]
       have "\<exists>b'. b' \<in> ran \<beta> \<and> nb b lab' \<le> b'" by auto
-      thus ?thesis by (auto dest:less_imp_le)
+      thus ?thesis by auto
     qed
   next
   case (Let lab' ls c)
@@ -649,10 +633,10 @@ next
     proof
       fix b' assume "b'\<in>ran (\<beta>'(lab' \<mapsto> nb b lab'))"
       hence "b' \<in> ran \<beta>' \<or> b' = nb b lab'" by (auto dest:ran_upd[THEN subsetD])
-      thus "b' \<le> nb b lab'" using Next.prems(2) by (auto intro:less_imp_le)
+      thus "b' \<le> nb b lab'" using Next.prems(2) by auto
     qed
     have prem3': "\<forall>b'\<in>contours_in_ve ve. b' \<le> nb b lab'" using Next.prems(3)
-      by (auto intro:less_imp_le)
+      by auto
 
     note c_in_e = contours_in_eval[OF prem3' prem2']
     note c_in_ve' = contours_in_ve_upds_binds[OF prem3' prem2']
@@ -669,7 +653,7 @@ next
     with Next.hyps(4)[OF new b_dom_beta b_dom_ve]
     have "\<exists>b'. b' \<in> ran \<beta> \<and> nb b lab' \<le> b'"
       by(auto simp add:HOL.Let_def simp del: fun_upd_apply)
-    thus ?thesis by (auto intro:less_imp_le)
+    thus ?thesis by auto
   qed
 }
 qed
