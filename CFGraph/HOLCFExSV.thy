@@ -202,5 +202,5 @@ print_theorems (* Unselect-blocker *)
 
 lemma "single_valued (evalCPS prog)"
 unfolding evalCPS_def
-by ((subst HOL.Let_def)+, rule cc_single_valued'[THEN conjunctionD1], auto)
+by ((subst HOL.Let_def)+, rule cc_single_valued'[THEN conjunct1], auto)
 end
