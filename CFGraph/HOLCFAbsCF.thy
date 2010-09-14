@@ -80,8 +80,18 @@ lemma cont2cont_prim_case [simp, cont2cont]:
 using assms
 by (cases p) auto
 
-definition smap_adds :: "('a::type \<Rightarrow> 'b::type set) \<Rightarrow> ('a \<times> 'b set) list \<Rightarrow> 'a \<Rightarrow> 'b set"
-  where "smap_adds m upds = m"
+definition smap_empty
+ where "smap_empty k = {}"
+
+definition smap_Union :: "('a::type \<Rightarrow> 'b::type set) set \<Rightarrow> 'a \<Rightarrow> 'b set"
+ where "smap_Union smaps k = (\<Union>map \<in> smaps . map k)"
+
+definition smap_union :: "('a::type \<Rightarrow> 'b::type set)  \<Rightarrow> ('a \<Rightarrow> 'b set) \<Rightarrow> ('a \<Rightarrow> 'b set)"
+ where "smap_union smap1 smap2 k =  smap1 k \<union> smap2 k"
+
+definition smap_singleton :: "'a::type \<Rightarrow> 'b::type set \<Rightarrow> 'a \<Rightarrow> 'b set"
+  where "smap_singleton k vs k' = (if k = k' then vs else {})"
+
 
 fixrec  evalF :: "'c::contour fstate discr \<rightarrow> 'c ans"
      and evalC :: "'c cstate discr \<rightarrow> 'c ans"
@@ -89,7 +99,7 @@ fixrec  evalF :: "'c::contour fstate discr \<rightarrow> 'c ans"
              (PC (Lambda lab vs c, \<beta>), as, ve, b) \<Rightarrow>
                (if length vs = length as
                 then let \<beta>' = \<beta> (lab \<mapsto> b);
-                         ve' = smap_adds ve (map (\<lambda>(v,a). ((v,b),a)) (zip vs as))
+                         ve' = smap_union ve (smap_Union (set (map (\<lambda>(v,a). smap_singleton (v,b) a) (zip vs as))))
                      in evalC\<cdot>(Discr (c,\<beta>',ve',b))
                 else \<bottom>)
             | (PP (Plus c),[_,_,cnts],ve,b) \<Rightarrow>
@@ -122,7 +132,7 @@ fixrec  evalF :: "'c::contour fstate discr \<rightarrow> 'c ans"
             | (Let lab ls c',\<beta>,ve,b) \<Rightarrow>
                  let b' = nb b lab;
                      \<beta>' = \<beta> (lab \<mapsto> b');
-                     ve' = smap_adds ve (map (\<lambda>(v,l). ((v,b'), evalV (L l) \<beta>' ve)) ls)
+                     ve' = smap_union ve (smap_Union (set (map (\<lambda>(v,l). smap_singleton (v,b') (evalV (L l) \<beta>' ve)) ls)))
                  in evalC\<cdot>(Discr (c',\<beta>',ve',b'))
         )"
 
@@ -141,7 +151,7 @@ lemmas fstate_case =  evalF_cases.cases[
 
 
 definition evalCPS :: "prog \<Rightarrow> ('c::contour) ans"
-  where "evalCPS l = (let ve = \<lambda>_. {};
+  where "evalCPS l = (let ve = smap_empty;
                           \<beta> = empty;
                           f = evalV (L l) \<beta> ve
                       in  evalF\<cdot>(Discr (contents f,[{Stop}],ve,initial_contour)))"
