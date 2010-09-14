@@ -16,7 +16,7 @@ datatype 'c proc = PC "'c closure"
 
 types 'c d = "'c proc set"
 
-types 'c venv = "(var \<times> 'c) \<Rightarrow> 'c d"
+types 'c venv = "var \<times> 'c \<Rightarrow> 'c d"
 
 text {* Abstraction functions *}
 
@@ -80,6 +80,8 @@ lemma cont2cont_prim_case [simp, cont2cont]:
 using assms
 by (cases p) auto
 
+definition smap_adds :: "('a::type \<Rightarrow> 'b::type set) \<Rightarrow> ('a \<times> 'b set) list \<Rightarrow> 'a \<Rightarrow> 'b set"
+  where "smap_adds m upds = m"
 
 fixrec  evalF :: "'c::contour fstate discr \<rightarrow> 'c ans"
      and evalC :: "'c cstate discr \<rightarrow> 'c ans"
@@ -87,7 +89,7 @@ fixrec  evalF :: "'c::contour fstate discr \<rightarrow> 'c ans"
              (PC (Lambda lab vs c, \<beta>), as, ve, b) \<Rightarrow>
                (if length vs = length as
                 then let \<beta>' = \<beta> (lab \<mapsto> b);
-                         ve' = map_upds ve (map (\<lambda>v.(v,b)) vs) as
+                         ve' = smap_adds ve (map (\<lambda>(v,a). ((v,b),a)) (zip vs as))
                      in evalC\<cdot>(Discr (c,\<beta>',ve',b))
                 else \<bottom>)
             | (PP (Plus c),[_,_,cnts],ve,b) \<Rightarrow>
@@ -120,7 +122,7 @@ fixrec  evalF :: "'c::contour fstate discr \<rightarrow> 'c ans"
             | (Let lab ls c',\<beta>,ve,b) \<Rightarrow>
                  let b' = nb b lab;
                      \<beta>' = \<beta> (lab \<mapsto> b');
-                    ve' = ve ++ map_of (map (\<lambda>(v,l). ((v,b'), evalV (L l) \<beta>' ve)) ls)
+                     ve' = smap_adds ve (map (\<lambda>(v,l). ((v,b'), evalV (L l) \<beta>' ve)) ls)
                  in evalC\<cdot>(Discr (c',\<beta>',ve',b'))
         )"
 
@@ -139,7 +141,7 @@ lemmas fstate_case =  evalF_cases.cases[
 
 
 definition evalCPS :: "prog \<Rightarrow> ('c::contour) ans"
-  where "evalCPS l = (let ve = empty;
+  where "evalCPS l = (let ve = \<lambda>_. {};
                           \<beta> = empty;
                           f = evalV (L l) \<beta> ve
                       in  evalF\<cdot>(Discr (contents f,[{Stop}],ve,initial_contour)))"
