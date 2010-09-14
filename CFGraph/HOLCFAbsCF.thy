@@ -71,19 +71,19 @@ fixrec  evalF :: "'c::contour fstate discr \<rightarrow> 'c ans"
             | (PP (Plus c),[_,_,cnts],ve,b) \<Rightarrow>
                      let b' = nb b c;
                          \<beta>  = [c \<mapsto> b]
-                     in \<Union>{evalF\<cdot>(Disc (cont,[{}],ve,b')) | cont . cont \<in> cnts}
+                     in (\<Union>cnt\<in>cnts. evalF\<cdot>(Discr (cnt,[{}],ve,b')))
                         \<union>
                         {((c, \<beta>), cont) | cont . cont \<in> cnts}
             | (PP (prim.If ct cf),[_, cntts, cntfs],ve,b) \<Rightarrow>
                   ((   let b' = nb b ct;
                             \<beta> = [ct \<mapsto> b]
-                        in \<Union>{evalF\<cdot>(Disc (cont,[],ve,b'))| cont . cont \<in> contts}
-                           \<union>{((c, \<beta>), cont) | cont . cont \<in> cntts}
+                        in (\<Union>cnt\<in>cntts . evalF\<cdot>(Discr (cnt,[],ve,b')))
+                           \<union>{((ct, \<beta>), cnt) | cnt . cnt \<in> cntts}
                    )\<union>(
                        let b' = nb b cf;
                             \<beta> = [cf \<mapsto> b]
-                        in \<Union>{evalF\<cdot>(Discr (cont,[],ve,b'))| cont . cont \<in> contfs}
-                           \<union>{((c, \<beta>), cont) | cont . cont \<in> cntfs}
+                        in (\<Union>cnt\<in>cntfs . evalF\<cdot>(Discr (cnt,[],ve,b')))
+                           \<union>{((cf, \<beta>), cnt) | cnt . cnt \<in> cntfs}
                    ))
             | (Stop,[_],_,_) \<Rightarrow> {}
             | _ \<Rightarrow> \<bottom>
@@ -93,7 +93,7 @@ fixrec  evalF :: "'c::contour fstate discr \<rightarrow> 'c ans"
                  let fs = evalV f \<beta> ve;
                      as = map (\<lambda>v. evalV v \<beta> ve) vs;
                      b' = nb b lab
-                  in \<Union>{evalF\<cdot>(Discr (f',as,ve,b')) | f'. f' \<in> fs}
+                  in (\<Union>f' \<in> fs. evalF\<cdot>(Discr (f',as,ve,b')))
                      \<union>{((lab, \<beta>),f') | f' . f'\<in> fs}
             | (Let lab ls c',\<beta>,ve,b) \<Rightarrow>
                  let b' = nb b lab;
