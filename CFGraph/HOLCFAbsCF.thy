@@ -2,10 +2,18 @@ theory HOLCFAbsCF
   imports CPSUtils HOLCF HOLCFUtils HOLCFList HOLCFOption CPSScheme Utils HOLCFExCF
 begin
 
-class contour =
+class contour = discrete_cpo +
   fixes nb :: "'a \<Rightarrow> label \<Rightarrow> 'a"
     and initial_contour :: 'a
     and abs_cnt :: "HOLCFExCF.contour \<Rightarrow> 'a"
+
+instantiation unit :: contour
+begin
+definition "nb _ _ = ()"
+definition "initial_contour = ()"
+definition "abs_cnt _ = ()"
+instance by default
+end
 
 types 'c benv = "label \<rightharpoonup> 'c"
       'c closure = "lambda \<times> 'c benv"
@@ -13,6 +21,12 @@ types 'c benv = "label \<rightharpoonup> 'c"
 datatype 'c proc = PC "'c closure"
                  | PP prim
                  | Stop
+
+instantiation proc :: (type)discrete_cpo
+begin
+definition [simp]: "(x::'a proc) \<sqsubseteq> y \<longleftrightarrow> x = y"
+instance by default simp
+end
 
 types 'c d = "'c proc set"
 
@@ -52,6 +66,12 @@ definition abs_ccache :: "HOLCFExCF.ccache \<Rightarrow> 'c::contour ccache"
 
 types 'c fstate = "('c proc \<times> 'c d list \<times> 'c venv \<times> 'c)"
       'c cstate = "(call \<times> 'c benv \<times> 'c venv \<times> 'c)"
+
+fun abs_fstate :: "HOLCFExCF.fstate \<Rightarrow> 'c::contour fstate"
+  where "abs_fstate (d,ds,ve,b) = (contents (abs_d d), map abs_d ds, abs_venv ve, abs_cnt b)"
+
+fun abs_cstate :: "HOLCFExCF.cstate \<Rightarrow> 'c::contour cstate"
+  where "abs_cstate (c,\<beta>,ve,b) = (c, abs_benv \<beta>, abs_venv ve, abs_cnt b)"
 
 lemma cont2cont_lambda_case [simp, cont2cont]:
   assumes "\<And>a b c. cont (\<lambda>x. f x a b c)"
@@ -129,8 +149,8 @@ case (R lab v)
   qed
 qed
 
-fixrec  evalF :: "'c::contour fstate discr \<rightarrow> 'c ans"
-     and evalC :: "'c cstate discr \<rightarrow> 'c ans"
+fixrec   evalF :: "'c::contour fstate discr \<rightarrow> 'c ans"
+     and evalC :: "'c::contour cstate discr \<rightarrow> 'c ans"
   where "evalF\<cdot>fstate = (case undiscr fstate of
              (PC (Lambda lab vs c, \<beta>), as, ve, b) \<Rightarrow>
                (if length vs = length as
@@ -185,6 +205,39 @@ lemmas fstate_case =  evalF_cases.cases[
   OF case_split, of _ "\<lambda>_ vs _ _ as _ _ . length vs = length as",
   case_names "Closure" "Closure_inv" "Plus" "If" "Stop"]
 
+definition Q :: "('c::contour fstate discr \<rightarrow> 'c ccache) \<Rightarrow> ('c cstate discr \<rightarrow> 'c ccache) \<Rightarrow> bool"
+  where "Q f c ==
+(\<forall> fstate fstate_a. abs_fstate fstate \<sqsubseteq> fstate_a \<longrightarrow> abs_ccache (HOLCFExCF.evalF\<cdot>(Discr fstate)) \<sqsubseteq> f\<cdot>(Discr fstate_a))
+\<and> (\<forall> cstate cstate_a. abs_cstate cstate \<sqsubseteq> cstate_a \<longrightarrow> abs_ccache (HOLCFExCF.evalC\<cdot>(Discr cstate)) \<sqsubseteq> c\<cdot>(Discr cstate_a))"
+
+thm evalF_evalC_induct[of Q]
+
+(*lemma lemma89:
+ "Q evalF evalC"
+proof(induct rule: HOLCFAbsCF.evalF_evalC_induct)
+*)
+
+lemma cont2cont_abs_ccache[cont2cont,simp]: assumes "cont f" shows "cont (\<lambda>x. abs_ccache(f x))"
+sorry
+
+lemma [simp]: "abs_ccache {} = {}" unfolding abs_ccache_def by auto
+
+lemma lemma89:
+ shows "abs_fstate fstate \<sqsubseteq> fstate_a \<Longrightarrow> abs_ccache (HOLCFExCF.evalF\<cdot>(Discr fstate)) \<sqsubseteq> evalF\<cdot>(Discr fstate_a)"
+   and "abs_cstate cstate \<sqsubseteq> cstate_a \<Longrightarrow> abs_ccache (HOLCFExCF.evalC\<cdot>(Discr cstate)) \<sqsubseteq> evalC\<cdot>(Discr cstate_a)" 
+proof(induct arbitrary: fstate fstate_a cstate cstate_a rule: HOLCFExCF.evalF_evalC_induct)
+print_cases
+case Admissibility show ?case
+  by (intro adm_lemmas adm_prod_split adm_not_conj adm_not_mem adm_single_valued cont2cont)
+next
+case Bottom {
+  case 1 show ?case by simp next
+  case 2 show ?case by simp next
+}
+next
+case Next
+
+qed
 
 definition evalCPS :: "prog \<Rightarrow> ('c::contour) ans"
   where "evalCPS l = (let ve = smap_empty;

@@ -28,6 +28,12 @@ lemma nb_less[iff]: "b' < nb b c \<longleftrightarrow> b' \<le> b"
 
 declare less_imp_le[where 'a = contour, intro]
 
+instantiation contour :: discrete_cpo
+begin
+definition [simp]: "(x::contour) \<sqsubseteq> y \<longleftrightarrow> x = y"
+instance by default simp
+end
+
 types benv = "label \<rightharpoonup> contour"
       closure = "lambda \<times> benv"
 
