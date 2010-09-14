@@ -40,7 +40,8 @@ fun evalV :: "val \<Rightarrow> 'c benv \<Rightarrow> 'c venv \<Rightarrow> 'c d
   |     "evalV (P prim) \<beta> ve = {PP prim}"
   |     "evalV (R _ var) \<beta> ve =
            (case \<beta> (binder var) of
-              Some l \<Rightarrow> ve (var,l))"
+              Some l \<Rightarrow> ve (var,l)
+            | None \<Rightarrow> {})"
   |     "evalV (L lam) \<beta> ve = {PC (lam, \<beta>)}"
 
 types 'c ccache = "((label \<times> 'c benv) \<times> 'c proc) set"
@@ -92,6 +93,41 @@ definition smap_union :: "('a::type \<Rightarrow> 'b::type set)  \<Rightarrow> (
 definition smap_singleton :: "'a::type \<Rightarrow> 'b::type set \<Rightarrow> 'a \<Rightarrow> 'b set"
   where "smap_singleton k vs k' = (if k = k' then vs else {})"
 
+lemma [simp]: "{}\<sqsubseteq>S"
+ by (simp add:sqsubset_is_subset)
+
+lemma lemma7:
+  assumes "abs_venv ve \<sqsubseteq> ve_a"
+  shows "abs_d (HOLCFExCF.evalV a \<beta> ve) \<sqsubseteq> evalV a (abs_benv \<beta>) ve_a"
+proof(cases a)
+case C thus ?thesis by simp next
+case P thus ?thesis by simp next
+case (L closure) thus ?thesis by simp next
+case (R lab v)
+  show ?thesis
+  proof (cases v)
+  case (Pair vn vb)
+    show ?thesis
+    proof (cases "\<beta> (binder v)")
+    case None thus ?thesis using R by auto next
+    case (Some cnt) note Some' = Some
+      show ?thesis
+      proof (cases "ve (v,cnt)")
+      case None  thus ?thesis using R and Some by auto next
+      case (Some d)
+        have "abs_d (HOLCFExCF.evalV a \<beta> ve) \<subseteq> abs_venv ve (v, abs_cnt cnt)"
+          using Some Some' R unfolding abs_venv_def by auto
+        also
+        have "evalV a (abs_benv \<beta>) ve_a = ve_a (v,abs_cnt cnt)"
+          using Some' R unfolding abs_benv_def by simp
+        hence "abs_venv ve (v, abs_cnt cnt) \<subseteq> evalV a (abs_benv \<beta>) ve_a"
+          using assms and Pair by (subst (asm) less_fun_def, simp add:sqsubset_is_subset)
+        finally
+        show ?thesis by (auto iff:sqsubset_is_subset)
+      qed
+    qed
+  qed
+qed
 
 fixrec  evalF :: "'c::contour fstate discr \<rightarrow> 'c ans"
      and evalC :: "'c cstate discr \<rightarrow> 'c ans"
