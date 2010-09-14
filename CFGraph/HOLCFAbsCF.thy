@@ -1,10 +1,11 @@
 theory HOLCFAbsCF
-  imports CPSUtils HOLCF HOLCFUtils HOLCFList HOLCFOption CPSScheme Utils
+  imports CPSUtils HOLCF HOLCFUtils HOLCFList HOLCFOption CPSScheme Utils HOLCFExCF
 begin
 
 class contour =
   fixes nb :: "'a \<Rightarrow> label \<Rightarrow> 'a"
     and initial_contour :: 'a
+    and abs_cnt :: "HOLCFExCF.contour \<Rightarrow> 'a"
 
 types 'c benv = "label \<rightharpoonup> 'c"
       'c closure = "lambda \<times> 'c benv"
@@ -15,18 +16,38 @@ datatype 'c proc = PC "'c closure"
 
 types 'c d = "'c proc set"
 
-types 'c venv = "var \<times> 'c \<rightharpoonup> 'c d"
+types 'c venv = "(var \<times> 'c) \<Rightarrow> 'c d"
+
+text {* Abstraction functions *}
+
+definition abs_benv :: "HOLCFExCF.benv \<Rightarrow> 'c::contour benv"
+  where "abs_benv \<beta> = Option.map abs_cnt \<circ> \<beta>"
+
+primrec abs_closure :: "HOLCFExCF.closure \<Rightarrow> 'c::contour closure"
+  where "abs_closure (l,\<beta>) = (l,abs_benv \<beta>)"
+
+primrec abs_d :: "HOLCFExCF.d \<Rightarrow> 'c::contour d"
+  where "abs_d (DI _) = {}"
+      | "abs_d (DP p) = {PP p}"
+      | "abs_d (DC cl) = {PC (abs_closure cl)}"
+      | "abs_d (HOLCFExCF.Stop) = {Stop}"
+
+definition abs_venv :: "HOLCFExCF.venv \<Rightarrow> 'c::contour venv"
+  where "abs_venv ve = (\<lambda>(v,b_a). \<Union>{(case ve (v,b) of Some d \<Rightarrow> abs_d d | None \<Rightarrow> {})| b . abs_cnt b = b_a})"
 
 fun evalV :: "val \<Rightarrow> 'c benv \<Rightarrow> 'c venv \<Rightarrow> 'c d"
   where "evalV (C _ i) \<beta> ve = {}"
   |     "evalV (P prim) \<beta> ve = {PP prim}"
   |     "evalV (R _ var) \<beta> ve =
            (case \<beta> (binder var) of
-              Some l \<Rightarrow> (case ve (var,l) of Some d \<Rightarrow> d))"
+              Some l \<Rightarrow> ve (var,l))"
   |     "evalV (L lam) \<beta> ve = {PC (lam, \<beta>)}"
 
 types 'c ccache = "((label \<times> 'c benv) \<times> 'c proc) set"
       'c ans = "'c ccache"
+
+definition abs_ccache :: "HOLCFExCF.ccache \<Rightarrow> 'c::contour ccache"
+  where "abs_ccache cc = (\<Union>((c,\<beta>),d) \<in> cc . {((c,abs_benv \<beta>), p) | p . p\<in>abs_d d})"
 
 types 'c fstate = "('c proc \<times> 'c d list \<times> 'c venv \<times> 'c)"
       'c cstate = "(call \<times> 'c benv \<times> 'c venv \<times> 'c)"
