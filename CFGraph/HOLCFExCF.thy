@@ -1,5 +1,5 @@
 theory HOLCFExCF
-  imports CPSUtils HOLCF HOLCFUtils HOLCFList HOLCFOption CPSScheme Utils
+  imports CPSUtils HOLCF HOLCFUtils HOLCFOption CPSScheme Utils
 begin
 
 typedef contour = "UNIV::label list set" by auto
@@ -158,20 +158,25 @@ fixrec   evalF :: "fstate discr \<rightarrow> ans"
                     ve' = ve ++ map_of (map (\<lambda>(v,l). ((v,b'), evalV (L l) \<beta>' ve)) ls)
                  in evalC\<cdot>(Discr (c',\<beta>',ve',b'))
         )"
-
-print_theorems
 lemmas evalF_evalC_induct = evalF_evalC.induct[case_names Admissibility Bottom Next]
 
-fun evalF_cases
- where "evalF_cases (DC (Lambda lab vs c, \<beta>)) as ve b = undefined"
-     | "evalF_cases (DP (Plus cp)) [DI a1, DI a2, cnt] ve b = undefined"
-     | "evalF_cases (DP (prim.If cp1 cp2)) [DI v,cntt,cntf] ve b = undefined"
-     | "evalF_cases  Stop [DI v] ve b = undefined"
-
-lemmas fstate_case =  evalF_cases.cases[
-  OF case_split, of _ "\<lambda>_ vs _ _ as _ _ . length vs = length as",
-  OF _ _ _ case_split, of _ _ "\<lambda>_ _ v _ _ _ _ . v\<noteq>0",
-  case_names "Closure" "Closure_inv" "Plus" "If_True" "If_False" "Stop"]
+lemmas cl_cases = prod.exhaust[OF lambda.exhaust, of _ "\<lambda> a _ . a"]
+lemmas ds_cases_plus = list.exhaust[
+  OF _ d.exhaust, of _ _ "\<lambda>a _. a",
+  OF _ list.exhaust, of _ _ "\<lambda>_ x _. x",
+  OF _ _ d.exhaust, of _ _ "\<lambda>_ _ _ a _. a",
+  OF _ _ list.exhaust,of _ _ "\<lambda>_ _ _ _ x _. x",
+  OF _ _ _ list.exhaust,of _ _ "\<lambda>_ _ _ _ _ _ _ x. x"
+  ]
+lemmas ds_cases_if = list.exhaust[OF _ d.exhaust, of _ _ "\<lambda>a _. a",
+  OF _ list.exhaust[OF _ list.exhaust[OF _ list.exhaust, of _ _ "\<lambda>_ x. x"], of _ _ "\<lambda>_ x. x"], of _ _ "\<lambda>_ x _. x"]
+lemmas ds_cases_stop = list.exhaust[OF _ d.exhaust, of _ _ "\<lambda>a _. a",
+  OF _ list.exhaust, of _ _ "\<lambda>_ x _. x"]
+lemmas fstate_case = prod_cases4[OF d.exhaust, of _ "\<lambda>x _ _ _ . x",
+  OF _ cl_cases prim.exhaust, of _ _ "\<lambda> _ _ _ _ a . a" "\<lambda> _ _ _ _ a. a",
+  OF _ case_split ds_cases_plus ds_cases_if ds_cases_stop,
+  of _ _ "\<lambda>_ as _ _ _ _ _ _ vs _ . length vs = length as" "\<lambda> _ ds _ _ _ _ . ds" "\<lambda> _ ds _ _ _ _ _. ds" "\<lambda> _ ds _ _. ds",
+  case_names "x" "Closure" "x" "x"  "x" "x" "Plus" "x" "x" "x" "x" "x" "x" "x" "x"   "x" "x" "If_True" "If_False" "x" "x" "x" "x" "x" "Stop"  "x" "x" "x" "x" "x"]
 
 (* unsuccesfully attempt to define a more useful induction rule:
 

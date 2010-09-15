@@ -36,9 +36,7 @@ next
   {
   case (1 d ds ve b)
   thus ?case
-find_theorems name:Set.singleton
-  proof (cases "(d,ds,ve,b)" rule:fstate_case,
-       auto split:d.split prim.split simp del:Un_insert_left Un_insert_right)
+  proof (cases "(d,ds,ve,b)" rule:fstate_case, auto simp del:Un_insert_left Un_insert_right)
   (* Closure *) fix lab' and vs :: "var list" and c and \<beta>' :: benv
     assume prem_d: "\<forall>b'\<in>ran \<beta>'. b' < b"
     assume eq_length: "length vs = length ds"
