@@ -1,5 +1,5 @@
 theory HOLCFAbsCF
-  imports CPSUtils HOLCF HOLCFUtils HOLCFList HOLCFOption CPSScheme Utils HOLCFExCF
+  imports CPSUtils HOLCF HOLCFUtils List_Cpo  HOLCFOption CPSScheme Utils HOLCFExCF
 begin
 
 class contour = discrete_cpo +
@@ -235,8 +235,77 @@ case Bottom {
   case 2 show ?case by simp next
 }
 next
-case Next
+case (Next evalF evalC) {
+  case 1 
+  obtain d ds ve b where fstate: "fstate = (d,ds,ve,b)" 
+    by (cases fstate, auto)
+  moreover
+  obtain proc ds_a ve_a b_a where fstate_a: "fstate_a = (proc,ds_a,ve_a,b_a)" 
+    by (cases fstate_a, auto)
+  ultimately
+  have abs_d: "contents (abs_d d) = proc"
+   and abs_ds: "map abs_d ds \<sqsubseteq> ds_a"
+   and abs_ve: "abs_venv ve \<sqsubseteq> ve_a"
+   and abs_b: "abs_cnt b \<sqsubseteq> b_a"
+  using 1 by auto
 
+  from abs_ds have dslength: "length ds = length ds_a" by (auto dest: below_same_length)
+
+  from fstate fstate_a abs_d abs_ds abs_ve abs_ds dslength
+  show ?case
+  proof(cases fstate rule:HOLCFExCF.fstate_case, auto simp del:evalF.simps evalC.simps set_map)
+  fix \<beta> lab vs c
+  show "abs_ccache (evalC\<cdot>(Discr (c, \<beta> (lab \<mapsto> b), ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds), b)))
+        \<sqsubseteq> HOLCFAbsCF.evalF\<cdot>(Discr (PC (Lambda lab vs c, abs_benv \<beta>), ds_a, ve_a, b_a))" sorry
+  next
+  fix lab a1 a2 cnt
+  assume abs_ds': "[{}, {}, abs_d cnt] \<sqsubseteq> ds_a"
+  show "abs_ccache (insert ((lab, [lab \<mapsto> b]), cnt)
+                   (evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, HOLCFExCF.nb b lab))))
+        \<sqsubseteq> HOLCFAbsCF.evalF\<cdot>(Discr (PP (prim.Plus lab), ds_a, ve_a, b_a))" sorry
+  next
+  fix ct cf v cntt cntf
+  assume abs_ds': "[{}, abs_d cntt, abs_d cntf] \<sqsubseteq> ds_a"
+  show "abs_ccache (insert ((ct, [ct \<mapsto> b]), cntt)
+             (evalF\<cdot>(Discr (cntt, [], ve, HOLCFExCF.nb b ct)))) \<sqsubseteq>
+          HOLCFAbsCF.evalF\<cdot>(Discr (PP (prim.If ct cf), ds_a, ve_a, b_a))" sorry
+  next
+  fix ct cf v cntt cntf
+  assume abs_ds': "[{}, abs_d cntt, abs_d cntf] \<sqsubseteq> ds_a"
+  show "abs_ccache (insert ((cf, [cf \<mapsto> b]), cntf)
+             (evalF\<cdot>(Discr (cntf, [], ve, HOLCFExCF.nb b cf)))) \<sqsubseteq>
+          HOLCFAbsCF.evalF\<cdot>(Discr (PP (prim.If ct cf), ds_a, ve_a, b_a))" sorry
+  qed
+  next
+  case 2
+  obtain c \<beta> ve b where cstate: "cstate = (c,\<beta>,ve,b)" 
+    by (cases cstate, auto)
+  moreover
+  obtain c_a \<beta>_a ds_a ve_a b_a where cstate_a: "cstate_a = (c_a,\<beta>_a,ve_a,b_a)" 
+    by (cases cstate_a, auto)
+  ultimately
+  have abs_c: "c = c_a"
+   and abs_\<beta>: "abs_benv \<beta> \<sqsubseteq> \<beta>_a"
+   and abs_ve: "abs_venv ve \<sqsubseteq> ve_a"
+   and abs_b: "abs_cnt b \<sqsubseteq> b_a"
+  using 2 by auto
+
+  from cstate cstate_a abs_c abs_\<beta> abs_ve abs_b
+  show ?case
+  proof(cases c, auto simp add:HOL.Let_def simp del:evalF.simps evalC.simps set_map HOLCFExCF.evalV.simps)
+
+  fix lab f vs
+  show "abs_ccache (insert ((lab, \<beta>), HOLCFExCF.evalV f \<beta> ve)
+                   (evalF\<cdot>(Discr (HOLCFExCF.evalV f \<beta> ve, map (\<lambda>v. HOLCFExCF.evalV v \<beta> ve) vs, ve, HOLCFExCF.nb b lab))))
+        \<sqsubseteq> HOLCFAbsCF.evalC\<cdot>(Discr (App lab f vs, \<beta>_a, ve_a, abs_cnt b))" sorry
+  next
+  fix lab binds c'
+  show "abs_ccache (evalC\<cdot>(Discr (c', \<beta>(lab \<mapsto> HOLCFExCF.nb b lab),
+                                 ve ++ map_of (map (\<lambda>(v, l).((v, HOLCFExCF.nb b lab),HOLCFExCF.evalV (L l) (\<beta>(lab \<mapsto> HOLCFExCF.nb b lab)) ve)) binds),
+                                 HOLCFExCF.nb b lab))) \<sqsubseteq>
+          HOLCFAbsCF.evalC\<cdot>(Discr (call.Let lab binds c', \<beta>_a, ve_a, abs_cnt b))" sorry
+  qed
+}
 qed
 
 definition evalCPS :: "prog \<Rightarrow> ('c::contour) ans"
