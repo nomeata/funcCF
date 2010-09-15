@@ -223,8 +223,8 @@ sorry
 lemma [simp]: "abs_ccache {} = {}" unfolding abs_ccache_def by auto
 
 lemma lemma89:
- shows "abs_fstate fstate \<sqsubseteq> fstate_a \<Longrightarrow> abs_ccache (HOLCFExCF.evalF\<cdot>(Discr fstate)) \<sqsubseteq> evalF\<cdot>(Discr fstate_a)"
-   and "abs_cstate cstate \<sqsubseteq> cstate_a \<Longrightarrow> abs_ccache (HOLCFExCF.evalC\<cdot>(Discr cstate)) \<sqsubseteq> evalC\<cdot>(Discr cstate_a)" 
+ shows "abs_fstate fstate \<sqsubseteq> (fstate_a::'c::contour fstate) \<Longrightarrow> abs_ccache (HOLCFExCF.evalF\<cdot>(Discr fstate)) \<sqsubseteq> evalF\<cdot>(Discr fstate_a)"
+   and "abs_cstate cstate \<sqsubseteq> (cstate_a::'c::contour cstate) \<Longrightarrow> abs_ccache (HOLCFExCF.evalC\<cdot>(Discr cstate)) \<sqsubseteq> evalC\<cdot>(Discr cstate_a)" 
 proof(induct arbitrary: fstate fstate_a cstate cstate_a rule: HOLCFExCF.evalF_evalC_induct)
 print_cases
 case Admissibility show ?case
@@ -254,9 +254,27 @@ case (Next evalF evalC) {
   from fstate fstate_a abs_d abs_ds abs_ve abs_ds dslength
   show ?case
   proof(cases fstate rule:HOLCFExCF.fstate_case, auto simp del:evalF.simps evalC.simps set_map)
-  fix \<beta> lab vs c
+  fix \<beta> and lab and vs:: "var list" and c
+  assume ds_a_length: "length vs = length ds_a"
+
+  have "abs_benv (\<beta>(lab \<mapsto> b)) \<sqsubseteq> (abs_benv \<beta>) (lab \<mapsto> b_a)"
+    unfolding below_fun_def and abs_benv_def
+    using abs_b
+    by auto
+  moreover
+  have "abs_venv (ve(map (\<lambda>v\<Colon>nat \<times> char list. (v, b)) vs [\<mapsto>] ds)) \<sqsubseteq>
+    smap_union ve_a (smap_Union ((\<lambda>(v\<Colon>nat \<times> char list, y\<Colon>'c proc \<Rightarrow> bool). smap_singleton (v, b_a) y) ` set (zip vs ds_a)))" sorry
+  ultimately
+  have prem: "abs_cstate (c, \<beta>(lab \<mapsto> b), ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds), b)
+        \<sqsubseteq> (c, abs_benv \<beta>(lab \<mapsto> b_a), smap_union ve_a (smap_Union((\<lambda>(v, y). smap_singleton (v, b_a) y) ` set (zip vs ds_a))), b_a)"
+    using abs_b
+    by(auto simp only:Pair_below_iff abs_cstate.simps)
+
   show "abs_ccache (evalC\<cdot>(Discr (c, \<beta> (lab \<mapsto> b), ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds), b)))
-        \<sqsubseteq> HOLCFAbsCF.evalF\<cdot>(Discr (PC (Lambda lab vs c, abs_benv \<beta>), ds_a, ve_a, b_a))" sorry
+        \<sqsubseteq> HOLCFAbsCF.evalF\<cdot>(Discr (PC (Lambda lab vs c, abs_benv \<beta>), ds_a, ve_a, b_a))" 
+  using Next.hyps(2)[OF prem] ds_a_length
+  by (subst HOLCFAbsCF.evalF.simps, simp del:HOLCFAbsCF.evalF.simps HOLCFAbsCF.evalC.simps)
+
   next
   fix lab a1 a2 cnt
   assume abs_ds': "[{}, {}, abs_d cnt] \<sqsubseteq> ds_a"
