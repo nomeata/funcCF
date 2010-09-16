@@ -240,16 +240,9 @@ fun evalF_cases
      | "evalF_cases (PP (prim.If cp1 cp2)) [v,cntt,cntf] ve b = undefined"
      | "evalF_cases  Stop [v] ve b = undefined"
 
-lemmas fstate_case =  evalF_cases.cases[
+lemmas fstate_case = evalF_cases.cases[
   OF case_split, of _ "\<lambda>_ vs _ _ as _ _ . length vs = length as",
   case_names "Closure" "Closure_inv" "Plus" "If" "Stop"]
-
-definition Q :: "('c::contour fstate discr \<rightarrow> 'c ccache) \<Rightarrow> ('c cstate discr \<rightarrow> 'c ccache) \<Rightarrow> bool"
-  where "Q f c ==
-(\<forall> fstate fstate_a. abs_fstate fstate \<sqsubseteq> fstate_a \<longrightarrow> abs_ccache (HOLCFExCF.evalF\<cdot>(Discr fstate)) \<sqsubseteq> f\<cdot>(Discr fstate_a))
-\<and> (\<forall> cstate cstate_a. abs_cstate cstate \<sqsubseteq> cstate_a \<longrightarrow> abs_ccache (HOLCFExCF.evalC\<cdot>(Discr cstate)) \<sqsubseteq> c\<cdot>(Discr cstate_a))"
-
-thm evalF_evalC_induct[of Q]
 
 lemma cont2cont_abs_ccache[cont2cont,simp]:
   assumes "cont f"
