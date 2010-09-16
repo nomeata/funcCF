@@ -104,14 +104,53 @@ by (cases p) auto
 definition smap_empty
  where "smap_empty k = {}"
 
-definition smap_Union :: "('a::type \<Rightarrow> 'b::type set) set \<Rightarrow> 'a \<Rightarrow> 'b set"
- where "smap_Union smaps k = (\<Union>map \<in> smaps . map k)"
-
 definition smap_union :: "('a::type \<Rightarrow> 'b::type set)  \<Rightarrow> ('a \<Rightarrow> 'b set) \<Rightarrow> ('a \<Rightarrow> 'b set)"
  where "smap_union smap1 smap2 k =  smap1 k \<union> smap2 k"
 
+primrec smap_Union :: "('a::type \<Rightarrow> 'b::type set) list \<Rightarrow> 'a \<Rightarrow> 'b set"
+  where [simp]:"smap_Union [] = smap_empty"
+      | "smap_Union (m#ms) = smap_union m (smap_Union ms)"
+
 definition smap_singleton :: "'a::type \<Rightarrow> 'b::type set \<Rightarrow> 'a \<Rightarrow> 'b set"
-  where "smap_singleton k vs k' = (if k = k' then vs else {})"
+  where "smap_singleton k vs = smap_empty (k := vs)"
+
+lemma abs_venv_union: "\<And> ve1 ve2. abs_venv (ve1 ++ ve2) \<sqsubseteq> smap_union (abs_venv ve1) (abs_venv ve2)"
+  by (subst below_fun_def, auto simp add: sqsubset_is_subset abs_venv_def smap_union_def, split option.split_asm, auto)
+
+lemma smap_union_mono: "\<And>ve1 ve2 ve1' ve2'. \<lbrakk> ve1 \<sqsubseteq> ve1'; ve2 \<sqsubseteq> ve2' \<rbrakk> \<Longrightarrow>  smap_union ve1 ve2 \<sqsubseteq> smap_union ve1' ve2'"
+  by (subst below_fun_def, subst (asm) (1 2) below_fun_def, auto simp add:sqsubset_is_subset smap_union_def)
+
+lemma smap_Union_union: "\<And> m1 ms. smap_union m1 (smap_Union ms) = smap_Union (m1#ms)"
+  by (rule ext, auto simp add: smap_union_def smap_Union_def)
+
+lemma abs_venv_map_of: "abs_venv (map_of (rev l)) \<sqsubseteq> smap_Union (map (\<lambda>(v,k). abs_venv [v \<mapsto> k]) l)"
+proof (induct l)
+  case Nil show ?case unfolding abs_venv_def by (subst below_fun_def, auto simp: sqsubset_is_subset) next
+  case (Cons a l)
+    obtain v k where "a=(v,k)" by (rule prod.exhaust)
+    hence "abs_venv (map_of (rev (a # l))) \<sqsubseteq> (smap_union (abs_venv [v \<mapsto> k]) (abs_venv (map_of (rev l))) :: 'a venv)"
+      by (auto intro: abs_venv_union)
+    also
+    have "\<dots> \<sqsubseteq> smap_union (abs_venv [v \<mapsto> k]) (smap_Union (map (\<lambda>(v,k). abs_venv [v  \<mapsto> k]) l))"
+      by (rule smap_union_mono[OF below_refl Cons])
+    also
+    have "\<dots> = smap_Union (abs_venv [v \<mapsto> k] # map (\<lambda>(v,k). abs_venv [v \<mapsto> k]) l)"
+      by (rule smap_Union_union)
+    also
+    have "\<dots> = smap_Union (map (\<lambda>(v,k). abs_venv [v \<mapsto> k]) (a#l))"
+      using `a = (v,k)`
+      by auto 
+    finally
+    show ?case .
+qed
+
+lemma abs_venv_singleton: "abs_venv [(v,b) \<mapsto> d] = smap_singleton (v,abs_cnt b) (abs_d d)"
+  by (rule ext, auto simp add:abs_venv_def smap_singleton_def smap_empty_def)
+
+lemma smap_Union_mono:
+  assumes "list_all2 (op \<sqsubseteq>) ms1 ms2"
+  shows "smap_Union ms1 \<sqsubseteq> smap_Union ms2"
+using assms by (induct rule:list_induct2[OF list_all2_lengthD[OF assms], case_names Nil Cons])(auto intro:smap_union_mono)
 
 lemma [simp]: "{}\<sqsubseteq>S"
  by (simp add:sqsubset_is_subset)
@@ -155,7 +194,7 @@ fixrec   evalF :: "'c::contour fstate discr \<rightarrow> 'c ans"
              (PC (Lambda lab vs c, \<beta>), as, ve, b) \<Rightarrow>
                (if length vs = length as
                 then let \<beta>' = \<beta> (lab \<mapsto> b);
-                         ve' = smap_union ve (smap_Union (set (map (\<lambda>(v,a). smap_singleton (v,b) a) (zip vs as))))
+                         ve' = smap_union ve (smap_Union (map (\<lambda>(v,a). smap_singleton (v,b) a) (zip vs as)))
                      in evalC\<cdot>(Discr (c,\<beta>',ve',b))
                 else \<bottom>)
             | (PP (Plus c),[_,_,cnts],ve,b) \<Rightarrow>
@@ -188,7 +227,7 @@ fixrec   evalF :: "'c::contour fstate discr \<rightarrow> 'c ans"
             | (Let lab ls c',\<beta>,ve,b) \<Rightarrow>
                  let b' = nb b lab;
                      \<beta>' = \<beta> (lab \<mapsto> b');
-                     ve' = smap_union ve (smap_Union (set (map (\<lambda>(v,l). smap_singleton (v,b') (evalV (L l) \<beta>' ve)) ls)))
+                     ve' = smap_union ve (smap_Union (map (\<lambda>(v,l). smap_singleton (v,b') (evalV (L l) \<beta>' ve)) ls))
                  in evalC\<cdot>(Discr (c',\<beta>',ve',b'))
         )"
 
@@ -257,16 +296,43 @@ case (Next evalF evalC) {
   fix \<beta> and lab and vs:: "var list" and c
   assume ds_a_length: "length vs = length ds_a"
 
+  from `length ds = length ds_a` have zip_length: "length (zip vs ds) = length (zip vs ds_a)"
+    by auto
+
   have "abs_benv (\<beta>(lab \<mapsto> b)) \<sqsubseteq> (abs_benv \<beta>) (lab \<mapsto> b_a)"
-    unfolding below_fun_def and abs_benv_def
-    using abs_b
+    unfolding below_fun_def and abs_benv_def using abs_b
     by auto
   moreover
-  have "abs_venv (ve(map (\<lambda>v\<Colon>nat \<times> char list. (v, b)) vs [\<mapsto>] ds)) \<sqsubseteq>
-    smap_union ve_a (smap_Union ((\<lambda>(v\<Colon>nat \<times> char list, y\<Colon>'c proc \<Rightarrow> bool). smap_singleton (v, b_a) y) ` set (zip vs ds_a)))" sorry
+
+  have smap_singleton_mono: "\<And>k v v'. v \<sqsubseteq> v'\<Longrightarrow> smap_singleton k v \<sqsubseteq> smap_singleton k v'"
+    by (subst below_fun_def, auto simp add: smap_singleton_def)
+
+  { have "abs_venv (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds))
+          \<sqsubseteq> smap_union (abs_venv ve) (abs_venv (map_of (rev (zip (map (\<lambda>v. (v, b)) vs) ds))))"
+      unfolding map_upds_def by (intro abs_venv_union)
+    also
+    have "\<dots> \<sqsubseteq> smap_union ve_a (smap_Union (map (\<lambda>(v,k). abs_venv [v \<mapsto> k]) (zip (map (\<lambda>v. (v, b)) vs) ds)))"
+      by (rule smap_union_mono[OF abs_ve abs_venv_map_of])
+    also
+    have "\<dots> = smap_union ve_a (smap_Union (map (\<lambda>(v,y). abs_venv [(v,b) \<mapsto> y]) (zip vs ds)))"
+      by (auto simp add: zip_map1 o_def split_def)
+    also
+    have "\<dots> \<sqsubseteq> smap_union ve_a (smap_Union (map (\<lambda>(v,y). smap_singleton (v, b_a) y) (zip vs ds_a)))"
+    proof-
+      from abs_b abs_ds
+      have"list_all2 op \<sqsubseteq> (map (\<lambda>(v, y). abs_venv [(v, b) \<mapsto> y]) (zip vs ds))
+                          (map (\<lambda>(v, y). smap_singleton (v, b_a) y) (zip vs ds_a))"
+      by (auto simp add: abs_venv_singleton below_list_def list_all2_conv_all_nth intro:smap_singleton_mono list_all2I)
+      thus ?thesis
+        by(rule smap_union_mono[OF below_refl smap_Union_mono])
+    qed
+    finally
+    have "abs_venv (ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds))
+          \<sqsubseteq> smap_union ve_a (smap_Union (map (\<lambda>(v,y). smap_singleton (v, b_a) y) (zip vs ds_a)))".
+  }
   ultimately
   have prem: "abs_cstate (c, \<beta>(lab \<mapsto> b), ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds), b)
-        \<sqsubseteq> (c, abs_benv \<beta>(lab \<mapsto> b_a), smap_union ve_a (smap_Union((\<lambda>(v, y). smap_singleton (v, b_a) y) ` set (zip vs ds_a))), b_a)"
+        \<sqsubseteq> (c, abs_benv \<beta>(lab \<mapsto> b_a), smap_union ve_a (smap_Union(map (\<lambda>(v, y). smap_singleton (v, b_a) y) (zip vs ds_a))), b_a)"
     using abs_b
     by(auto simp only:Pair_below_iff abs_cstate.simps)
 
