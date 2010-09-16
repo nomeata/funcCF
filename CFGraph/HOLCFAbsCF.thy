@@ -6,13 +6,14 @@ class contour = discrete_cpo +
   fixes nb :: "'a \<Rightarrow> label \<Rightarrow> 'a"
     and initial_contour :: 'a
     and abs_cnt :: "HOLCFExCF.contour \<Rightarrow> 'a"
+  assumes abs_cnt_nb: "abs_cnt b \<sqsubseteq> b_a \<Longrightarrow> abs_cnt (HOLCFExCF.nb b lab) \<sqsubseteq> nb b_a lab"
 
 instantiation unit :: contour
 begin
 definition "nb _ _ = ()"
 definition "initial_contour = ()"
 definition "abs_cnt _ = ()"
-instance by default
+instance by default auto
 end
 
 types 'c benv = "label \<rightharpoonup> 'c"
@@ -45,6 +46,11 @@ primrec abs_d :: "HOLCFExCF.d \<Rightarrow> 'c::contour d"
       | "abs_d (DP p) = {PP p}"
       | "abs_d (DC cl) = {PC (abs_closure cl)}"
       | "abs_d (HOLCFExCF.Stop) = {Stop}"
+
+lemma contents_is_Proc:
+  assumes "isProc cnt"
+  shows "contents (abs_d cnt) \<in> abs_d cnt"
+using assms by (cases cnt)auto
 
 definition abs_venv :: "HOLCFExCF.venv \<Rightarrow> 'c::contour venv"
   where "abs_venv ve = (\<lambda>(v,b_a). \<Union>{(case ve (v,b) of Some d \<Rightarrow> abs_d d | None \<Rightarrow> {})| b . abs_cnt b = b_a})"
@@ -127,6 +133,10 @@ qed
 
 lemma abs_venv_singleton: "abs_venv [(v,b) \<mapsto> d] = smap_singleton (v,abs_cnt b) (abs_d d)"
   by (rule ext, auto simp add:abs_venv_def smap_singleton_def smap_empty_def)
+
+lemma abs_ccache_union: "abs_ccache (c1 \<union> c2) \<sqsubseteq> abs_ccache c1 \<union> abs_ccache c2"
+unfolding abs_ccache_def
+  by auto
 
 lemma lemma7:
   assumes "abs_venv ve \<sqsubseteq> ve_a"
@@ -302,10 +312,48 @@ case (Next evalF evalC) {
 
   next
   fix lab a1 a2 cnt
+  assume "isProc cnt"
   assume abs_ds': "[{}, {}, abs_d cnt] \<sqsubseteq> ds_a"
+  then obtain a1_a a2_a cnt_a where ds_a: "ds_a = [a1_a, a2_a, cnt_a]" and abs_cnt: "abs_d cnt \<sqsubseteq> cnt_a"
+    using below_same_length[OF abs_ds']
+    by (cases ds_a rule:list.exhaust[OF _ list.exhaust[OF _ list.exhaust, of _ _ "\<lambda>_ x. x"],  of _ _ "\<lambda>_ x. x"]) auto
+
+  note Un_mono_sq = subst[OF sqsubset_is_subset[THEN sym], of "\<lambda>x. x", OF Un_mono[OF subst[OF sqsubset_is_subset, of "\<lambda>x. x"] subst[OF sqsubset_is_subset, of "\<lambda>x. x"]]]
+  
+  have new_elem: "abs_ccache {((lab, [lab \<mapsto> b]), cnt)} \<sqsubseteq> {((lab, [lab \<mapsto> b_a]), cont) |cont. cont \<in> cnt_a}"
+    unfolding abs_ccache_def and abs_benv_def using abs_cnt and abs_b
+    by (auto simp add:sqsubset_is_subset)
+
+
+  have prem: "abs_fstate (cnt, [DI (a1 + a2)], ve, HOLCFExCF.nb b lab) \<sqsubseteq>
+              (contents (abs_d cnt), [{}], ve_a, contour_class.nb b_a lab)"
+    using abs_ve and abs_cnt_nb[OF abs_b]
+    by (simp)
+  have "abs_ccache (evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, HOLCFExCF.nb b lab)))
+       \<sqsubseteq> HOLCFAbsCF.evalF\<cdot>(Discr (contents (abs_d cnt), [{}], ve_a, contour_class.nb b_a lab))"
+    by (rule Next.hyps(1)[OF prem])
+  also have "\<dots> \<sqsubseteq> (\<Union>cnt\<in>cnt_a. HOLCFAbsCF.evalF\<cdot>(Discr (cnt, [{}], ve_a, contour_class.nb b_a lab)))"
+    using abs_cnt
+    by (auto intro: contents_is_Proc[OF `isProc cnt`] simp del: evalF.simps simp add:sqsubset_is_subset)
+  finally
+  have old_elems: "abs_ccache (evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, HOLCFExCF.nb b lab)))
+       \<sqsubseteq> (\<Union>cnt\<in>cnt_a. HOLCFAbsCF.evalF\<cdot>(Discr (cnt, [{}], ve_a, contour_class.nb b_a lab)))".
+   
+  have "abs_ccache ((evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, HOLCFExCF.nb b lab)))
+          \<union> {((lab, [lab \<mapsto> b]), cnt)})
+        \<sqsubseteq> abs_ccache ((evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, HOLCFExCF.nb b lab))))
+          \<union> abs_ccache {((lab, [lab \<mapsto> b]), cnt)}"
+    by (rule abs_ccache_union)
+  also
+  have "\<dots> \<sqsubseteq>
+        (\<Union>cnt\<in>cnt_a. HOLCFAbsCF.evalF\<cdot>(Discr (cnt, [{}], ve_a, contour_class.nb b_a lab)))
+        \<union> {((lab, [lab \<mapsto> b_a]), cont) |cont. cont \<in> cnt_a}"
+    by (rule Un_mono_sq[OF old_elems new_elem])
+  finally
   show "abs_ccache (insert ((lab, [lab \<mapsto> b]), cnt)
                    (evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, HOLCFExCF.nb b lab))))
-        \<sqsubseteq> HOLCFAbsCF.evalF\<cdot>(Discr (PP (prim.Plus lab), ds_a, ve_a, b_a))" sorry
+        \<sqsubseteq> HOLCFAbsCF.evalF\<cdot>(Discr (PP (prim.Plus lab), ds_a, ve_a, b_a))"
+    using ds_a by (subst HOLCFAbsCF.evalF.simps)(auto simp del:HOLCFAbsCF.evalF.simps)
   next
   fix ct cf v cntt cntf
   assume abs_ds': "[{}, abs_d cntt, abs_d cntf] \<sqsubseteq> ds_a"
