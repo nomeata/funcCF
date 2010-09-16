@@ -62,6 +62,11 @@ lemma sqsubset_is_subset:"A \<sqsubseteq> B \<longleftrightarrow> A \<subseteq> 
 unfolding below_fun_def and below_bool_def
   by (auto simp:mem_def)
 
+lemmas Un_mono_sq =
+  subst[OF sqsubset_is_subset[THEN sym], of "\<lambda>x. x",
+       OF Un_mono[OF subst[OF sqsubset_is_subset, of "\<lambda>x. x"]
+                     subst[OF sqsubset_is_subset, of "\<lambda>x. x"]]]
+
 lemma lub_is_union: "lub S = \<Union>S"
 apply(rule thelubI)
   unfolding is_lub_def and is_ub_def

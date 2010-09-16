@@ -317,8 +317,6 @@ case (Next evalF evalC) {
   then obtain a1_a a2_a cnt_a where ds_a: "ds_a = [a1_a, a2_a, cnt_a]" and abs_cnt: "abs_d cnt \<sqsubseteq> cnt_a"
     using below_same_length[OF abs_ds']
     by (cases ds_a rule:list.exhaust[OF _ list.exhaust[OF _ list.exhaust, of _ _ "\<lambda>_ x. x"],  of _ _ "\<lambda>_ x. x"]) auto
-
-  note Un_mono_sq = subst[OF sqsubset_is_subset[THEN sym], of "\<lambda>x. x", OF Un_mono[OF subst[OF sqsubset_is_subset, of "\<lambda>x. x"] subst[OF sqsubset_is_subset, of "\<lambda>x. x"]]]
   
   have new_elem: "abs_ccache {((lab, [lab \<mapsto> b]), cnt)} \<sqsubseteq> {((lab, [lab \<mapsto> b_a]), cont) |cont. cont \<in> cnt_a}"
     unfolding abs_ccache_def and abs_benv_def using abs_cnt and abs_b
