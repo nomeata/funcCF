@@ -67,28 +67,33 @@ apply(rule thelubI)
   unfolding is_lub_def and is_ub_def
   by (auto iff:sqsubset_is_subset)
 
-lemma cont2cont_UNION  [simp, cont2cont]:
-  assumes "\<And>y. cont (\<lambda>x. f x y)"
-  shows "cont (\<lambda>x. \<Union>y\<in>S. f x y)"
-proof(rule contI2)
-  show "monofun (\<lambda>x. \<Union>y\<in>S. f x y)"
-    by (rule monofunI)(auto iff:sqsubset_is_subset dest: monofunE[OF assms[THEN cont2mono]])
-  next
-  fix Y
-  assume "chain Y" and "chain (\<lambda>i. \<Union>y\<in>S. f (Y i) y)"
-  have "(\<Union>y\<in>S. f (\<Squnion> i. Y i) y) \<subseteq> (\<Squnion> i. \<Union>y\<in>S. f (Y i) y)"
+lemma cont2cont_UNION[cont2cont,simp]:
+  assumes "cont f"
+      and "\<And> y. cont (\<lambda>x. g x y)"
+  shows "cont (\<lambda>x. \<Union>y\<in> f x. g x y)"
+proof(induct rule: contI2[case_names Mono Limit])
+case Mono
+  show "monofun (\<lambda>x. \<Union>y\<in>f x. g x y)"
+    by (rule monofunI)(auto iff:sqsubset_is_subset dest: monofunE[OF assms(1)[THEN cont2mono]] monofunE[OF assms(2)[THEN cont2mono]])
+next
+case (Limit Y)
+  have "(\<Union>y\<in>f (\<Squnion> i. Y i). g (\<Squnion> j. Y j) y) \<subseteq> (\<Squnion> k. \<Union>y\<in>f (Y k). g (Y k) y)"
   proof
-    fix x assume "x\<in> (\<Union>y\<in>S. f (\<Squnion> i. Y i) y)"
-    then obtain y where "y\<in>S" and "x \<in> f (\<Squnion> i. Y i) y" by auto
-    have "cont (\<lambda>x. f x y)" using assms by simp
-    have f_cont:"f (\<Squnion> i. Y i) y = (\<Squnion> i. f (Y i) y)" by (rule cont2contlubE[OF `cont (\<lambda>x. f x y)` `chain Y`])
-    hence "x \<in> (\<Squnion> i. f (Y i) y)" using `x \<in> f (\<Squnion> i. Y i) y` by simp
-    then obtain i where "x \<in> f (Y i) y" by (auto simp add:lub_is_union)
-    hence "x\<in> (\<Union>y\<in>S. f (Y i) y)" using `y\<in>S` by auto
-    thus "x\<in>(\<Squnion> i. \<Union>y\<in>S. f (Y i) y)" by (auto simp add:lub_is_union)
+    fix x assume "x \<in> (\<Union>y\<in>f (\<Squnion> i. Y i). g (\<Squnion> j. Y j) y)"
+    then obtain y where "y\<in>f (\<Squnion> i. Y i)" and "x\<in> g (\<Squnion> j. Y j) y" by auto
+    hence "y \<in> (\<Squnion> i. f (Y i))" and "x\<in> (\<Squnion> j. g (Y j) y)" by (auto simp add: cont2contlubE[OF assms(1) Limit(1)] cont2contlubE[OF assms(2) Limit(1)])
+    then obtain i and j where yi: "y\<in> f (Y i)" and xj: "x\<in> g (Y j) y" by (auto simp add:lub_is_union)
+    obtain k where "i\<le>k" and "j\<le>k" by (erule_tac x = "max i j" in meta_allE)auto
+    from yi and xj have "y \<in> f (Y k)" and "x\<in> g (Y k) y"
+      using monofunE[OF assms(1)[THEN cont2mono], OF chain_mono[OF Limit(1) `i\<le>k`]]
+        and monofunE[OF assms(2)[THEN cont2mono], OF chain_mono[OF Limit(1) `j\<le>k`]]
+      by (auto simp add:sqsubset_is_subset)
+    hence "x\<in> (\<Union>y\<in> f (Y k). g (Y k) y)" by auto
+    thus "x\<in> (\<Squnion> k. \<Union>y\<in>f (Y k). g (Y k) y)" by (auto simp add:lub_is_union)
   qed
-  thus "(\<Union>y\<in>S. f (\<Squnion> i. Y i) y) \<sqsubseteq> (\<Squnion> i. \<Union>y\<in>S. f (Y i) y)" by (simp add:sqsubset_is_subset)
+  thus ?case by (simp add:sqsubset_is_subset)
 qed
+
 
 instantiation nat :: discrete_cpo
 begin

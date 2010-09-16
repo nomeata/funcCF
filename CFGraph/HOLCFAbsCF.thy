@@ -251,13 +251,12 @@ definition Q :: "('c::contour fstate discr \<rightarrow> 'c ccache) \<Rightarrow
 
 thm evalF_evalC_induct[of Q]
 
-(*lemma lemma89:
- "Q evalF evalC"
-proof(induct rule: HOLCFAbsCF.evalF_evalC_induct)
-*)
-
-lemma cont2cont_abs_ccache[cont2cont,simp]: assumes "cont f" shows "cont (\<lambda>x. abs_ccache(f x))"
-sorry
+lemma cont2cont_abs_ccache[cont2cont,simp]:
+  assumes "cont f"
+  shows "cont (\<lambda>x. abs_ccache(f x))"
+unfolding abs_ccache_def
+using assms
+by (rule cont2cont)(rule cont_const)
 
 lemma [simp]: "abs_ccache {} = {}" unfolding abs_ccache_def by auto
 
