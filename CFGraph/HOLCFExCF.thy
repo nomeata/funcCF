@@ -42,6 +42,12 @@ datatype d = DI int
            | DP prim
            | Stop
 
+primrec isProc 
+  where "isProc (DI _) = False"
+      | "isProc (DC _) = True"
+      | "isProc (DP _) = True"
+      | "isProc Stop   = True"
+
 instantiation d :: discrete_cpo begin
 definition  [simp]: "(x::d) \<sqsubseteq> y \<longleftrightarrow> x = y"
 instance by default simp
@@ -128,11 +134,15 @@ fixrec   evalF :: "fstate discr \<rightarrow> ans"
                      in evalC\<cdot>(Discr (c,\<beta>',ve',b))
                 else \<bottom>)
             | (DP (Plus c),[DI a1, DI a2, cnt],ve,b) \<Rightarrow>
-                     let b' = nb b c;
-                         \<beta>  = [c \<mapsto> b]
-                     in evalF\<cdot>(Discr (cnt,[DI (a1 + a2)],ve,b'))
+                (if isProc cnt
+                 then let b' = nb b c;
+                          \<beta>  = [c \<mapsto> b]
+                      in evalF\<cdot>(Discr (cnt,[DI (a1 + a2)],ve,b'))
                         \<union> {((c, \<beta>),cnt)}
+                 else \<bottom>)
             | (DP (prim.If ct cf),[DI v, contt, contf],ve,b) \<Rightarrow>
+                (if isProc contt \<and> isProc contf
+                 then
                   (if v \<noteq> 0
                    then let b' = nb b ct;
                             \<beta> = [ct \<mapsto> b]
@@ -142,6 +152,7 @@ fixrec   evalF :: "fstate discr \<rightarrow> ans"
                             \<beta> = [cf \<mapsto> b]
                         in (evalF\<cdot>(Discr (contf,[],ve,b')))
                             \<union> {((cf, \<beta>),contf)})
+                 else \<bottom>)
             | (Stop,[DI i],_,_) \<Rightarrow> {}
             | _ \<Rightarrow> \<bottom>
         )"
