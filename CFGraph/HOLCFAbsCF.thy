@@ -182,35 +182,8 @@ qed auto
 lemma lemma7:
   assumes "abs_venv ve \<sqsubseteq> ve_a"
   shows "abs_d (HOLCFExCF.evalV a \<beta> ve) \<sqsubseteq> evalV a (abs_benv \<beta>) ve_a"
-proof(cases a)
-case C thus ?thesis by simp next
-case P thus ?thesis by simp next
-case (L closure) thus ?thesis by simp next
-case (R lab v)
-  show ?thesis
-  proof (cases v)
-  case (Pair vn vb)
-    show ?thesis
-    proof (cases "\<beta> (binder v)")
-    case None thus ?thesis using R by auto next
-    case (Some cnt) note Some' = Some
-      show ?thesis
-      proof (cases "ve (v,cnt)")
-      case None  thus ?thesis using R and Some by auto next
-      case (Some d)
-        have "abs_d (HOLCFExCF.evalV a \<beta> ve) \<subseteq> abs_venv ve (v, abs_cnt cnt)"
-          using Some Some' R unfolding abs_venv_def by auto
-        also
-        have "evalV a (abs_benv \<beta>) ve_a = ve_a (v,abs_cnt cnt)"
-          using Some' R unfolding abs_benv_def by simp
-        hence "abs_venv ve (v, abs_cnt cnt) \<subseteq> evalV a (abs_benv \<beta>) ve_a"
-          using assms and Pair by (subst (asm) less_fun_def, simp add:sqsubset_is_subset)
-        finally
-        show ?thesis by (auto iff:sqsubset_is_subset)
-      qed
-    qed
-  qed
-qed
+using assms
+ by (subst sqsubset_is_subset, rule abs_d_evalV)
 
 fixrec   evalF :: "'c::contour fstate discr \<rightarrow> 'c ans"
      and evalC :: "'c::contour cstate discr \<rightarrow> 'c ans"
