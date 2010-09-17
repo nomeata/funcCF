@@ -1,5 +1,5 @@
 theory HOLCFAbsCF
-  imports CPSUtils HOLCF HOLCFUtils List_Cpo  HOLCFOption CPSScheme Utils HOLCFExCF SetMap
+  imports CPSUtils HOLCF HOLCFUtils List_Cpo CPSScheme Utils HOLCFExCF SetMap
 begin
 
 class contour = discrete_cpo +
@@ -26,6 +26,12 @@ datatype 'c proc = PC "'c closure"
 instantiation proc :: (type)discrete_cpo
 begin
 definition [simp]: "(x::'a proc) \<sqsubseteq> y \<longleftrightarrow> x = y"
+instance by default simp
+end
+
+instantiation option :: (type)discrete_cpo
+begin
+definition [iff]: "(x::'a option) \<sqsubseteq> y \<longleftrightarrow> x = y"
 instance by default simp
 end
 
@@ -69,6 +75,8 @@ types 'c ccache = "((label \<times> 'c benv) \<times> 'c proc) set"
 
 definition abs_ccache :: "HOLCFExCF.ccache \<Rightarrow> 'c::contour ccache"
   where "abs_ccache cc = (\<Union>((c,\<beta>),d) \<in> cc . {((c,abs_benv \<beta>), p) | p . p\<in>abs_d d})"
+(* equivalent, but I already have cont2cont for UNION
+  where "abs_ccache cc = { ((c,abs_benv \<beta>),p) | c \<beta> p d . ((c,\<beta>),d) \<in> cc \<and> p \<in> abs_d d}" *)
 
 types 'c fstate = "('c proc \<times> 'c d list \<times> 'c venv \<times> 'c)"
       'c cstate = "(call \<times> 'c benv \<times> 'c venv \<times> 'c)"
@@ -135,8 +143,28 @@ lemma abs_venv_singleton: "abs_venv [(v,b) \<mapsto> d] = smap_singleton (v,abs_
   by (rule ext, auto simp add:abs_venv_def smap_singleton_def smap_empty_def)
 
 lemma abs_ccache_union: "abs_ccache (c1 \<union> c2) \<sqsubseteq> abs_ccache c1 \<union> abs_ccache c2"
-unfolding abs_ccache_def
-  by auto
+  unfolding abs_ccache_def by (auto simp add:sqsubset_is_subset)
+
+lemma [simp]: "abs_ccache {} = {}" unfolding abs_ccache_def by auto
+
+lemma abs_cache_singleton [simp]: "abs_ccache {((c,\<beta>),d)} = {((c, abs_benv \<beta>), p) |p. p \<in> abs_d d}"
+  unfolding abs_ccache_def by simp
+
+lemma abs_d_evalV:
+  assumes "abs_venv ve \<sqsubseteq> ve_a"
+  shows "abs_d (HOLCFExCF.evalV f \<beta> ve) \<subseteq> HOLCFAbsCF.evalV f (abs_benv \<beta>) ve_a"
+proof(cases f)
+case (R _ v)
+  from assms have assm': "\<And>v b. option_case {} abs_d (ve (v,b)) \<subseteq> ve_a (v,abs_cnt b)"
+    by (subst (asm) less_fun_def, auto simp add:abs_venv_def sqsubset_is_subset elim!:allE)
+  show ?thesis
+    proof(cases "\<beta> (binder v)")
+    case None thus ?thesis using R by auto next
+    case (Some b)
+      thus ?thesis using R assm'[of v b]
+         by (auto simp add:abs_benv_def split:option.split)
+  qed
+qed auto
 
 lemma lemma7:
   assumes "abs_venv ve \<sqsubseteq> ve_a"
@@ -234,8 +262,6 @@ unfolding abs_ccache_def
 using assms
 by (rule cont2cont)(rule cont_const)
 
-lemma [simp]: "abs_ccache {} = {}" unfolding abs_ccache_def by auto
-
 lemma lemma89:
  shows "abs_fstate fstate \<sqsubseteq> (fstate_a::'c::contour fstate) \<Longrightarrow> abs_ccache (HOLCFExCF.evalF\<cdot>(Discr fstate)) \<sqsubseteq> evalF\<cdot>(Discr fstate_a)"
    and "abs_cstate cstate \<sqsubseteq> (cstate_a::'c::contour cstate) \<Longrightarrow> abs_ccache (HOLCFExCF.evalC\<cdot>(Discr cstate)) \<sqsubseteq> evalC\<cdot>(Discr cstate_a)" 
@@ -319,8 +345,7 @@ case (Next evalF evalC) {
     by (cases ds_a rule:list.exhaust[OF _ list.exhaust[OF _ list.exhaust, of _ _ "\<lambda>_ x. x"],  of _ _ "\<lambda>_ x. x"]) auto
   
   have new_elem: "abs_ccache {((lab, [lab \<mapsto> b]), cnt)} \<sqsubseteq> {((lab, [lab \<mapsto> b_a]), cont) |cont. cont \<in> cnt_a}"
-    unfolding abs_ccache_def and abs_benv_def using abs_cnt and abs_b
-    by (auto simp add:sqsubset_is_subset)
+    using abs_cnt and abs_b by (auto simp add:sqsubset_is_subset abs_benv_def)
 
   have prem: "abs_fstate (cnt, [DI (a1 + a2)], ve, HOLCFExCF.nb b lab) \<sqsubseteq>
               (contents (abs_d cnt), [{}], ve_a, contour_class.nb b_a lab)"
@@ -366,8 +391,7 @@ case (Next evalF evalC) {
   let ?c = "ct::label" and ?cnt = cntt and ?cnt_a = cntt_a
   
   have new_elem: "abs_ccache {((?c, [?c \<mapsto> b]), ?cnt)} \<sqsubseteq> {((?c, [?c \<mapsto> b_a]), cont) |cont. cont \<in> ?cnt_a}"
-    unfolding abs_ccache_def and abs_benv_def using abs_cntt and abs_cntf and abs_b
-    by (auto simp add:sqsubset_is_subset)
+    using abs_cntt and abs_cntf and abs_b by (auto simp add:sqsubset_is_subset abs_benv_def)
 
   have prem: "abs_fstate (?cnt, [], ve, HOLCFExCF.nb b ?c) \<sqsubseteq>
               (contents (abs_d ?cnt), [], ve_a, contour_class.nb b_a ?c)"
@@ -421,8 +445,7 @@ case (Next evalF evalC) {
   let ?c = "cf::label" and ?cnt = cntf and ?cnt_a = cntf_a
   
   have new_elem: "abs_ccache {((?c, [?c \<mapsto> b]), ?cnt)} \<sqsubseteq> {((?c, [?c \<mapsto> b_a]), cont) |cont. cont \<in> ?cnt_a}"
-    unfolding abs_ccache_def and abs_benv_def using abs_cntt and abs_cntf and abs_b
-    by (auto simp add:sqsubset_is_subset)
+    using abs_cntt and abs_cntf and abs_b by (auto simp add:sqsubset_is_subset abs_benv_def)
 
   have prem: "abs_fstate (?cnt, [], ve, HOLCFExCF.nb b ?c) \<sqsubseteq>
               (contents (abs_d ?cnt), [], ve_a, contour_class.nb b_a ?c)"
@@ -462,6 +485,7 @@ case (Next evalF evalC) {
              (evalF\<cdot>(Discr (?cnt, [], ve, HOLCFExCF.nb b ?c)))) \<sqsubseteq>
           HOLCFAbsCF.evalF\<cdot>(Discr (PP (prim.If ct cf), ds_a, ve_a, b_a))" 
     using ds_a by (subst HOLCFAbsCF.evalF.simps)(auto simp del:HOLCFAbsCF.evalF.simps)
+ qed
 next
 case 2
   obtain c \<beta> ve b where cstate: "cstate = (c,\<beta>,ve,b)" 
@@ -476,14 +500,39 @@ case 2
    and abs_b: "abs_cnt b \<sqsubseteq> b_a"
   using 2 by auto
 
-  from cstate cstate_a abs_c abs_\<beta> abs_ve abs_b
+  from cstate cstate_a abs_c abs_\<beta> abs_b
   show ?case
   proof(cases c, auto simp add:HOL.Let_def simp del:evalF.simps evalC.simps set_map HOLCFExCF.evalV.simps)
 
   fix lab f vs
+  
+  have old_elems: "abs_ccache
+     (evalF\<cdot>(Discr (HOLCFExCF.evalV f \<beta> ve, map (\<lambda>v. HOLCFExCF.evalV v \<beta> ve) vs, ve, HOLCFExCF.nb b lab)))
+     \<sqsubseteq> (\<Union>f'\<in>HOLCFAbsCF.evalV f \<beta>_a ve_a.
+              HOLCFAbsCF.evalF\<cdot>(Discr(f', map (\<lambda>v. HOLCFAbsCF.evalV v \<beta>_a ve_a) vs, ve_a, contour_class.nb (abs_cnt b) lab)))"
+     sorry
+
+  have new_elem: "abs_ccache {((lab, \<beta>), HOLCFExCF.evalV f \<beta> ve)}
+                  \<sqsubseteq> {((lab, \<beta>_a), f') |f'. f' \<in> HOLCFAbsCF.evalV f \<beta>_a ve_a}"
+    using abs_\<beta> and abs_d_evalV[OF abs_ve]
+    by (auto simp add:sqsubset_is_subset)
+    
+  have "abs_ccache (evalF\<cdot>(Discr (HOLCFExCF.evalV f \<beta> ve, map (\<lambda>v. HOLCFExCF.evalV v \<beta> ve) vs, ve, HOLCFExCF.nb b lab))
+        \<union> {((lab, \<beta>), HOLCFExCF.evalV f \<beta> ve)})
+        \<sqsubseteq> abs_ccache (evalF\<cdot>(Discr (HOLCFExCF.evalV f \<beta> ve, map (\<lambda>v. HOLCFExCF.evalV v \<beta> ve) vs, ve, HOLCFExCF.nb b lab)))
+        \<union> abs_ccache {((lab, \<beta>), HOLCFExCF.evalV f \<beta> ve)}"
+    by (rule abs_ccache_union)
+  also have "\<dots>
+        \<sqsubseteq> (\<Union>f'\<in>HOLCFAbsCF.evalV f \<beta>_a ve_a.
+              HOLCFAbsCF.evalF\<cdot>(Discr(f', map (\<lambda>v. HOLCFAbsCF.evalV v \<beta>_a ve_a) vs, ve_a, contour_class.nb (abs_cnt b) lab)))
+        \<union> {((lab, \<beta>_a), f') |f'. f' \<in> HOLCFAbsCF.evalV f \<beta>_a ve_a}"
+    by (rule Un_mono_sq[OF old_elems new_elem])
+  finally
   show "abs_ccache (insert ((lab, \<beta>), HOLCFExCF.evalV f \<beta> ve)
                    (evalF\<cdot>(Discr (HOLCFExCF.evalV f \<beta> ve, map (\<lambda>v. HOLCFExCF.evalV v \<beta> ve) vs, ve, HOLCFExCF.nb b lab))))
-        \<sqsubseteq> HOLCFAbsCF.evalC\<cdot>(Discr (App lab f vs, \<beta>_a, ve_a, abs_cnt b))" sorry
+        \<sqsubseteq> HOLCFAbsCF.evalC\<cdot>(Discr (App lab f vs, abs_benv \<beta>, ve_a, abs_cnt b))"
+    using abs_\<beta>
+    by (subst HOLCFAbsCF.evalC.simps)(auto simp add: HOL.Let_def simp del:HOLCFAbsCF.evalF.simps)
   next
   fix lab binds c'
   show "abs_ccache (evalC\<cdot>(Discr (c', \<beta>(lab \<mapsto> HOLCFExCF.nb b lab),
