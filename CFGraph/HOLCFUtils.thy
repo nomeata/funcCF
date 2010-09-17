@@ -194,4 +194,7 @@ by (rule ext, auto)
 lemma bot_bool_is_emptyset[simp]: "\<bottom> = {}"
 by (simp add:inst_fun_pcpo)
 
+lemma emptyset_is_bot[simp]: "{}\<sqsubseteq>S"
+ by (simp add:sqsubset_is_subset)
+
 end

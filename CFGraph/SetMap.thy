@@ -29,8 +29,25 @@ using assms by (induct rule:list_induct2[OF list_all2_lengthD[OF assms], case_na
 lemma smap_singleton_mono: "v \<sqsubseteq> v'\<Longrightarrow> smap_singleton k v \<sqsubseteq> smap_singleton k v'"
  by (subst below_fun_def, auto simp add: smap_singleton_def)
 
-lemma [simp]: "{}\<sqsubseteq>S"
- by (simp add:sqsubset_is_subset)
+lemma smap_union_comm: "smap_union m1 m2 = smap_union m2 m1"
+by (rule ext,auto simp add:smap_union_def)
 
+lemma smap_union_empty1[simp]: "smap_union smap_empty m = m"
+  by(rule ext, auto simp add:smap_union_def smap_empty_def)
+
+lemma smap_union_empty2[simp]: "smap_union m smap_empty = m"
+  by(rule ext, auto simp add:smap_union_def smap_empty_def)
+
+lemma smap_union_assoc [simp]: "smap_union (smap_union m1 m2) m3 = smap_union m1 (smap_union m2 m3)"
+  by (rule ext, auto simp add:smap_union_def)
+
+lemma smap_Union_append[simp]: "smap_Union (m1@m2) = smap_union (smap_Union m1) (smap_Union m2)"
+  by (induct m1) auto
+
+lemma smap_Union_rev[simp]: "smap_Union (rev l) = smap_Union l"
+  by(induct l)(auto simp add:smap_union_comm)
+
+lemma smap_Union_map_rev[simp]: "smap_Union (map f (rev l)) = smap_Union (map f l)"
+  by(subst rev_map[THEN sym], subst smap_Union_rev, rule refl)
 
 end
