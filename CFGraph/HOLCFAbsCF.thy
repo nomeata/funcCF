@@ -505,12 +505,28 @@ case 2
   proof(cases c, auto simp add:HOL.Let_def simp del:evalF.simps evalC.simps set_map HOLCFExCF.evalV.simps)
 
   fix lab f vs
-  
+  let ?d = "HOLCFExCF.evalV f \<beta> ve"
+  assume "isProc ?d"
+
+  have "map (abs_d \<circ> (\<lambda>v. HOLCFExCF.evalV v \<beta> ve)) vs \<sqsubseteq> map (\<lambda>v. HOLCFAbsCF.evalV v \<beta>_a ve_a) vs"
+    using abs_\<beta> and abs_d_evalV[OF abs_ve, of _ \<beta>]
+    unfolding below_list_def
+    by (auto intro!: list_all2I simp add:set_zip sqsubset_is_subset[THEN sym])
+
+  hence "abs_ccache (evalF\<cdot>(Discr (?d, map (\<lambda>v. HOLCFExCF.evalV v \<beta> ve) vs, ve, HOLCFExCF.nb b lab)))
+     \<sqsubseteq>  HOLCFAbsCF.evalF\<cdot>(Discr(contents (abs_d ?d), map (\<lambda>v. HOLCFAbsCF.evalV v \<beta>_a ve_a) vs, ve_a, contour_class.nb (abs_cnt b) lab))"
+    using abs_ve and abs_cnt_nb and abs_b
+    by -(rule Next.hyps(1), auto)
+  also have "\<dots> \<sqsubseteq> (\<Union>f'\<in>HOLCFAbsCF.evalV f \<beta>_a ve_a.
+              HOLCFAbsCF.evalF\<cdot>(Discr(f', map (\<lambda>v. HOLCFAbsCF.evalV v \<beta>_a ve_a) vs, ve_a, contour_class.nb (abs_cnt b) lab)))"
+    using subsetD[OF abs_d_evalV[OF abs_ve] contents_is_Proc[OF `isProc ?d`]] and abs_\<beta>
+    by (auto simp del: evalF.simps simp add:sqsubset_is_subset)
+  finally
   have old_elems: "abs_ccache
      (evalF\<cdot>(Discr (HOLCFExCF.evalV f \<beta> ve, map (\<lambda>v. HOLCFExCF.evalV v \<beta> ve) vs, ve, HOLCFExCF.nb b lab)))
      \<sqsubseteq> (\<Union>f'\<in>HOLCFAbsCF.evalV f \<beta>_a ve_a.
               HOLCFAbsCF.evalF\<cdot>(Discr(f', map (\<lambda>v. HOLCFAbsCF.evalV v \<beta>_a ve_a) vs, ve_a, contour_class.nb (abs_cnt b) lab)))"
-     sorry
+    by auto
 
   have new_elem: "abs_ccache {((lab, \<beta>), HOLCFExCF.evalV f \<beta> ve)}
                   \<sqsubseteq> {((lab, \<beta>_a), f') |f'. f' \<in> HOLCFAbsCF.evalV f \<beta>_a ve_a}"

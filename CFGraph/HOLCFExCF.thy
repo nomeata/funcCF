@@ -161,8 +161,9 @@ fixrec   evalF :: "fstate discr \<rightarrow> ans"
                  let f' = evalV f \<beta> ve;
                      as = map (\<lambda>v. evalV v \<beta> ve) vs;
                      b' = nb b lab
-                  in evalF\<cdot>(Discr (f',as,ve,b'))
-                     \<union> {((lab, \<beta>),f')}
+                  in if isProc f'
+                     then evalF\<cdot>(Discr (f',as,ve,b')) \<union> {((lab, \<beta>),f')}
+                     else \<bottom>
             | (Let lab ls c',\<beta>,ve,b) \<Rightarrow>
                  let b' = nb b lab;
                      \<beta>' = \<beta> (lab \<mapsto> b');
