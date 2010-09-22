@@ -60,14 +60,14 @@ end
 
 types venv = "var \<times> contour \<rightharpoonup> d"
 
-fun evalV :: "val \<Rightarrow> benv \<Rightarrow> venv \<Rightarrow> d"
-  where "evalV (C _ i) \<beta> ve = DI i"
-  |     "evalV (P prim) \<beta> ve = DP prim"
-  |     "evalV (R _ var) \<beta> ve =
+fun evalV :: "val \<Rightarrow> benv \<Rightarrow> venv \<Rightarrow> d" ("\<A>")
+  where "\<A> (C _ i) \<beta> ve = DI i"
+  |     "\<A> (P prim) \<beta> ve = DP prim"
+  |     "\<A> (R _ var) \<beta> ve =
            (case \<beta> (binder var) of
               Some l \<Rightarrow> (case ve (var,l) of Some d \<Rightarrow> d | None \<Rightarrow> DI 0) (* I prefer this to be total\<dots> *)
              | None \<Rightarrow> DI 0)"
-  |     "evalV (L lam) \<beta> ve = DC (lam, \<beta>)"
+  |     "\<A> (L lam) \<beta> ve = DC (lam, \<beta>)"
 
 
 types ccache = "((label \<times> benv) \<times> d) set"
@@ -90,7 +90,6 @@ definition closure_consistent :: "prog \<Rightarrow> closure \<Rightarrow> venv 
 definition cstate_ok :: "cstate \<Rightarrow> bool" where
      "cstate_ok s = (case s of (c,\<beta>,ve,_) \<Rightarrow> ve_consistent c \<beta> ve)"
 *)
-
 types fstate = "(d \<times> d list \<times> venv \<times> contour)"
       cstate = "(call \<times> benv \<times> venv \<times> contour)"
 
@@ -124,20 +123,20 @@ using assms
 by (cases p) auto
 
 
-fixrec   evalF :: "fstate discr \<rightarrow> ans"
-     and evalC :: "cstate discr \<rightarrow> ans"
-  where "evalF\<cdot>fstate = (case undiscr fstate of
+fixrec   evalF :: "fstate discr \<rightarrow> ans" ("\<F>")
+     and evalC :: "cstate discr \<rightarrow> ans" ("\<C>")
+  where "\<F>\<cdot>fstate = (case undiscr fstate of
              (DC (Lambda lab vs c, \<beta>), as, ve, b) \<Rightarrow>
                (if length vs = length as
                 then let \<beta>' = \<beta> (lab \<mapsto> b);
                          ve' = map_upds ve (map (\<lambda>v.(v,b)) vs) as
-                     in evalC\<cdot>(Discr (c,\<beta>',ve',b))
+                     in \<C>\<cdot>(Discr (c,\<beta>',ve',b))
                 else \<bottom>)
             | (DP (Plus c),[DI a1, DI a2, cnt],ve,b) \<Rightarrow>
                 (if isProc cnt
                  then let b' = nb b c;
                           \<beta>  = [c \<mapsto> b]
-                      in evalF\<cdot>(Discr (cnt,[DI (a1 + a2)],ve,b'))
+                      in \<F>\<cdot>(Discr (cnt,[DI (a1 + a2)],ve,b'))
                         \<union> {((c, \<beta>),cnt)}
                  else \<bottom>)
             | (DP (prim.If ct cf),[DI v, contt, contf],ve,b) \<Rightarrow>
@@ -146,29 +145,29 @@ fixrec   evalF :: "fstate discr \<rightarrow> ans"
                   (if v \<noteq> 0
                    then let b' = nb b ct;
                             \<beta> = [ct \<mapsto> b]
-                        in (evalF\<cdot>(Discr (contt,[],ve,b'))
+                        in (\<F>\<cdot>(Discr (contt,[],ve,b'))
                             \<union> {((ct, \<beta>),contt)})
                    else let b' = nb b cf;
                             \<beta> = [cf \<mapsto> b]
-                        in (evalF\<cdot>(Discr (contf,[],ve,b')))
+                        in (\<F>\<cdot>(Discr (contf,[],ve,b')))
                             \<union> {((cf, \<beta>),contf)})
                  else \<bottom>)
             | (Stop,[DI i],_,_) \<Rightarrow> {}
             | _ \<Rightarrow> \<bottom>
         )"
-      | "evalC\<cdot>cstate = (case undiscr cstate of
+      | "\<C>\<cdot>cstate = (case undiscr cstate of
              (App lab f vs,\<beta>,ve,b) \<Rightarrow>
-                 let f' = evalV f \<beta> ve;
-                     as = map (\<lambda>v. evalV v \<beta> ve) vs;
+                 let f' = \<A> f \<beta> ve;
+                     as = map (\<lambda>v. \<A> v \<beta> ve) vs;
                      b' = nb b lab
                   in if isProc f'
-                     then evalF\<cdot>(Discr (f',as,ve,b')) \<union> {((lab, \<beta>),f')}
+                     then \<F>\<cdot>(Discr (f',as,ve,b')) \<union> {((lab, \<beta>),f')}
                      else \<bottom>
             | (Let lab ls c',\<beta>,ve,b) \<Rightarrow>
                  let b' = nb b lab;
                      \<beta>' = \<beta> (lab \<mapsto> b');
-                    ve' = ve ++ map_of (map (\<lambda>(v,l). ((v,b'), evalV (L l) \<beta>' ve)) ls)
-                 in evalC\<cdot>(Discr (c',\<beta>',ve',b'))
+                    ve' = ve ++ map_of (map (\<lambda>(v,l). ((v,b'), \<A> (L l) \<beta>' ve)) ls)
+                 in \<C>\<cdot>(Discr (c',\<beta>',ve',b'))
         )"
 lemmas evalF_evalC_induct = evalF_evalC.induct[case_names Admissibility Bottom Next]
 
@@ -214,9 +213,9 @@ lemma eval_induct:
         PF (evalF\<cdot>(Discr (cntf, [], ve, Suc b)))
          \<Longrightarrow> PF (evalF\<cdot>(Discr (cntf, [], ve, Suc b)) \<union> {((cf, [cf \<mapsto> b]), cntf)})"
       and appC: "\<And> (evalF::fstate discr \<rightarrow> ans) c f vs ve \<beta> b.
-         PF (evalF\<cdot>(Discr (evalV f \<beta> ve, map (\<lambda>v. evalV v \<beta> ve) vs, ve, Suc b)))
-         \<Longrightarrow> PC ((evalF\<cdot>(Discr (evalV f \<beta> ve, map (\<lambda>v. evalV v \<beta> ve) vs, ve, Suc b)))
-                  \<union> {((c, \<beta>), evalV f \<beta> ve)})"
+         PF (evalF\<cdot>(Discr (\<A> f \<beta> ve, map (\<lambda>v. \<A> v \<beta> ve) vs, ve, Suc b)))
+         \<Longrightarrow> PC ((evalF\<cdot>(Discr (\<A> f \<beta> ve, map (\<lambda>v. \<A> v \<beta> ve) vs, ve, Suc b)))
+                  \<union> {((c, \<beta>), \<A> f \<beta> ve)})"
 shows "PF (evalF\<cdot>fstate)" and "PC (evalC\<cdot>cstate)"
 proof(induct arbitrary: fstate cstate rule: evalF_evalC.induct)
 print_cases
@@ -244,17 +243,17 @@ case (3 evalF evalC)
 qed
 *)
 
-definition evalCPS :: "prog \<Rightarrow> ans"
-  where "evalCPS l = (let ve = empty;
+definition evalCPS :: "prog \<Rightarrow> ans" ("\<PR>")
+  where "\<PR> l = (let ve = empty;
                           \<beta> = empty;
-                          f = evalV (L l) \<beta> ve
-                      in  evalF\<cdot>(Discr (f,[Stop],ve,\<binit>)))"
+                          f = \<A> (L l) \<beta> ve
+                      in  \<F>\<cdot>(Discr (f,[Stop],ve,\<binit>)))"
 
-lemma correct_ex1: "evalCPS ex1 = {((2,[1 \<mapsto> \<binit>]), Stop)}"
+lemma correct_ex1: "\<PR> ex1 = {((2,[1 \<mapsto> \<binit>]), Stop)}"
 unfolding evalCPS_def
 by simp
 
-lemma correct_ex2: "evalCPS ex2 = {((2, [1 \<mapsto> \<binit>]), DP (Plus 3)),
+lemma correct_ex2: "\<PR> ex2 = {((2, [1 \<mapsto> \<binit>]), DP (Plus 3)),
                                    ((3, [3 \<mapsto> nb \<binit> 2]),  Stop)}"
 unfolding evalCPS_def
 by (simp)
@@ -291,7 +290,7 @@ qed
 lemma benv_in_eval:
   assumes "\<forall>\<beta>'\<in>benv_in_ve ve. Q \<beta>'"
       and "Q \<beta>"
-  shows "\<forall>\<beta>\<in>benv_in_d (evalV v \<beta> ve). Q \<beta>"
+  shows "\<forall>\<beta>\<in>benv_in_d (\<A> v \<beta> ve). Q \<beta>"
 proof(cases v)
   case (R _ var)
   thus ?thesis
@@ -327,28 +326,28 @@ qed
 lemma contours_in_ve_upds_binds:
   assumes "\<forall>b'\<in>contours_in_ve ve. Q b'"
       and "\<forall>b'\<in>ran \<beta>'. Q b'"
-  shows   "\<forall>b'\<in>contours_in_ve (ve ++ map_of (map (\<lambda>(v,l). ((v,b''), evalV (L l) \<beta>' ve)) ls)). Q b'"
+  shows   "\<forall>b'\<in>contours_in_ve (ve ++ map_of (map (\<lambda>(v,l). ((v,b''), \<A> (L l) \<beta>' ve)) ls)). Q b'"
 proof
-  fix b' assume "b'\<in>contours_in_ve (ve ++ map_of (map (\<lambda>(v,l). ((v,b''), evalV (L l) \<beta>' ve)) ls))"
-  then obtain d where d:"d \<in> ran (ve ++ map_of (map (\<lambda>(v,l). ((v,b''), evalV (L l) \<beta>' ve)) ls))" and b:"b' \<in> contours_in_d d" unfolding contours_in_ve_def by auto
+  fix b' assume "b'\<in>contours_in_ve (ve ++ map_of (map (\<lambda>(v,l). ((v,b''), \<A> (L l) \<beta>' ve)) ls))"
+  then obtain d where d:"d \<in> ran (ve ++ map_of (map (\<lambda>(v,l). ((v,b''), \<A> (L l) \<beta>' ve)) ls))" and b:"b' \<in> contours_in_d d" unfolding contours_in_ve_def by auto
   
-  have "ran (ve ++ map_of (map (\<lambda>(v,l). ((v,b''), evalV (L l) \<beta>' ve)) ls)) \<subseteq> ran ve \<union> ran (map_of (map (\<lambda>(v,l). ((v,b''), evalV (L l) \<beta>' ve)) ls))"
+  have "ran (ve ++ map_of (map (\<lambda>(v,l). ((v,b''), \<A> (L l) \<beta>' ve)) ls)) \<subseteq> ran ve \<union> ran (map_of (map (\<lambda>(v,l). ((v,b''), \<A> (L l) \<beta>' ve)) ls))"
     by(auto intro!:ran_concat)
   also
-  have "\<dots> \<subseteq> ran ve \<union> snd ` set (map (\<lambda>(v,l). ((v,b''), evalV (L l) \<beta>' ve)) ls)"
+  have "\<dots> \<subseteq> ran ve \<union> snd ` set (map (\<lambda>(v,l). ((v,b''), \<A> (L l) \<beta>' ve)) ls)"
     by (rule Un_mono[of "ran ve" "ran ve", OF subset_refl ran_map_of])
   also
-  have "\<dots> \<subseteq> ran ve \<union> set (map (\<lambda>(v,l). (evalV (L l) \<beta>' ve)) ls)"
+  have "\<dots> \<subseteq> ran ve \<union> set (map (\<lambda>(v,l). (\<A> (L l) \<beta>' ve)) ls)"
     by (rule Un_mono[of "ran ve" "ran ve", OF subset_refl ])auto
   finally
-  have "d \<in>  ran ve \<union> set (map (\<lambda>(v,l). (evalV (L l) \<beta>' ve)) ls)" using d by auto
+  have "d \<in>  ran ve \<union> set (map (\<lambda>(v,l). (\<A> (L l) \<beta>' ve)) ls)" using d by auto
   thus "Q b'"  using assms b unfolding contours_in_ve_def by auto
 qed
 
 lemma contours_in_eval:
   assumes "\<forall>b'\<in>contours_in_ve ve. Q b'"
       and "\<forall>b'\<in> ran \<beta>. Q b'"
-  shows "\<forall>b'\<in>contours_in_d (evalV f \<beta> ve). Q b'"
+  shows "\<forall>b'\<in>contours_in_d (\<A> f \<beta> ve). Q b'"
 unfolding contours_in_ve_def
 proof(cases f)
   case (R _ var)

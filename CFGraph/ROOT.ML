@@ -2,9 +2,7 @@
 add_path "../Example";
 *)
 
-(* to suppress document generation of some theories, use:
-no_document use_thys ["ThisTheory1", "ThisTheory2"];
-*)
+no_document use_thys ["Adhoc_Overloading"];
 
 (* for normal theory loading, use:
 use_thys ["ThatTheory1", "ThatTheory2", "ThatTheory3"];
