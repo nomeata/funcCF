@@ -1,19 +1,31 @@
 theory HOLCFAbsCF
-  imports CPSUtils HOLCF HOLCFUtils List_Cpo CPSScheme Utils HOLCFExCF SetMap
+  imports CPSUtils HOLCF HOLCFUtils List_Cpo CPSScheme Utils HOLCFExCF SetMap Adhoc_Overloading
 begin
+
+default_sort type
+
+consts abs :: "'a \<Rightarrow> 'b" ("|_|")
+
+setup {*
+  Adhoc_Overloading.add_overloaded @{const_name abs}
+*}
 
 class contour = discrete_cpo +
   fixes nb :: "'a \<Rightarrow> label \<Rightarrow> 'a"
     and initial_contour :: 'a
-    and abs_cnt :: "HOLCFExCF.contour \<Rightarrow> 'a" ("|_|")
-  assumes abs_cnt_nb: "|b| \<sqsubseteq> b_a \<Longrightarrow> |HOLCFExCF.nb b lab| \<sqsubseteq> nb b_a lab"
-     and abs_cnt_initial[simp]: "|HOLCFExCF.initial_contour| = initial_contour"
+    and abs_cnt :: "HOLCFExCF.contour \<Rightarrow> 'a"
+  assumes abs_cnt_nb: "abs_cnt b \<sqsubseteq> b_a \<Longrightarrow> abs_cnt (HOLCFExCF.nb b lab) \<sqsubseteq> nb b_a lab"
+     and abs_cnt_initial[simp]: "abs_cnt(HOLCFExCF.initial_contour) = initial_contour"
+
+setup {*
+  Adhoc_Overloading.add_variant @{const_name abs} @{const_name abs_cnt}
+*}
 
 instantiation unit :: contour
 begin
 definition "nb _ _ = ()"
 definition "initial_contour = ()"
-definition "|_| = ()"
+definition "abs_cnt _ = ()"
 instance by default auto
 end
 
@@ -42,8 +54,12 @@ types 'c venv = "var \<times> 'c \<Rightarrow> 'c d"
 
 text {* Abstraction functions *}
 
-definition abs_benv :: "HOLCFExCF.benv \<Rightarrow> 'c::contour benv" ("|_|")
-  where "|\<beta>| = Option.map abs_cnt \<circ> \<beta>"
+definition abs_benv :: "HOLCFExCF.benv \<Rightarrow> 'c::contour benv"
+  where "abs_benv \<beta> = Option.map abs_cnt \<circ> \<beta>"
+
+setup {*
+  Adhoc_Overloading.add_variant @{const_name abs} @{const_name abs_benv}
+*}
 
 lemma abs_benv_empty[simp]: "|empty| = empty"
 unfolding abs_benv_def by simp
@@ -51,22 +67,34 @@ unfolding abs_benv_def by simp
 lemma abs_benv_upd[simp]: "|\<beta>(c\<mapsto>b)| = |\<beta>| (c \<mapsto> |b| )"
   unfolding abs_benv_def by simp
 
-primrec abs_closure :: "HOLCFExCF.closure \<Rightarrow> 'c::contour closure"  ("|_|")
-  where "|(l,\<beta>)| = (l,|\<beta>| )"
+primrec abs_closure :: "HOLCFExCF.closure \<Rightarrow> 'c::contour closure"
+  where "abs_closure (l,\<beta>) = (l,|\<beta>| )"
 
-primrec abs_d :: "HOLCFExCF.d \<Rightarrow> 'c::contour d"  ("|_|")
-  where "|DI i| = {}"
-      | "|DP p| = {PP p}"
-      | "|DC cl| = {PC |cl|}"
-      | "|HOLCFExCF.Stop| = {Stop}"
+setup {*
+  Adhoc_Overloading.add_variant @{const_name abs} @{const_name abs_closure}
+*}
+
+primrec abs_d :: "HOLCFExCF.d \<Rightarrow> 'c::contour d"
+  where "abs_d (DI i) = {}"
+      | "abs_d (DP p) = {PP p}"
+      | "abs_d (DC cl) = {PC |cl|}"
+      | "abs_d (HOLCFExCF.Stop) = {Stop}"
+
+setup {*
+  Adhoc_Overloading.add_variant @{const_name abs} @{const_name abs_d}
+*}
 
 lemma contents_is_Proc:
   assumes "isProc cnt"
   shows "contents |cnt| \<in> |cnt|"
 using assms by (cases cnt)auto
 
-definition abs_venv :: "HOLCFExCF.venv \<Rightarrow> 'c::contour venv" ("|_|")
-  where "|ve| = (\<lambda>(v,b_a). \<Union>{(case ve (v,b) of Some d \<Rightarrow> |d| | None \<Rightarrow> {}) | b. |b| = b_a })"
+definition abs_venv :: "HOLCFExCF.venv \<Rightarrow> 'c::contour venv"
+  where "abs_venv ve = (\<lambda>(v,b_a). \<Union>{(case ve (v,b) of Some d \<Rightarrow> |d| | None \<Rightarrow> {}) | b. |b| = b_a })"
+
+setup {*
+  Adhoc_Overloading.add_variant @{const_name abs} @{const_name abs_venv}
+*}
 
 fun evalV :: "val \<Rightarrow> 'c benv \<Rightarrow> 'c venv \<Rightarrow> 'c d"
   where "evalV (C _ i) \<beta> ve = {}"
@@ -80,19 +108,31 @@ fun evalV :: "val \<Rightarrow> 'c benv \<Rightarrow> 'c venv \<Rightarrow> 'c d
 types 'c ccache = "((label \<times> 'c benv) \<times> 'c proc) set"
       'c ans = "'c ccache"
 
-definition abs_ccache :: "HOLCFExCF.ccache \<Rightarrow> 'c::contour ccache" ("|_|")
+definition abs_ccache :: "HOLCFExCF.ccache \<Rightarrow> 'c::contour ccache"
   where "abs_ccache cc = (\<Union>((c,\<beta>),d) \<in> cc . {((c,abs_benv \<beta>), p) | p . p\<in>abs_d d})"
 (* equivalent, but I already have cont2cont for UNION
   where "abs_ccache cc = { ((c,abs_benv \<beta>),p) | c \<beta> p d . ((c,\<beta>),d) \<in> cc \<and> p \<in> abs_d d}" *)
 
+setup {*
+  Adhoc_Overloading.add_variant @{const_name abs} @{const_name abs_ccache}
+*}
+
 types 'c fstate = "('c proc \<times> 'c d list \<times> 'c venv \<times> 'c)"
       'c cstate = "(call \<times> 'c benv \<times> 'c venv \<times> 'c)"
 
-fun abs_fstate :: "HOLCFExCF.fstate \<Rightarrow> 'c::contour fstate"  ("|_|")
-  where "|(d,ds,ve,b)| = (contents |d|, map abs_d ds, |ve|, |b| )"
+fun abs_fstate :: "HOLCFExCF.fstate \<Rightarrow> 'c::contour fstate"
+  where "abs_fstate (d,ds,ve,b) = (contents |d|, map abs_d ds, |ve|, |b| )"
 
-fun abs_cstate :: "HOLCFExCF.cstate \<Rightarrow> 'c::contour cstate" ("|_|")
-  where "|(c,\<beta>,ve,b)| = (c, |\<beta>|, |ve|, |b| )"
+setup {*
+  Adhoc_Overloading.add_variant @{const_name abs} @{const_name abs_fstate}
+*}
+
+fun abs_cstate :: "HOLCFExCF.cstate \<Rightarrow> 'c::contour cstate"
+  where "abs_cstate (c,\<beta>,ve,b) = (c, |\<beta>|, |ve|, |b| )"
+
+setup {*
+  Adhoc_Overloading.add_variant @{const_name abs} @{const_name abs_cstate}
+*}
 
 lemma cont2cont_lambda_case [simp, cont2cont]:
   assumes "\<And>a b c. cont (\<lambda>x. f x a b c)"
