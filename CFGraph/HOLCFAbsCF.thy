@@ -15,7 +15,7 @@ class contour = discrete_cpo +
     and initial_contour :: 'a
     and abs_cnt :: "HOLCFExCF.contour \<Rightarrow> 'a"
   assumes abs_cnt_nb: "abs_cnt b \<sqsubseteq> b_a \<Longrightarrow> abs_cnt (HOLCFExCF.nb b lab) \<sqsubseteq> nb b_a lab"
-     and abs_cnt_initial[simp]: "abs_cnt(HOLCFExCF.initial_contour) = initial_contour"
+     and abs_cnt_initial[simp]: "abs_cnt(\<binit>) = initial_contour"
 
 setup {*
   Adhoc_Overloading.add_variant @{const_name abs} @{const_name abs_cnt}

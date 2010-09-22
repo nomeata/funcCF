@@ -4,8 +4,8 @@ begin
 
 typedef contour = "UNIV::label list set" by auto
 
-definition initial_contour
-  where "initial_contour = Abs_contour []"
+definition initial_contour ("\<binit>")
+  where "\<binit> = Abs_contour []"
 
 definition nb 
   where "nb b c = Abs_contour (c # Rep_contour b)"
@@ -248,14 +248,14 @@ definition evalCPS :: "prog \<Rightarrow> ans"
   where "evalCPS l = (let ve = empty;
                           \<beta> = empty;
                           f = evalV (L l) \<beta> ve
-                      in  evalF\<cdot>(Discr (f,[Stop],ve,initial_contour)))"
+                      in  evalF\<cdot>(Discr (f,[Stop],ve,\<binit>)))"
 
-lemma correct_ex1: "evalCPS ex1 = {((2,[1 \<mapsto> initial_contour]), Stop)}"
+lemma correct_ex1: "evalCPS ex1 = {((2,[1 \<mapsto> \<binit>]), Stop)}"
 unfolding evalCPS_def
 by simp
 
-lemma correct_ex2: "evalCPS ex2 = {((2, [1 \<mapsto> initial_contour]), DP (Plus 3)),
-                                   ((3, [3 \<mapsto> nb initial_contour 2]),  Stop)}"
+lemma correct_ex2: "evalCPS ex2 = {((2, [1 \<mapsto> \<binit>]), DP (Plus 3)),
+                                   ((3, [3 \<mapsto> nb \<binit> 2]),  Stop)}"
 unfolding evalCPS_def
 by (simp)
 
