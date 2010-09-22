@@ -10,5 +10,4 @@ no_document use_thys ["ThisTheory1", "ThisTheory2"];
 use_thys ["ThatTheory1", "ThatTheory2", "ThatTheory3"];
 *)
 
-use_thys ["Submission"];
-
+use_thys ["HOLCFAbsCF","HOLCFExSV"];
