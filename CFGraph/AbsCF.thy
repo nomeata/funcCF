@@ -4,7 +4,7 @@ begin
 
 default_sort type
 
-class contour = discrete_cpo +
+class contour =
   fixes nb_a :: "'a \<Rightarrow> label \<Rightarrow> 'a" ("\<anb>")
     and a_initial_contour :: 'a ("\<abinit>")
 
@@ -12,7 +12,7 @@ instantiation unit :: contour
 begin
 definition "\<anb> _ _ = ()"
 definition "\<abinit> = ()"
-instance by default auto
+instance by default
 end
 
 types 'c a_benv = "label \<rightharpoonup> 'c" ("_ \<abenv>" [1000])

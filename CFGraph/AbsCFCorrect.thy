@@ -1,5 +1,5 @@
 theory AbsCFCorrect
-  imports AbsCF ExCF Adhoc_Overloading List_Cpo
+  imports AbsCF ExCF Adhoc_Overloading
 begin
 
 default_sort type
@@ -14,20 +14,6 @@ begin
 definition "abs_cnt _ = ()"
 instance by default auto
 end
-
-
-instantiation proc :: (type)discrete_cpo
-begin
-definition [simp]: "(x::'a \<aproc>) \<sqsubseteq> y \<longleftrightarrow> x = y"
-instance by default simp
-end
-
-instantiation option :: (type)discrete_cpo
-begin
-definition [iff]: "(x::'a option) \<sqsubseteq> y \<longleftrightarrow> x = y"
-instance by default simp
-end
-
 
 consts abs :: "'a \<Rightarrow> 'b" ("|_|")
 
@@ -266,7 +252,7 @@ case (Next evalF evalC) {
       from abs_b abs_ds
       have "list_all2 venv_approx (map (\<lambda>(v, y). |[(v, b) \<mapsto> y]| ) (zip vs ds))
                                   (map (\<lambda>(v, y). {(v,b_a) := y}.) (zip vs ds_a))"
-        by (auto simp add: ds_approx_def d_approx_def venv_approx_def abs_venv_singleton below_list_def list_all2_conv_all_nth intro:smap_singleton_mono list_all2I)
+        by (auto simp add: ds_approx_def d_approx_def venv_approx_def abs_venv_singleton list_all2_conv_all_nth intro:smap_singleton_mono list_all2I)
       thus ?thesis
         by (auto simp add:venv_approx_def intro: smap_union_mono[OF smap_less_refl smap_Union_mono])
     qed

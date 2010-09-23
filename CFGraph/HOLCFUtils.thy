@@ -102,29 +102,6 @@ case (Limit Y)
 qed
 
 
-instantiation nat :: discrete_cpo
-begin
-
-definition
-  [simp]: "(x::nat) \<sqsubseteq> y \<longleftrightarrow> x = y"
-
-instance
-by default simp
-
-end
-
-instantiation int :: discrete_cpo
-begin
-
-definition
-  [simp]: "(x::int) \<sqsubseteq> y \<longleftrightarrow> x = y"
-
-instance
-by default simp
-
-end
-
-
 lemma cont2cont_Let_simple[simp,cont2cont]:
   assumes "cont (\<lambda>x. g x t)"
   shows "cont (\<lambda>x. let y = t in g x y)"
