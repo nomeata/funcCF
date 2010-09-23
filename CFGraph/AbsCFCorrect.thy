@@ -6,7 +6,7 @@ default_sort type
 
 class contour_a = contour +
   fixes abs_cnt :: "contour \<Rightarrow> 'a"
-  assumes abs_cnt_nb: "abs_cnt b \<sqsubseteq> b_a \<Longrightarrow> abs_cnt (nb b lab) \<sqsubseteq> \<anb> b_a lab"
+  assumes abs_cnt_nb[simp]: "abs_cnt (nb b lab) = \<anb> (abs_cnt b) lab"
      and abs_cnt_initial[simp]: "abs_cnt(\<binit>) = \<abinit>"
 
 instantiation unit :: contour_a
@@ -145,20 +145,44 @@ lemma abs_venv_singleton: "|[(v,b) \<mapsto> d]| = {(v,|b| ) := |d|}."
   by (rule ext, auto simp add:abs_venv_def smap_singleton_def smap_empty_def)
 
 definition ccache_approx :: "'c \<accache> \<Rightarrow>'c \<accache> \<Rightarrow> bool"
-  where "ccache_approx = below"
+  where "ccache_approx = less_eq"
 
 setup {* Adhoc_Overloading.add_variant @{const_name approx} @{const_name ccache_approx} *}
+
+lemma ccache_approx_empty[simp]: "{} \<lessapprox> x"
+  unfolding ccache_approx_def by simp
+
+lemmas ccache_approx_trans[trans] = subset_trans[where 'a = "((label \<times> 'c \<abenv>) \<times> 'c \<aproc>)",folded ccache_approx_def, standard]
+lemmas Un_mono_approx = Un_mono[where 'a = "((label \<times> 'c \<abenv>) \<times> 'c \<aproc>)",folded ccache_approx_def, standard]
+lemmas Un_upper1_approx = Un_upper1[where 'a = "((label \<times> 'c \<abenv>) \<times> 'c \<aproc>)",folded ccache_approx_def, standard]
+lemmas Un_upper2_approx = Un_upper2[where 'a = "((label \<times> 'c \<abenv>) \<times> 'c \<aproc>)",folded ccache_approx_def, standard]
 
 lemma abs_ccache_union: "|c1 \<union> c2| \<lessapprox> |c1| \<union> |c2|"
   unfolding ccache_approx_def abs_ccache_def by auto
 
-lemma abs_d_evalV:
+definition d_approx :: "'c \<ad> \<Rightarrow>'c \<ad> \<Rightarrow> bool"
+  where "d_approx = less_eq"
+
+setup {* Adhoc_Overloading.add_variant @{const_name approx} @{const_name d_approx} *}
+
+lemma d_approx_empty[simp]: "{} \<lessapprox> (d::'c \<ad>)"
+  unfolding d_approx_def by simp
+
+definition ds_approx :: "'c \<ad> list \<Rightarrow>'c \<ad> list \<Rightarrow> bool"
+  where "ds_approx = list_all2 d_approx"
+
+setup {* Adhoc_Overloading.add_variant @{const_name approx} @{const_name ds_approx} *}
+
+lemma ds_approx_empty[simp]: "[] \<lessapprox> []"
+  unfolding ds_approx_def by simp
+
+lemma lemma7:
   assumes "|ve::venv| \<lessapprox> ve_a"
-  shows "|\<A> f \<beta> ve| \<subseteq> \<aA> f |\<beta>| ve_a"
+  shows "|\<A> f \<beta> ve| \<lessapprox> \<aA> f |\<beta>| ve_a"
 proof(cases f)
 case (R _ v)
-  from assms have assm': "\<And>v b. option_case {} abs_d (ve (v,b))  \<subseteq> ve_a (v,|b| )"
-    by (auto simp add:abs_venv_def venv_approx_def smap_less_def elim!:allE)
+  from assms have assm': "\<And>v b. option_case {} abs_d (ve (v,b)) \<lessapprox> ve_a (v,|b| )"
+    by (auto simp add:d_approx_def abs_venv_def venv_approx_def smap_less_def elim!:allE)
   show ?thesis
     proof(cases "\<beta> (binder v)")
     case None thus ?thesis using R by auto next
@@ -166,18 +190,17 @@ case (R _ v)
       thus ?thesis using R assm'[of v b]
          by (auto simp add:abs_benv_def split:option.split)
   qed
-qed auto
+qed (auto simp add:d_approx_def)
 
-definition d_approx :: "'c \<ad> \<Rightarrow>'c \<ad> \<Rightarrow> bool"
-  where "d_approx = less_eq"
+inductive fstate_approx :: "'c \<afstate> \<Rightarrow>'c \<afstate> \<Rightarrow> bool"
+  where "\<lbrakk> ve \<lessapprox> ve' ; ds \<lessapprox> ds' \<rbrakk>
+         \<Longrightarrow> fstate_approx (proc,ds,ve,b) (proc,ds',ve',b)"
+setup {* Adhoc_Overloading.add_variant @{const_name approx} @{const_name fstate_approx} *}
 
-setup {* Adhoc_Overloading.add_variant @{const_name approx} @{const_name d_approx} *}
+inductive cstate_approx :: "'c \<acstate> \<Rightarrow>'c \<acstate> \<Rightarrow> bool"
+  where "\<lbrakk> ve \<lessapprox> ve' \<rbrakk> \<Longrightarrow> cstate_approx (c,\<beta>,ve,b) (c,\<beta>,ve',b)"
+setup {* Adhoc_Overloading.add_variant @{const_name approx} @{const_name cstate_approx} *}
 
-lemma lemma7:
-  assumes "|ve::venv| \<lessapprox> ve_a"
-  shows "|\<A> a \<beta> ve| \<lessapprox> \<aA> a |\<beta>| ve_a"
-using assms
- by (subst d_approx_def, rule abs_d_evalV)
 
 lemma cont2cont_abs_ccache[cont2cont,simp]:
   assumes "cont f"
@@ -187,12 +210,13 @@ using assms
 by (rule cont2cont)(rule cont_const)
 
 lemma lemma89:
- shows "|fstate| \<sqsubseteq> (fstate_a::'c::contour_a \<afstate>) \<Longrightarrow> |\<F>\<cdot>(Discr fstate)| \<sqsubseteq> \<aF>\<cdot>(Discr fstate_a)"
-   and "|cstate| \<sqsubseteq> (cstate_a::'c::contour_a \<acstate>) \<Longrightarrow> |\<C>\<cdot>(Discr cstate)| \<sqsubseteq> \<aC>\<cdot>(Discr cstate_a)"
+ shows "|fstate| \<lessapprox> (fstate_a::'c::contour_a \<afstate>) \<Longrightarrow> |\<F>\<cdot>(Discr fstate)| \<lessapprox> \<aF>\<cdot>(Discr fstate_a)"
+   and "|cstate| \<lessapprox> (cstate_a::'c::contour_a \<acstate>) \<Longrightarrow> |\<C>\<cdot>(Discr cstate)| \<lessapprox> \<aC>\<cdot>(Discr cstate_a)"
 proof(induct arbitrary: fstate fstate_a cstate cstate_a rule: evalF_evalC_induct)
 print_cases
 case Admissibility show ?case
-  by (intro adm_lemmas adm_prod_split adm_not_conj adm_not_mem adm_single_valued cont2cont)
+  unfolding ccache_approx_def 
+  by (intro adm_lemmas adm_subset adm_prod_split adm_not_conj adm_not_mem adm_single_valued cont2cont)
 next
 case Bottom {
   case 1 show ?case by simp next
@@ -208,12 +232,13 @@ case (Next evalF evalC) {
     by (cases fstate_a, auto)
   ultimately
   have abs_d: "contents |d| = proc"
-   and abs_ds: "map abs_d ds \<sqsubseteq> ds_a"
-   and abs_ve: "|ve| \<sqsubseteq> ve_a"
-   and abs_b: "|b| \<sqsubseteq> b_a"
-  using 1 by auto
+   and abs_ds: "map abs_d ds \<lessapprox> ds_a"
+   and abs_ve: "|ve| \<lessapprox> ve_a"
+   and abs_b: "|b| = b_a"
+  using 1 by (auto elim:fstate_approx.cases)
 
-  from abs_ds have dslength: "length ds = length ds_a" by (auto dest: below_same_length)
+  from abs_ds have dslength: "length ds = length ds_a"
+    by (auto simp add:ds_approx_def dest!:list_all2_lengthD)
 
   from fstate fstate_a abs_d abs_ds abs_ve abs_ds dslength
   show ?case
@@ -221,192 +246,197 @@ case (Next evalF evalC) {
   fix \<beta> and lab and vs:: "var list" and c
   assume ds_a_length: "length vs = length ds_a"
 
-  have "|\<beta>(lab \<mapsto> b)| \<sqsubseteq> |\<beta>| (lab \<mapsto> b_a)"
+  have "|\<beta>(lab \<mapsto> b)| = |\<beta>| (lab \<mapsto> b_a)"
     unfolding below_fun_def using abs_b by simp
   moreover
 
   { have "|ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)|
-          \<sqsubseteq> |ve| \<union>. |map_of (rev (zip (map (\<lambda>v. (v, b)) vs) ds))|"
+          \<lessapprox> |ve| \<union>. |map_of (rev (zip (map (\<lambda>v. (v, b)) vs) ds))|"
       unfolding map_upds_def by (intro abs_venv_union)
     also
-    have "\<dots> \<sqsubseteq> ve_a  \<union>. (\<Union>. (map (\<lambda>(v,k). |[v \<mapsto> k]| ) (zip (map (\<lambda>v. (v, b)) vs) ds)))"
-      by (rule smap_union_mono[OF abs_ve abs_venv_map_of_rev])
+    have "\<dots> \<lessapprox> ve_a  \<union>. (\<Union>. (map (\<lambda>(v,k). |[v \<mapsto> k]| ) (zip (map (\<lambda>v. (v, b)) vs) ds)))"
+      using abs_ve abs_venv_map_of_rev
+      by (auto intro:smap_union_mono simp add:venv_approx_def)
     also
     have "\<dots> = ve_a \<union>. (\<Union>. (map (\<lambda>(v,y). |[(v,b) \<mapsto> y]| ) (zip vs ds)))"
       by (auto simp add: zip_map1 o_def split_def)
     also
-    have "\<dots> \<sqsubseteq> ve_a \<union>. (\<Union>. (map (\<lambda>(v,y). {(v,b_a) := y}.) (zip vs ds_a)))"
+    have "\<dots> \<lessapprox> ve_a \<union>. (\<Union>. (map (\<lambda>(v,y). {(v,b_a) := y}.) (zip vs ds_a)))"
     proof-
       from abs_b abs_ds
-      have"list_all2 op \<sqsubseteq> (map (\<lambda>(v, y). |[(v, b) \<mapsto> y]| ) (zip vs ds))
-                          (map (\<lambda>(v, y). {(v,b_a) := y}.) (zip vs ds_a))"
-      by (auto simp add: abs_venv_singleton below_list_def list_all2_conv_all_nth intro:smap_singleton_mono list_all2I)
+      have "list_all2 venv_approx (map (\<lambda>(v, y). |[(v, b) \<mapsto> y]| ) (zip vs ds))
+                                  (map (\<lambda>(v, y). {(v,b_a) := y}.) (zip vs ds_a))"
+        by (auto simp add: ds_approx_def d_approx_def venv_approx_def abs_venv_singleton below_list_def list_all2_conv_all_nth intro:smap_singleton_mono list_all2I)
       thus ?thesis
-        by(rule smap_union_mono[OF below_refl smap_Union_mono])
+        by (auto simp add:venv_approx_def intro: smap_union_mono[OF smap_less_refl smap_Union_mono])
     qed
     finally
     have "|ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds)|
-          \<sqsubseteq> ve_a \<union>. (\<Union>. (map (\<lambda>(v,y). {(v, b_a) := y}.) (zip vs ds_a)))".
+          \<lessapprox> ve_a \<union>. (\<Union>. (map (\<lambda>(v,y). {(v, b_a) := y}.) (zip vs ds_a)))".
   }
   ultimately
   have prem: "|(c, \<beta>(lab \<mapsto> b), ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds), b)|
-        \<sqsubseteq> (c,  |\<beta>|(lab \<mapsto> b_a), ve_a \<union>. (\<Union>.(map (\<lambda>(v, y). {(v, b_a) := y}.) (zip vs ds_a))), b_a)"
+        \<lessapprox> (c,  |\<beta>|(lab \<mapsto> b_a), ve_a \<union>. (\<Union>.(map (\<lambda>(v, y). {(v, b_a) := y}.) (zip vs ds_a))), b_a)"
     using abs_b
-    by(auto simp only:Pair_below_iff abs_cstate.simps)
+    by(auto intro:cstate_approx.intros simp add: abs_cstate.simps)
 
   show "|evalC\<cdot>(Discr (c, \<beta>(lab \<mapsto> b), ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds), b))|
-        \<sqsubseteq> \<aF>\<cdot>(Discr (PC (Lambda lab vs c, |\<beta>| ), ds_a, ve_a, b_a))"
+        \<lessapprox> \<aF>\<cdot>(Discr (PC (Lambda lab vs c, |\<beta>| ), ds_a, ve_a, b_a))"
   using Next.hyps(2)[OF prem] ds_a_length
   by (subst a_evalF.simps, simp del:a_evalF.simps a_evalC.simps)
 
   next
   fix lab a1 a2 cnt
   assume "isProc cnt"
-  assume abs_ds': "[{}, {}, |cnt| ] \<sqsubseteq> ds_a"
-  then obtain a1_a a2_a cnt_a where ds_a: "ds_a = [a1_a, a2_a, cnt_a]" and abs_cnt: "|cnt| \<sqsubseteq> cnt_a"
-    using below_same_length[OF abs_ds']
-    by (cases ds_a rule:list.exhaust[OF _ list.exhaust[OF _ list.exhaust, of _ _ "\<lambda>_ x. x"],  of _ _ "\<lambda>_ x. x"]) auto
+  assume abs_ds': "[{}, {}, |cnt| ] \<lessapprox> ds_a"
+  then obtain a1_a a2_a cnt_a where ds_a: "ds_a = [a1_a, a2_a, cnt_a]" and abs_cnt: "|cnt| \<lessapprox> cnt_a"
+    unfolding ds_approx_def
+    by (cases ds_a rule:list.exhaust[OF _ list.exhaust[OF _ list.exhaust, of _ _ "\<lambda>_ x. x"],  of _ _ "\<lambda>_ x. x"])
+       (auto simp add:ds_approx_def)
 
-  have new_elem: "|{((lab, [lab \<mapsto> b]), cnt)}| \<sqsubseteq> {((lab, [lab \<mapsto> b_a]), cont) |cont. cont \<in> cnt_a}"
+  have new_elem: "|{((lab, [lab \<mapsto> b]), cnt)}| \<lessapprox> {((lab, [lab \<mapsto> b_a]), cont) |cont. cont \<in> cnt_a}"
     using abs_cnt and abs_b
-    by (auto simp add:sqsubset_is_subset)
+    by (auto simp add:ccache_approx_def d_approx_def)
 
-  have prem: "|(cnt, [DI (a1 + a2)], ve, nb b lab)| \<sqsubseteq>
+  have prem: "|(cnt, [DI (a1 + a2)], ve, nb b lab)| \<lessapprox>
               (contents |cnt|, [{}], ve_a, \<anb> b_a lab)"
-    using abs_ve and abs_cnt_nb[OF abs_b]
-    by (simp)
+    using abs_ve and abs_b
+    by (auto intro:fstate_approx.intros simp add:ds_approx_def)
+
   have "|(evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, nb b lab)))|
-       \<sqsubseteq> \<aF>\<cdot>(Discr (contents |cnt|, [{}], ve_a, \<anb> b_a lab))"
+       \<lessapprox> \<aF>\<cdot>(Discr (contents |cnt|, [{}], ve_a, \<anb> b_a lab))"
     by (rule Next.hyps(1)[OF prem])
-  also have "\<dots> \<sqsubseteq> (\<Union>cnt\<in>cnt_a. \<aF>\<cdot>(Discr (cnt, [{}], ve_a, \<anb> b_a lab)))"
+  also have "\<dots> \<lessapprox> (\<Union>cnt\<in>cnt_a. \<aF>\<cdot>(Discr (cnt, [{}], ve_a, \<anb> b_a lab)))"
     using abs_cnt
-    by (auto intro: contents_is_Proc[OF `isProc cnt`] simp del: a_evalF.simps simp add:sqsubset_is_subset)
+    by (auto intro: contents_is_Proc[OF `isProc cnt`] simp del: a_evalF.simps simp add:ccache_approx_def d_approx_def)
   finally
   have old_elems: "|(evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, nb b lab)))|
-       \<sqsubseteq> (\<Union>cnt\<in>cnt_a. \<aF>\<cdot>(Discr (cnt, [{}], ve_a, \<anb> b_a lab)))".
+       \<lessapprox> (\<Union>cnt\<in>cnt_a. \<aF>\<cdot>(Discr (cnt, [{}], ve_a, \<anb> b_a lab)))".
 
   have "|((evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, nb b lab)))
           \<union> {((lab, [lab \<mapsto> b]), cnt)})|
-        \<sqsubseteq> |(evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, nb b lab)))|
+        \<lessapprox> |(evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, nb b lab)))|
           \<union> |{((lab, [lab \<mapsto> b]), cnt)}|"
     by (rule abs_ccache_union)
   also
-  have "\<dots> \<sqsubseteq>
+  have "\<dots> \<lessapprox>
         (\<Union>cnt\<in>cnt_a. \<aF>\<cdot>(Discr (cnt, [{}], ve_a, \<anb> b_a lab)))
         \<union> {((lab, [lab \<mapsto> b_a]), cont) |cont. cont \<in> cnt_a}"
-    by (rule Un_mono_sq[OF old_elems new_elem])
+    by (rule Un_mono_approx[OF old_elems new_elem])
   finally
   show "|insert ((lab, [lab \<mapsto> b]), cnt)
                 (evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, nb b lab)))|
-        \<sqsubseteq> \<aF>\<cdot>(Discr (PP (prim.Plus lab), ds_a, ve_a, b_a))"
+        \<lessapprox> \<aF>\<cdot>(Discr (PP (prim.Plus lab), ds_a, ve_a, b_a))"
     using ds_a by (subst a_evalF.simps)(auto simp del:a_evalF.simps)
   next
 
   fix ct cf v cntt cntf
   assume "isProc cntt"
   assume "isProc cntf"
-  assume abs_ds': "[{}, |cntt|, |cntf| ] \<sqsubseteq> ds_a"
+  assume abs_ds': "[{}, |cntt|, |cntf| ] \<lessapprox> ds_a"
   then obtain v_a cntt_a cntf_a where ds_a: "ds_a = [v_a, cntt_a, cntf_a]"
-                              and abs_cntt: "|cntt| \<sqsubseteq> cntt_a"
-                              and abs_cntf: "|cntf| \<sqsubseteq> cntf_a"
-    using below_same_length[OF abs_ds']
-    by (cases ds_a rule:list.exhaust[OF _ list.exhaust[OF _ list.exhaust, of _ _ "\<lambda>_ x. x"],  of _ _ "\<lambda>_ x. x"])auto
+                              and abs_cntt: "|cntt| \<lessapprox> cntt_a"
+                              and abs_cntf: "|cntf| \<lessapprox> cntf_a"
+    by (cases ds_a rule:list.exhaust[OF _ list.exhaust[OF _ list.exhaust, of _ _ "\<lambda>_ x. x"],  of _ _ "\<lambda>_ x. x"])
+       (auto simp add:ds_approx_def)
 
   let ?c = "ct::label" and ?cnt = cntt and ?cnt_a = cntt_a
 
-  have new_elem: "|{((?c, [?c \<mapsto> b]), ?cnt)}| \<sqsubseteq> {((?c, [?c \<mapsto> b_a]), cont) |cont. cont \<in> ?cnt_a}"
-    using abs_cntt and abs_cntf and abs_b by (auto simp add:sqsubset_is_subset)
+  have new_elem: "|{((?c, [?c \<mapsto> b]), ?cnt)}| \<lessapprox> {((?c, [?c \<mapsto> b_a]), cont) |cont. cont \<in> ?cnt_a}"
+    using abs_cntt and abs_cntf and abs_b 
+    by (auto simp add:ccache_approx_def d_approx_def)
 
-  have prem: "|(?cnt, [], ve, nb b ?c)| \<sqsubseteq>
+  have prem: "|(?cnt, [], ve, nb b ?c)| \<lessapprox>
               (contents |?cnt|, [], ve_a, \<anb> b_a ?c)"
-    using abs_ve and abs_cnt_nb[OF abs_b]
-    by (simp)
+    using abs_ve and abs_b
+    by (auto intro:fstate_approx.intros)
+
   have "|evalF\<cdot>(Discr (?cnt, [], ve, nb b ?c))|
-       \<sqsubseteq> \<aF>\<cdot>(Discr (contents |?cnt|, [], ve_a, \<anb> b_a ?c))"
+       \<lessapprox> \<aF>\<cdot>(Discr (contents |?cnt|, [], ve_a, \<anb> b_a ?c))"
     by (rule Next.hyps(1)[OF prem])
-  also have "\<dots> \<sqsubseteq> (\<Union>cnt\<in>?cnt_a. \<aF>\<cdot>(Discr (cnt, [], ve_a, \<anb> b_a ?c)))"
+  also have "\<dots> \<lessapprox> (\<Union>cnt\<in>?cnt_a. \<aF>\<cdot>(Discr (cnt, [], ve_a, \<anb> b_a ?c)))"
     using abs_cntt and abs_cntf
-    by (auto intro: contents_is_Proc[OF `isProc ?cnt`] simp del: a_evalF.simps simp add:sqsubset_is_subset)
+    by (auto intro: contents_is_Proc[OF `isProc ?cnt`] simp del: a_evalF.simps simp add:ccache_approx_def d_approx_def)
 
   finally
   have old_elems: "|evalF\<cdot>(Discr (?cnt, [], ve, nb b ?c))|
-       \<sqsubseteq> (\<Union>cnt\<in>?cnt_a. \<aF>\<cdot>(Discr (cnt, [], ve_a, \<anb> b_a ?c)))".
+       \<lessapprox> (\<Union>cnt\<in>?cnt_a. \<aF>\<cdot>(Discr (cnt, [], ve_a, \<anb> b_a ?c)))".
 
   have "|evalF\<cdot>(Discr (?cnt, [], ve, nb b ?c))
           \<union> {((?c, [?c \<mapsto> b]), ?cnt)}|
-        \<sqsubseteq> |evalF\<cdot>(Discr (?cnt, [], ve, nb b ?c))|
+        \<lessapprox> |evalF\<cdot>(Discr (?cnt, [], ve, nb b ?c))|
           \<union> |{((?c, [?c \<mapsto> b]), ?cnt)}|"
     by (rule abs_ccache_union)
   also
-  have "\<dots> \<sqsubseteq>
+  have "\<dots> \<lessapprox>
         (\<Union>cnt\<in>?cnt_a. \<aF>\<cdot>(Discr (cnt, [], ve_a, \<anb> b_a ?c)))
         \<union> {((?c, [?c \<mapsto> b_a]), cont) |cont. cont \<in> ?cnt_a}"
-    by (rule Un_mono_sq[OF old_elems new_elem])
+    by (rule Un_mono_approx[OF old_elems new_elem])
   also
-  have "\<dots> \<sqsubseteq>
+  have "\<dots> \<lessapprox>
         ((\<Union>cnt\<in>cntt_a. \<aF>\<cdot>(Discr (cnt, [], ve_a, \<anb> b_a ct)))
           \<union> {((ct, [ct \<mapsto> b_a]), cont) |cont. cont \<in> cntt_a})
       \<union> ((\<Union>cnt\<in>cntf_a. \<aF>\<cdot>(Discr (cnt, [], ve_a, \<anb> b_a cf)))
           \<union> {((cf, [cf \<mapsto> b_a]), cont) |cont. cont \<in> cntf_a})"
-    by (rule subst[OF sqsubset_is_subset[THEN sym],of "\<lambda>x. x",OF Un_upper1]
-       |rule subst[OF sqsubset_is_subset[THEN sym],of "\<lambda>x. x",OF Un_upper2])
+    by (rule Un_upper1_approx|rule Un_upper2_approx)
   finally
   show "|insert ((?c, [?c \<mapsto> b]), ?cnt)
-                (evalF\<cdot>(Discr (?cnt, [], ve, nb b ?c)))| \<sqsubseteq>
+                (evalF\<cdot>(Discr (?cnt, [], ve, nb b ?c)))| \<lessapprox>
           \<aF>\<cdot>(Discr (PP (prim.If ct cf), ds_a, ve_a, b_a))"
     using ds_a by (subst a_evalF.simps)(auto simp del:a_evalF.simps)
   next
-  fix ct cf cntt cntf
+  fix ct cf v cntt cntf
   assume "isProc cntt"
   assume "isProc cntf"
-  assume abs_ds': "[{}, |cntt|, |cntf| ] \<sqsubseteq> ds_a"
+  assume abs_ds': "[{}, |cntt|, |cntf| ] \<lessapprox> ds_a"
   then obtain v_a cntt_a cntf_a where ds_a: "ds_a = [v_a, cntt_a, cntf_a]"
-                              and abs_cntt: "|cntt| \<sqsubseteq> cntt_a"
-                              and abs_cntf: "|cntf| \<sqsubseteq> cntf_a"
-    using below_same_length[OF abs_ds']
-    by (cases ds_a rule:list.exhaust[OF _ list.exhaust[OF _ list.exhaust, of _ _ "\<lambda>_ x. x"],  of _ _ "\<lambda>_ x. x"])auto
+                              and abs_cntt: "|cntt| \<lessapprox> cntt_a"
+                              and abs_cntf: "|cntf| \<lessapprox> cntf_a"
+    by (cases ds_a rule:list.exhaust[OF _ list.exhaust[OF _ list.exhaust, of _ _ "\<lambda>_ x. x"],  of _ _ "\<lambda>_ x. x"])
+       (auto simp add:ds_approx_def)
 
   let ?c = "cf::label" and ?cnt = cntf and ?cnt_a = cntf_a
 
-  have new_elem: "|{((?c, [?c \<mapsto> b]), ?cnt)}| \<sqsubseteq> {((?c, [?c \<mapsto> b_a]), cont) |cont. cont \<in> ?cnt_a}"
-    using abs_cntt and abs_cntf and abs_b by (auto simp add:sqsubset_is_subset)
+  have new_elem: "|{((?c, [?c \<mapsto> b]), ?cnt)}| \<lessapprox> {((?c, [?c \<mapsto> b_a]), cont) |cont. cont \<in> ?cnt_a}"
+    using abs_cntt and abs_cntf and abs_b 
+    by (auto simp add:ccache_approx_def d_approx_def)
 
-  have prem: "|(?cnt, [], ve, nb b ?c)| \<sqsubseteq>
+  have prem: "|(?cnt, [], ve, nb b ?c)| \<lessapprox>
               (contents |?cnt|, [], ve_a, \<anb> b_a ?c)"
-    using abs_ve and abs_cnt_nb[OF abs_b]
-    by (simp)
+    using abs_ve and abs_b
+    by (auto intro:fstate_approx.intros)
+
   have "|evalF\<cdot>(Discr (?cnt, [], ve, nb b ?c))|
-       \<sqsubseteq> \<aF>\<cdot>(Discr (contents |?cnt|, [], ve_a, \<anb> b_a ?c))"
+       \<lessapprox> \<aF>\<cdot>(Discr (contents |?cnt|, [], ve_a, \<anb> b_a ?c))"
     by (rule Next.hyps(1)[OF prem])
-  also have "\<dots> \<sqsubseteq> (\<Union>cnt\<in>?cnt_a. \<aF>\<cdot>(Discr (cnt, [], ve_a, \<anb> b_a ?c)))"
+  also have "\<dots> \<lessapprox> (\<Union>cnt\<in>?cnt_a. \<aF>\<cdot>(Discr (cnt, [], ve_a, \<anb> b_a ?c)))"
     using abs_cntt and abs_cntf
-    by (auto intro: contents_is_Proc[OF `isProc ?cnt`] simp del: a_evalF.simps simp add:sqsubset_is_subset)
+    by (auto intro: contents_is_Proc[OF `isProc ?cnt`] simp del: a_evalF.simps simp add:ccache_approx_def d_approx_def)
 
   finally
   have old_elems: "|evalF\<cdot>(Discr (?cnt, [], ve, nb b ?c))|
-       \<sqsubseteq> (\<Union>cnt\<in>?cnt_a. \<aF>\<cdot>(Discr (cnt, [], ve_a, \<anb> b_a ?c)))".
+       \<lessapprox> (\<Union>cnt\<in>?cnt_a. \<aF>\<cdot>(Discr (cnt, [], ve_a, \<anb> b_a ?c)))".
 
   have "|evalF\<cdot>(Discr (?cnt, [], ve, nb b ?c))
           \<union> {((?c, [?c \<mapsto> b]), ?cnt)}|
-        \<sqsubseteq> |evalF\<cdot>(Discr (?cnt, [], ve, nb b ?c))|
+        \<lessapprox> |evalF\<cdot>(Discr (?cnt, [], ve, nb b ?c))|
           \<union> |{((?c, [?c \<mapsto> b]), ?cnt)}|"
     by (rule abs_ccache_union)
   also
-  have "\<dots> \<sqsubseteq>
+  have "\<dots> \<lessapprox>
         (\<Union>cnt\<in>?cnt_a. \<aF>\<cdot>(Discr (cnt, [], ve_a, \<anb> b_a ?c)))
         \<union> {((?c, [?c \<mapsto> b_a]), cont) |cont. cont \<in> ?cnt_a}"
-    by (rule Un_mono_sq[OF old_elems new_elem])
+    by (rule Un_mono_approx[OF old_elems new_elem])
   also
-  have "\<dots> \<sqsubseteq>
+  have "\<dots> \<lessapprox>
         ((\<Union>cnt\<in>cntt_a. \<aF>\<cdot>(Discr (cnt, [], ve_a, \<anb> b_a ct)))
           \<union> {((ct, [ct \<mapsto> b_a]), cont) |cont. cont \<in> cntt_a})
       \<union> ((\<Union>cnt\<in>cntf_a. \<aF>\<cdot>(Discr (cnt, [], ve_a, \<anb> b_a cf)))
           \<union> {((cf, [cf \<mapsto> b_a]), cont) |cont. cont \<in> cntf_a})"
-    by (rule subst[OF sqsubset_is_subset[THEN sym],of "\<lambda>x. x",OF Un_upper1]
-       |rule subst[OF sqsubset_is_subset[THEN sym],of "\<lambda>x. x",OF Un_upper2])
+    by (rule Un_upper1_approx|rule Un_upper2_approx)
   finally
   show "|insert ((?c, [?c \<mapsto> b]), ?cnt)
-                (evalF\<cdot>(Discr (?cnt, [], ve, nb b ?c)))| \<sqsubseteq>
+                (evalF\<cdot>(Discr (?cnt, [], ve, nb b ?c)))| \<lessapprox>
           \<aF>\<cdot>(Discr (PP (prim.If ct cf), ds_a, ve_a, b_a))"
     using ds_a by (subst a_evalF.simps)(auto simp del:a_evalF.simps)
  qed
@@ -419,10 +449,10 @@ case 2
     by (cases cstate_a, auto)
   ultimately
   have abs_c: "c = c_a"
-   and abs_\<beta>: "|\<beta>| \<sqsubseteq> \<beta>_a"
-   and abs_ve: "|ve| \<sqsubseteq> ve_a"
-   and abs_b: "|b| \<sqsubseteq> b_a"
-  using 2 by auto
+   and abs_\<beta>: "|\<beta>| = \<beta>_a"
+   and abs_ve: "|ve| \<lessapprox> ve_a"
+   and abs_b: "|b| = b_a"
+  using 2 by (auto elim:cstate_approx.cases)
 
   from cstate cstate_a abs_c abs_\<beta> abs_b
   show ?case
@@ -432,45 +462,44 @@ case 2
   let ?d = "\<A> f \<beta> ve"
   assume "isProc ?d"
 
-  have "map (abs_d \<circ> (\<lambda>v. \<A> v \<beta> ve)) vs \<sqsubseteq> map (\<lambda>v. \<aA> v \<beta>_a ve_a) vs"
-    using abs_\<beta> and abs_d_evalV[OF abs_ve, of _ \<beta>]
-    unfolding below_list_def
-    by (auto intro!: list_all2I simp add:set_zip sqsubset_is_subset[THEN sym])
+  have "map (abs_d \<circ> (\<lambda>v. \<A> v \<beta> ve)) vs \<lessapprox> map (\<lambda>v. \<aA> v \<beta>_a ve_a) vs"
+    using abs_\<beta> and lemma7[OF abs_ve, of _ \<beta>]
+    by (auto intro!: list_all2I simp add:set_zip ds_approx_def)
 
   hence "|evalF\<cdot>(Discr (?d, map (\<lambda>v. \<A> v \<beta> ve) vs, ve, nb b lab))|
-     \<sqsubseteq>  \<aF>\<cdot>(Discr(contents |?d|, map (\<lambda>v. \<aA> v \<beta>_a ve_a) vs, ve_a, \<anb> |b| lab))"
+     \<lessapprox> \<aF>\<cdot>(Discr(contents |?d|, map (\<lambda>v. \<aA> v \<beta>_a ve_a) vs, ve_a, \<anb> |b| lab))"
     using abs_ve and abs_cnt_nb and abs_b
-    by -(rule Next.hyps(1), auto)
-  also have "\<dots> \<sqsubseteq> (\<Union>f'\<in>\<aA> f \<beta>_a ve_a.
+    by -(rule Next.hyps(1),auto intro:fstate_approx.intros)
+  also have "\<dots> \<lessapprox> (\<Union>f'\<in>\<aA> f \<beta>_a ve_a.
               \<aF>\<cdot>(Discr(f', map (\<lambda>v. \<aA> v \<beta>_a ve_a) vs, ve_a, \<anb> |b| lab)))"
-    using subsetD[OF abs_d_evalV[OF abs_ve] contents_is_Proc[OF `isProc ?d`]] and abs_\<beta>
-    by (auto simp del: a_evalF.simps simp add:sqsubset_is_subset)
+    using lemma7[OF abs_ve] contents_is_Proc[OF `isProc ?d`] abs_\<beta>
+    by (auto simp del: a_evalF.simps simp add:d_approx_def ccache_approx_def)
   finally
   have old_elems: "
      |evalF\<cdot>(Discr (\<A> f \<beta> ve, map (\<lambda>v. \<A> v \<beta> ve) vs, ve, nb b lab))|
-     \<sqsubseteq> (\<Union>f'\<in> \<aA> f \<beta>_a ve_a.
+     \<lessapprox> (\<Union>f'\<in> \<aA> f \<beta>_a ve_a.
               \<aF>\<cdot>(Discr(f', map (\<lambda>v. \<aA> v \<beta>_a ve_a) vs, ve_a, \<anb> |b| lab)))"
     by auto
 
   have new_elem: "|{((lab, \<beta>), \<A> f \<beta> ve)}|
-                  \<sqsubseteq> {((lab, \<beta>_a), f') |f'. f' \<in> \<aA> f \<beta>_a ve_a}"
-    using abs_\<beta> and abs_d_evalV[OF abs_ve]
-    by (auto simp add:sqsubset_is_subset)
-
+                  \<lessapprox> {((lab, \<beta>_a), f') |f'. f' \<in> \<aA> f \<beta>_a ve_a}"
+    using abs_\<beta> and lemma7[OF abs_ve]
+    by(auto simp add:ccache_approx_def d_approx_def)
+ 
   have "|evalF\<cdot>(Discr (\<A> f \<beta> ve, map (\<lambda>v. \<A> v \<beta> ve) vs, ve, nb b lab))
         \<union> {((lab, \<beta>), \<A> f \<beta> ve)}|
-        \<sqsubseteq> |evalF\<cdot>(Discr (\<A> f \<beta> ve, map (\<lambda>v. \<A> v \<beta> ve) vs, ve, nb b lab))|
+        \<lessapprox> |evalF\<cdot>(Discr (\<A> f \<beta> ve, map (\<lambda>v. \<A> v \<beta> ve) vs, ve, nb b lab))|
         \<union> |{((lab, \<beta>), \<A> f \<beta> ve)}|"
     by (rule abs_ccache_union)
   also have "\<dots>
-        \<sqsubseteq> (\<Union>f'\<in>\<aA> f \<beta>_a ve_a.
+        \<lessapprox> (\<Union>f'\<in>\<aA> f \<beta>_a ve_a.
               \<aF>\<cdot>(Discr(f', map (\<lambda>v. \<aA> v \<beta>_a ve_a) vs, ve_a, \<anb> |b| lab)))
         \<union> {((lab, \<beta>_a), f') |f'. f' \<in> \<aA> f \<beta>_a ve_a}"
-    by (rule Un_mono_sq[OF old_elems new_elem])
+    by (rule Un_mono_approx[OF old_elems new_elem])
   finally
   show "|insert ((lab, \<beta>), \<A> f \<beta> ve)
                 (evalF\<cdot>(Discr (\<A> f \<beta> ve, map (\<lambda>v. \<A> v \<beta> ve) vs, ve, nb b lab)))|
-        \<sqsubseteq> \<aC>\<cdot>(Discr (App lab f vs, |\<beta>|, ve_a, |b| ))"
+        \<lessapprox> \<aC>\<cdot>(Discr (App lab f vs, |\<beta>|, ve_a, |b| ))"
     using abs_\<beta>
     by (subst a_evalC.simps)(auto simp add: HOL.Let_def simp del:a_evalF.simps)
   next
@@ -478,46 +507,50 @@ case 2
 
   have "|\<beta>(lab \<mapsto> nb b lab)| =
         \<beta>_a(lab \<mapsto> \<anb> |b| lab)"
-    using abs_\<beta> and abs_cnt_nb[OF abs_b] and abs_b
+    using abs_\<beta> and abs_b
     by simp
   moreover
   have "|map_of (map (\<lambda>(v, l). ((v, nb b lab),
                                  DC (l, \<beta>(lab \<mapsto> nb b lab))))
                      binds)|
-    \<sqsubseteq> \<Union>. (map (\<lambda>(v, l).
+    \<lessapprox> \<Union>. (map (\<lambda>(v, l).
               {(v, \<anb> |b| lab) :=  {PC (l, \<beta>_a(lab \<mapsto> \<anb> |b| lab))}}.)
               binds)"
-    using abs_cnt_nb[OF abs_b] and abs_b and abs_\<beta>
-    by  (auto intro:below_trans[OF abs_venv_map_of] smap_union_mono list_all2I
-              simp add:o_def set_zip abs_venv_singleton split_def)
+    using abs_b and abs_\<beta>
+    apply -
+    apply (rule venv_approx_trans[OF abs_venv_map_of])
+    apply (auto intro:smap_union_mono list_all2I
+              simp add:venv_approx_def o_def set_zip abs_venv_singleton split_def smap_less_refl)
+    done
   hence "|ve ++ map_of
             (map (\<lambda>(v, l).
                    ((v, nb b lab),
                     DC (l, \<beta>(lab \<mapsto> nb b lab))))
-                  binds)| \<sqsubseteq>
+                  binds)| \<lessapprox>
         ve_a \<union>.
         (\<Union>.
           (map (\<lambda>(v, l).
             {(v, \<anb> |b| lab) :=  {PC (l, \<beta>_a(lab \<mapsto> \<anb> |b| lab))}}.)
             binds))"
-    by (rule below_trans[OF abs_venv_union, OF smap_union_mono[OF abs_ve]])
+    by (rule venv_approx_trans[OF abs_venv_union
+      smap_union_mono[OF abs_ve[unfolded venv_approx_def], folded venv_approx_def]])
   ultimately
   have "|evalC\<cdot>(Discr(c', \<beta>(lab \<mapsto> nb b lab),
             ve ++ map_of
                   (map (\<lambda>(v, l). ((v, nb b lab), DC (l, \<beta>(lab \<mapsto> nb b lab)))) binds),
             nb b lab))|
-    \<sqsubseteq> \<aC>\<cdot>(Discr (c', \<beta>_a(lab \<mapsto> \<anb> |b| lab),
+    \<lessapprox> \<aC>\<cdot>(Discr (c', \<beta>_a(lab \<mapsto> \<anb> |b| lab),
             ve_a \<union>.
              (\<Union>. (map (\<lambda>(v, l).
                    {(v, \<anb> |b| lab) :=  {PC (l, \<beta>_a(lab \<mapsto> \<anb> |b| lab))}}.)
                    binds)),
          \<anb> |b| lab))"
     using abs_cnt_nb and abs_b
-    by -(rule Next.hyps(2),auto intro:abs_cnt_nb[OF abs_b])
+    by -(rule Next.hyps(2),auto intro: cstate_approx.intros)
 
   thus "|evalC\<cdot>(Discr (c', \<beta>(lab \<mapsto> nb b lab),
                       ve ++ map_of (map (\<lambda>(v, l).((v, nb b lab),\<A> (L l) (\<beta>(lab \<mapsto> nb b lab)) ve)) binds),
-                      nb b lab))| \<sqsubseteq>
+                      nb b lab))| \<lessapprox>
           \<aC>\<cdot>(Discr (call.Let lab binds c', |\<beta>|, ve_a, |b| ))"
     using abs_\<beta>
     by (subst a_evalC.simps)(auto simp add: HOL.Let_def simp del:a_evalC.simps)
@@ -531,8 +564,9 @@ definition evalCPS_a :: "prog \<Rightarrow> ('c::contour_a) \<aans>" ("\<aPR>")
                           f = \<aA> (L l) \<beta> ve
                       in  \<aF>\<cdot>(Discr (contents f,[{AStop}],ve,\<abinit>)))"
 
-lemma lemma6: "|\<PR> l| \<sqsubseteq> \<aPR> l"
+lemma lemma6: "|\<PR> l| \<lessapprox> \<aPR> l"
   unfolding evalCPS_def evalCPS_a_def
-  by (auto intro:lemma89 simp del:evalF.simps a_evalF.simps)
+  by (auto intro!:lemma89 fstate_approx.intros simp del:evalF.simps a_evalF.simps
+      simp add: ds_approx_def d_approx_def venv_approx_def)
 
 end
