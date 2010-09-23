@@ -8,4 +8,4 @@ no_document use_thys ["Adhoc_Overloading"];
 use_thys ["ThatTheory1", "ThatTheory2", "ThatTheory3"];
 *)
 
-use_thys ["HOLCFAbsCF","HOLCFExSV"];
+use_thys ["AbsCF","ExCFSV"];

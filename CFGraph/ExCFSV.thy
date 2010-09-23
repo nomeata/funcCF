@@ -1,5 +1,5 @@
-theory HOLCFExSV
-imports HOLCFExCF
+theory ExCFSV
+imports ExCF
 begin
 
 

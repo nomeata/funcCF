@@ -1,5 +1,5 @@
 theory Eval
-  imports CPSScheme
+  imports CPSUtils HOLCF HOLCFUtils HOLCFList HOLCFOption CPSScheme
 begin
 
 types contour = nat
@@ -11,9 +11,17 @@ datatype d = DI int
            | DP prim
            | Stop
 
-types venv = "var \<times> contour \<rightharpoonup> d"
+instantiation d :: discrete_cpo begin
+definition  [simp]: "(x::d) \<sqsubseteq> y \<longleftrightarrow> x = y"
+instance by default simp
+end
 
-types ans = int
+instantiation call :: discrete_cpo begin
+definition  [simp]: "(x::call) \<sqsubseteq> y \<longleftrightarrow> x = y"
+instance by default simp
+end
+
+types venv = "var \<times> contour \<rightharpoonup> d"
 
 fun evalV :: "val \<Rightarrow> benv \<Rightarrow> venv \<Rightarrow> d"
   where "evalV (C _ i) \<beta> ve = DI i"
@@ -23,84 +31,102 @@ fun evalV :: "val \<Rightarrow> benv \<Rightarrow> venv \<Rightarrow> d"
               Some l \<Rightarrow> (case ve (var,l) of Some d \<Rightarrow> d))"
   |     "evalV (L lam) \<beta> ve = DC (lam, \<beta>)"
 
-declare id_apply[simp del]
-function (sequential,domintros)
-         evalF :: "d \<Rightarrow> (d list) \<Rightarrow> venv \<Rightarrow> contour \<Rightarrow> ans"
-     and evalC :: "call \<Rightarrow> benv \<Rightarrow> venv \<Rightarrow> contour \<Rightarrow> ans"
-  where "evalF (DC (Lambda lab vs c, \<beta>)) as ve b
-          = (case length vs = length as of
-              True \<Rightarrow> let \<beta>' = \<beta> (lab \<mapsto> b);
-                          ve' = map_upds ve (map (\<lambda>v.(v,b)) vs) as
-                      in evalC c \<beta>' ve' b
-            )"
-  |     "evalF (DP (Plus c)) as ve b
-          = (case id as of [DI a1, DI a2, cont] \<Rightarrow>
-                   let b' = Suc b
-                   in evalF cont [DI (a1 + a2)] ve b')"
-  |     "evalF (DP (If ct cf)) [DI v, contt, contf] ve b
-          = (      if id (v \<noteq> 0) then
-                        let b' = Suc b
-                        in evalF contt [] ve b'
-                   else let b' = Suc b
-                        in evalF contf [] ve b')"
-  |     "evalF Stop as _ _
-          = (case as of [DI i] \<Rightarrow> i)"
 
-  |     "evalC (App lab f vs) \<beta> ve b
-          = (let f' = evalV f \<beta> ve;
-                 as = map (\<lambda>v. evalV v \<beta> ve) vs;
-                 b' = Suc b
-             in evalF f' as ve b')"
-  |     "evalC (Let lab ls c') \<beta> ve b
-          = (let b' = Suc b;
-                 \<beta>' = \<beta> (lab \<mapsto> b');
-                 ve' = ve ++ map_of (map (\<lambda>(v,l). ((v,b'), evalV (L l) \<beta>' ve)) ls)
-            in evalC c' \<beta>' ve' b')"
-  apply pat_completeness
-  apply auto
-done
-declare id_apply[simp]
+types ccache = "((label \<times> benv) \<times> d) set"
+      ans = "int option"
 
-definition evalCPS :: "prog \<Rightarrow> int"
+types fstate = "(d \<times> d list \<times> venv \<times> contour)"
+      cstate = "(call \<times> benv \<times> venv \<times> contour)"
+
+lemma cont2cont_lambda_case [simp, cont2cont]:
+  assumes "\<And>a b c. cont (\<lambda>x. f x a b c)"
+  shows "cont (\<lambda>x. lambda_case (f x) l)"
+using assms
+by (cases l) auto
+
+lemma cont2cont_d_case [simp, cont2cont]:
+  assumes "\<And>y. cont (\<lambda>x. f1 x y)"
+     and  "\<And>y. cont (\<lambda>x. f2 x y)"
+     and  "\<And>y. cont (\<lambda>x. f3 x y)"
+    and   "cont (\<lambda>x. f4 x)"
+  shows "cont (\<lambda>x. d_case (f1 x) (f2 x) (f3 x) (f4 x) d)"
+using assms
+by (cases d) auto
+
+value call_case
+lemma cont2cont_call_case [simp, cont2cont]:
+  assumes "\<And>a b c. cont (\<lambda>x. f1 x a b c)"
+     and  "\<And>a b c. cont (\<lambda>x. f2 x a b c)"
+  shows "cont (\<lambda>x. call_case (f1 x) (f2 x) c)"
+using assms
+by (cases c) auto
+
+lemma cont2cont_prim_case [simp, cont2cont]:
+  assumes "\<And>y. cont (\<lambda>x. f1 x y)"
+     and  "\<And>y z. cont (\<lambda>x. f2 x y z)"
+  shows "cont (\<lambda>x. prim_case (f1 x) (f2 x) p)"
+using assms
+by (cases p) auto
+
+
+fixrec   evalF :: "fstate discr \<rightarrow> ans"
+     and evalC :: "cstate discr \<rightarrow> ans"
+  where "evalF\<cdot>fstate = (case undiscr fstate of
+             (DC (Lambda lab vs c, \<beta>), as, ve, b) \<Rightarrow>
+               (if length vs = length as
+                then let \<beta>' = \<beta> (lab \<mapsto> b);
+                         ve' = map_upds ve (map (\<lambda>v.(v,b)) vs) as
+                     in evalC\<cdot>(Discr (c,\<beta>',ve',b))
+                else \<bottom>)
+            | (DP (Plus c),[DI a1, DI a2, cnt],ve,b) \<Rightarrow>
+                     let b' = Suc b;
+                         \<beta>  = [c \<mapsto> b]
+                     in evalF\<cdot>(Discr (cnt,[DI (a1 + a2)],ve,b'))
+            | (DP (prim.If ct cf),[DI v, contt, contf],ve,b) \<Rightarrow>
+                  (if v \<noteq> 0
+                   then let b' = Suc b;
+                            \<beta> = [ct \<mapsto> b]
+                        in evalF\<cdot>(Discr (contt,[],ve,b'))
+                   else let b' = Suc b;
+                            \<beta> = [cf \<mapsto> b]
+                        in evalF\<cdot>(Discr (contf,[],ve,b')))
+            | (Stop,[DI i],_,_) \<Rightarrow> Some i
+            | _ \<Rightarrow> \<bottom>
+        )"
+      | "evalC\<cdot>cstate = (case undiscr cstate of
+             (App lab f vs,\<beta>,ve,b) \<Rightarrow>
+                 let f' = evalV f \<beta> ve;
+                     as = map (\<lambda>v. evalV v \<beta> ve) vs;
+                     b' = Suc b
+                  in evalF\<cdot>(Discr (f',as,ve,b'))
+            | (Let lab ls c',\<beta>,ve,b) \<Rightarrow>
+                 let b' = Suc b;
+                     \<beta>' = \<beta> (lab \<mapsto> b');
+                    ve' = ve ++ map_of (map (\<lambda>(v,l). ((v,b'), evalV (L l) \<beta>' ve)) ls)
+                 in evalC\<cdot>(Discr (c',\<beta>',ve',b'))
+        )"
+
+print_theorems
+
+definition evalCPS :: "prog \<Rightarrow> ans"
   where "evalCPS l = (let ve = empty;
                           \<beta> = empty;
                           f = evalV (L l) \<beta> ve
-                      in  evalF f [Stop] ve 0)"
+                      in  evalF\<cdot>(Discr (f,[Stop],ve,0)))"
 
-definition eval_terminates :: "prog \<Rightarrow> bool" where
-    "eval_terminates l = (
-       let ve = empty;
-           \<beta> = empty;
-           f = evalV (L l) \<beta> ve
-       in evalF_evalC_dom (Inl (f, [Stop], ve, 0)))"
-
-lemma ex1_terminates[simp]: "eval_terminates ex1"
-unfolding eval_terminates_def
-by (auto intro!:evalF_evalC.domintros)
-
-lemma ex2_terminates[simp]: "eval_terminates ex2"
-unfolding eval_terminates_def
-by (auto intro!:evalF_evalC.domintros)
-
-(* Does not work without termination or tailrec *)
-(*
-lemma ex1_correct: "evalCPS ex1 = 0"
+lemma correct_ex1: "evalCPS ex1 = Some 0"
 unfolding evalCPS_def
 by simp
 
-lemma ex2_correct: "evalCPS ex2 = 2"
+lemma correct_ex2: "evalCPS ex2 = Some 2"
+unfolding evalCPS_def
+by simp
+
+(* Dauert lange, klappt aber\<dots>
+lemma correct_ex3: "evalCPS ex3 = Some 55"
 unfolding evalCPS_def
 by simp
 *)
 
-(* These lemmas take some time, thus skipping them *)
-(*
-lemma ex3_correct: "evalCPS ex3 = 55"
-unfolding evalCPS_def
-by simp
 
-lemma ex3_terminates[simp]: "eval_terminates ex3"
-unfolding eval_terminates_def
-by (auto intro!:evalF_evalC.domintros)
-*)
 end
