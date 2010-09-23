@@ -25,16 +25,17 @@ definition "abs_cnt _ = ()"
 instance by default auto
 end
 
-types 'c benv = "label \<rightharpoonup> 'c"
-      'c closure = "lambda \<times> 'c benv"
+types 'c a_benv = "label \<rightharpoonup> 'c" ("_ \<abenv>" [1000])
+      'c a_closure = "lambda \<times> 'c \<abenv>" ("_ \<aclosure>" [1000])
 
-datatype 'c proc = PC "'c closure"
-                 | PP prim
-                 | Stop
+datatype 'c proc ("_ \<aproc>" [1000])
+  = PC "'c \<aclosure>"
+  | PP prim
+  | AStop
 
 instantiation proc :: (type)discrete_cpo
 begin
-definition [simp]: "(x::'a proc) \<sqsubseteq> y \<longleftrightarrow> x = y"
+definition [simp]: "(x::'a \<aproc>) \<sqsubseteq> y \<longleftrightarrow> x = y"
 instance by default simp
 end
 
@@ -44,13 +45,13 @@ definition [iff]: "(x::'a option) \<sqsubseteq> y \<longleftrightarrow> x = y"
 instance by default simp
 end
 
-types 'c d = "'c proc set"
+types 'c a_d = "'c \<aproc> set" ("_ \<ad>" [1000])
 
-types 'c venv = "var \<times> 'c \<Rightarrow> 'c d"
+types 'c a_venv = "var \<times> 'c \<Rightarrow> 'c \<ad>" ("_ \<avenv>" [1000])
 
 text {* Abstraction functions *}
 
-definition abs_benv :: "HOLCFExCF.benv \<Rightarrow> 'c::contour benv"
+definition abs_benv :: "benv \<Rightarrow> 'c::contour \<abenv>"
   where "abs_benv \<beta> = Option.map abs_cnt \<circ> \<beta>"
 
 setup {* Adhoc_Overloading.add_variant @{const_name abs} @{const_name abs_benv} *}
@@ -61,16 +62,16 @@ unfolding abs_benv_def by simp
 lemma abs_benv_upd[simp]: "|\<beta>(c\<mapsto>b)| = |\<beta>| (c \<mapsto> |b| )"
   unfolding abs_benv_def by simp
 
-primrec abs_closure :: "HOLCFExCF.closure \<Rightarrow> 'c::contour closure"
+primrec abs_closure :: "closure \<Rightarrow> 'c::contour \<aclosure>"
   where "abs_closure (l,\<beta>) = (l,|\<beta>| )"
 
 setup {* Adhoc_Overloading.add_variant @{const_name abs} @{const_name abs_closure} *}
 
-primrec abs_d :: "HOLCFExCF.d \<Rightarrow> 'c::contour d"
+primrec abs_d :: "d \<Rightarrow> 'c::contour \<ad>"
   where "abs_d (DI i) = {}"
       | "abs_d (DP p) = {PP p}"
       | "abs_d (DC cl) = {PC |cl|}"
-      | "abs_d (HOLCFExCF.Stop) = {Stop}"
+      | "abs_d (Stop) = {AStop}"
 
 setup {* Adhoc_Overloading.add_variant @{const_name abs} @{const_name abs_d} *}
 
@@ -79,12 +80,12 @@ lemma contents_is_Proc:
   shows "contents |cnt| \<in> |cnt|"
 using assms by (cases cnt)auto
 
-definition abs_venv :: "HOLCFExCF.venv \<Rightarrow> 'c::contour venv"
+definition abs_venv :: "venv \<Rightarrow> 'c::contour \<avenv>"
   where "abs_venv ve = (\<lambda>(v,b_a). \<Union>{(case ve (v,b) of Some d \<Rightarrow> |d| | None \<Rightarrow> {}) | b. |b| = b_a })"
 
 setup {* Adhoc_Overloading.add_variant @{const_name abs} @{const_name abs_venv} *}
 
-fun evalV_a :: "val \<Rightarrow> 'c benv \<Rightarrow> 'c venv \<Rightarrow> 'c d" ("\<aA>")
+fun evalV_a :: "val \<Rightarrow> 'c \<abenv> \<Rightarrow> 'c \<avenv> \<Rightarrow> 'c \<ad>" ("\<aA>")
   where "\<aA> (C _ i) \<beta> ve = {}"
   |     "\<aA> (P prim) \<beta> ve = {PP prim}"
   |     "\<aA> (R _ var) \<beta> ve =
@@ -93,25 +94,25 @@ fun evalV_a :: "val \<Rightarrow> 'c benv \<Rightarrow> 'c venv \<Rightarrow> 'c
             | None \<Rightarrow> {})"
   |     "\<aA> (L lam) \<beta> ve = {PC (lam, \<beta>)}"
 
-types 'c ccache = "((label \<times> 'c benv) \<times> 'c proc) set"
-      'c ans = "'c ccache"
+types 'c a_ccache = "((label \<times> 'c \<abenv>) \<times> 'c \<aproc>) set" ("_ \<accache>" [1000])
+      'c a_ans = "'c \<accache>" ("_ \<aans>" [1000])
 
-definition abs_ccache :: "HOLCFExCF.ccache \<Rightarrow> 'c::contour ccache"
+definition abs_ccache :: "ccache \<Rightarrow> 'c::contour \<accache>"
   where "abs_ccache cc = (\<Union>((c,\<beta>),d) \<in> cc . {((c,abs_benv \<beta>), p) | p . p\<in>abs_d d})"
 (* equivalent, but I already have cont2cont for UNION
   where "abs_ccache cc = { ((c,abs_benv \<beta>),p) | c \<beta> p d . ((c,\<beta>),d) \<in> cc \<and> p \<in> abs_d d}" *)
 
 setup {* Adhoc_Overloading.add_variant @{const_name abs} @{const_name abs_ccache} *}
 
-types 'c fstate = "('c proc \<times> 'c d list \<times> 'c venv \<times> 'c)"
-      'c cstate = "(call \<times> 'c benv \<times> 'c venv \<times> 'c)"
+types 'c a_fstate = "('c \<aproc> \<times> 'c \<ad> list \<times> 'c \<avenv> \<times> 'c)" ("_ \<afstate>" [1000])
+      'c a_cstate = "(call \<times> 'c \<abenv> \<times> 'c \<avenv> \<times> 'c)" ("_ \<acstate>" [1000])
 
-fun abs_fstate :: "HOLCFExCF.fstate \<Rightarrow> 'c::contour fstate"
+fun abs_fstate :: "fstate \<Rightarrow> 'c::contour \<afstate>"
   where "abs_fstate (d,ds,ve,b) = (contents |d|, map abs_d ds, |ve|, |b| )"
 
 setup {* Adhoc_Overloading.add_variant @{const_name abs} @{const_name abs_fstate} *}
 
-fun abs_cstate :: "HOLCFExCF.cstate \<Rightarrow> 'c::contour cstate"
+fun abs_cstate :: "cstate \<Rightarrow> 'c::contour \<acstate>"
   where "abs_cstate (c,\<beta>,ve,b) = (c, |\<beta>|, |ve|, |b| )"
 
 setup {* Adhoc_Overloading.add_variant @{const_name abs} @{const_name abs_cstate} *}
@@ -155,7 +156,7 @@ proof (induct l)
   case Nil show ?case unfolding abs_venv_def by (subst below_fun_def, auto simp: sqsubset_is_subset) next
   case (Cons a l)
     obtain v k where "a=(v,k)" by (rule prod.exhaust)
-    hence "|map_of (rev (a#l))| \<sqsubseteq> |[v \<mapsto> k]| \<union>. |map_of (rev l)| :: 'a venv"
+    hence "|map_of (rev (a#l))| \<sqsubseteq> |[v \<mapsto> k]| \<union>. |map_of (rev l)| :: 'a \<avenv>"
       by (auto intro: abs_venv_union)
     also
     have "\<dots> \<sqsubseteq> |[v \<mapsto> k]| \<union>. (\<Union>. (map (\<lambda>(v,k). |[v  \<mapsto> k]| ) l))"
@@ -186,7 +187,7 @@ lemma abs_cache_singleton [simp]: "|{((c,\<beta>),d)}| = {((c, |\<beta>| ), p) |
   unfolding abs_ccache_def by simp
 
 lemma abs_d_evalV:
-  assumes "|ve::HOLCFExCF.venv| \<sqsubseteq> ve_a"
+  assumes "|ve::venv| \<sqsubseteq> ve_a"
   shows "|\<A> f \<beta> ve| \<subseteq> \<aA> f |\<beta>| ve_a"
 proof(cases f)
 case (R _ v)
@@ -202,13 +203,13 @@ case (R _ v)
 qed auto
 
 lemma lemma7:
-  assumes "|ve::HOLCFExCF.venv| \<sqsubseteq> ve_a"
+  assumes "|ve::venv| \<sqsubseteq> ve_a"
   shows "|\<A> a \<beta> ve| \<sqsubseteq> \<aA> a |\<beta>| ve_a"
 using assms
  by (subst sqsubset_is_subset, rule abs_d_evalV)
 
-fixrec   evalF :: "'c::contour fstate discr \<rightarrow> 'c ans" ("\<aF>")
-     and evalC :: "'c::contour cstate discr \<rightarrow> 'c ans" ("\<aC>")
+fixrec   a_evalF :: "'c::contour \<afstate> discr \<rightarrow> 'c \<aans>" ("\<aF>")
+     and a_evalC :: "'c::contour \<acstate> discr \<rightarrow> 'c \<aans>" ("\<aC>")
   where "\<aF>\<cdot>fstate = (case undiscr fstate of
              (PC (Lambda lab vs c, \<beta>), as, ve, b) \<Rightarrow>
                (if length vs = length as
@@ -233,7 +234,7 @@ fixrec   evalF :: "'c::contour fstate discr \<rightarrow> 'c ans" ("\<aF>")
                         in (\<Union>cnt\<in>cntfs . \<aF>\<cdot>(Discr (cnt,[],ve,b')))
                            \<union>{((cf, \<beta>), cnt) | cnt . cnt \<in> cntfs}
                    ))
-            | (Stop,[_],_,_) \<Rightarrow> {}
+            | (AStop,[_],_,_) \<Rightarrow> {}
             | _ \<Rightarrow> \<bottom>
         )"
       | "\<aC>\<cdot>cstate = (case undiscr cstate of
@@ -250,16 +251,15 @@ fixrec   evalF :: "'c::contour fstate discr \<rightarrow> 'c ans" ("\<aF>")
                  in \<aC>\<cdot>(Discr (c',\<beta>',ve',b'))
         )"
 
-print_theorems
-lemmas evalF_evalC_induct = evalF_evalC.induct[case_names Admissibility Bottom Next]
+lemmas a_evalF_evalC_induct = a_evalF_a_evalC.induct[case_names Admissibility Bottom Next]
 
-fun evalF_cases
- where "evalF_cases (PC (Lambda lab vs c, \<beta>)) as ve b = undefined"
-     | "evalF_cases (PP (Plus cp)) [a1, a2, cnt] ve b = undefined"
-     | "evalF_cases (PP (prim.If cp1 cp2)) [v,cntt,cntf] ve b = undefined"
-     | "evalF_cases  Stop [v] ve b = undefined"
+fun a_evalF_cases
+ where "a_evalF_cases (PC (Lambda lab vs c, \<beta>)) as ve b = undefined"
+     | "a_evalF_cases (PP (Plus cp)) [a1, a2, cnt] ve b = undefined"
+     | "a_evalF_cases (PP (prim.If cp1 cp2)) [v,cntt,cntf] ve b = undefined"
+     | "a_evalF_cases AStop [v] ve b = undefined"
 
-lemmas fstate_case = evalF_cases.cases[
+lemmas a_fstate_case = a_evalF_cases.cases[
   OF case_split, of _ "\<lambda>_ vs _ _ as _ _ . length vs = length as",
   case_names "Closure" "Closure_inv" "Plus" "If" "Stop"]
 
@@ -271,9 +271,9 @@ using assms
 by (rule cont2cont)(rule cont_const)
 
 lemma lemma89:
- shows "|fstate| \<sqsubseteq> (fstate_a::'c::contour fstate) \<Longrightarrow> |\<F>\<cdot>(Discr fstate)| \<sqsubseteq> \<aF>\<cdot>(Discr fstate_a)"
-   and "|cstate| \<sqsubseteq> (cstate_a::'c::contour cstate) \<Longrightarrow> |\<C>\<cdot>(Discr cstate)| \<sqsubseteq> \<aC>\<cdot>(Discr cstate_a)"
-proof(induct arbitrary: fstate fstate_a cstate cstate_a rule: HOLCFExCF.evalF_evalC_induct)
+ shows "|fstate| \<sqsubseteq> (fstate_a::'c::contour \<afstate>) \<Longrightarrow> |\<F>\<cdot>(Discr fstate)| \<sqsubseteq> \<aF>\<cdot>(Discr fstate_a)"
+   and "|cstate| \<sqsubseteq> (cstate_a::'c::contour \<acstate>) \<Longrightarrow> |\<C>\<cdot>(Discr cstate)| \<sqsubseteq> \<aC>\<cdot>(Discr cstate_a)"
+proof(induct arbitrary: fstate fstate_a cstate cstate_a rule: evalF_evalC_induct)
 print_cases
 case Admissibility show ?case
   by (intro adm_lemmas adm_prod_split adm_not_conj adm_not_mem adm_single_valued cont2cont)
@@ -301,7 +301,7 @@ case (Next evalF evalC) {
 
   from fstate fstate_a abs_d abs_ds abs_ve abs_ds dslength
   show ?case
-  proof(cases fstate rule:HOLCFExCF.fstate_case, auto simp del:evalF.simps evalC.simps set_map)
+  proof(cases fstate rule:fstate_case, auto simp del:a_evalF.simps a_evalC.simps set_map)
   fix \<beta> and lab and vs:: "var list" and c
   assume ds_a_length: "length vs = length ds_a"
 
@@ -341,7 +341,7 @@ case (Next evalF evalC) {
   show "|evalC\<cdot>(Discr (c, \<beta>(lab \<mapsto> b), ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] ds), b))|
         \<sqsubseteq> \<aF>\<cdot>(Discr (PC (Lambda lab vs c, |\<beta>| ), ds_a, ve_a, b_a))"
   using Next.hyps(2)[OF prem] ds_a_length
-  by (subst HOLCFAbsCF.evalF.simps, simp del:HOLCFAbsCF.evalF.simps HOLCFAbsCF.evalC.simps)
+  by (subst a_evalF.simps, simp del:a_evalF.simps a_evalC.simps)
 
   next
   fix lab a1 a2 cnt
@@ -364,7 +364,7 @@ case (Next evalF evalC) {
     by (rule Next.hyps(1)[OF prem])
   also have "\<dots> \<sqsubseteq> (\<Union>cnt\<in>cnt_a. \<aF>\<cdot>(Discr (cnt, [{}], ve_a, \<anb> b_a lab)))"
     using abs_cnt
-    by (auto intro: contents_is_Proc[OF `isProc cnt`] simp del: evalF.simps simp add:sqsubset_is_subset)
+    by (auto intro: contents_is_Proc[OF `isProc cnt`] simp del: a_evalF.simps simp add:sqsubset_is_subset)
   finally
   have old_elems: "|(evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, nb b lab)))|
        \<sqsubseteq> (\<Union>cnt\<in>cnt_a. \<aF>\<cdot>(Discr (cnt, [{}], ve_a, \<anb> b_a lab)))".
@@ -383,7 +383,7 @@ case (Next evalF evalC) {
   show "|insert ((lab, [lab \<mapsto> b]), cnt)
                 (evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, nb b lab)))|
         \<sqsubseteq> \<aF>\<cdot>(Discr (PP (prim.Plus lab), ds_a, ve_a, b_a))"
-    using ds_a by (subst HOLCFAbsCF.evalF.simps)(auto simp del:HOLCFAbsCF.evalF.simps)
+    using ds_a by (subst a_evalF.simps)(auto simp del:a_evalF.simps)
   next
 
   fix ct cf v cntt cntf
@@ -410,7 +410,7 @@ case (Next evalF evalC) {
     by (rule Next.hyps(1)[OF prem])
   also have "\<dots> \<sqsubseteq> (\<Union>cnt\<in>?cnt_a. \<aF>\<cdot>(Discr (cnt, [], ve_a, \<anb> b_a ?c)))"
     using abs_cntt and abs_cntf
-    by (auto intro: contents_is_Proc[OF `isProc ?cnt`] simp del: evalF.simps simp add:sqsubset_is_subset)
+    by (auto intro: contents_is_Proc[OF `isProc ?cnt`] simp del: a_evalF.simps simp add:sqsubset_is_subset)
 
   finally
   have old_elems: "|evalF\<cdot>(Discr (?cnt, [], ve, nb b ?c))|
@@ -438,7 +438,7 @@ case (Next evalF evalC) {
   show "|insert ((?c, [?c \<mapsto> b]), ?cnt)
                 (evalF\<cdot>(Discr (?cnt, [], ve, nb b ?c)))| \<sqsubseteq>
           \<aF>\<cdot>(Discr (PP (prim.If ct cf), ds_a, ve_a, b_a))"
-    using ds_a by (subst HOLCFAbsCF.evalF.simps)(auto simp del:HOLCFAbsCF.evalF.simps)
+    using ds_a by (subst a_evalF.simps)(auto simp del:a_evalF.simps)
   next
   fix ct cf cntt cntf
   assume "isProc cntt" 
@@ -464,7 +464,7 @@ case (Next evalF evalC) {
     by (rule Next.hyps(1)[OF prem])
   also have "\<dots> \<sqsubseteq> (\<Union>cnt\<in>?cnt_a. \<aF>\<cdot>(Discr (cnt, [], ve_a, \<anb> b_a ?c)))"
     using abs_cntt and abs_cntf
-    by (auto intro: contents_is_Proc[OF `isProc ?cnt`] simp del: evalF.simps simp add:sqsubset_is_subset)
+    by (auto intro: contents_is_Proc[OF `isProc ?cnt`] simp del: a_evalF.simps simp add:sqsubset_is_subset)
 
   finally
   have old_elems: "|evalF\<cdot>(Discr (?cnt, [], ve, nb b ?c))|
@@ -492,7 +492,7 @@ case (Next evalF evalC) {
   show "|insert ((?c, [?c \<mapsto> b]), ?cnt)
                 (evalF\<cdot>(Discr (?cnt, [], ve, nb b ?c)))| \<sqsubseteq>
           \<aF>\<cdot>(Discr (PP (prim.If ct cf), ds_a, ve_a, b_a))"
-    using ds_a by (subst HOLCFAbsCF.evalF.simps)(auto simp del:HOLCFAbsCF.evalF.simps)
+    using ds_a by (subst a_evalF.simps)(auto simp del:a_evalF.simps)
  qed
 next
 case 2
@@ -510,7 +510,7 @@ case 2
 
   from cstate cstate_a abs_c abs_\<beta> abs_b
   show ?case
-  proof(cases c, auto simp add:HOL.Let_def simp del:evalF.simps evalC.simps set_map evalV.simps)
+  proof(cases c, auto simp add:HOL.Let_def simp del:a_evalF.simps a_evalC.simps set_map evalV.simps)
 
   fix lab f vs
   let ?d = "\<A> f \<beta> ve"
@@ -528,7 +528,7 @@ case 2
   also have "\<dots> \<sqsubseteq> (\<Union>f'\<in>\<aA> f \<beta>_a ve_a.
               \<aF>\<cdot>(Discr(f', map (\<lambda>v. \<aA> v \<beta>_a ve_a) vs, ve_a, \<anb> |b| lab)))"
     using subsetD[OF abs_d_evalV[OF abs_ve] contents_is_Proc[OF `isProc ?d`]] and abs_\<beta>
-    by (auto simp del: evalF.simps simp add:sqsubset_is_subset)
+    by (auto simp del: a_evalF.simps simp add:sqsubset_is_subset)
   finally
   have old_elems: "
      |evalF\<cdot>(Discr (\<A> f \<beta> ve, map (\<lambda>v. \<A> v \<beta> ve) vs, ve, nb b lab))|
@@ -556,7 +556,7 @@ case 2
                 (evalF\<cdot>(Discr (\<A> f \<beta> ve, map (\<lambda>v. \<A> v \<beta> ve) vs, ve, nb b lab)))|
         \<sqsubseteq> \<aC>\<cdot>(Discr (App lab f vs, |\<beta>|, ve_a, |b| ))"
     using abs_\<beta>
-    by (subst HOLCFAbsCF.evalC.simps)(auto simp add: HOL.Let_def simp del:HOLCFAbsCF.evalF.simps)
+    by (subst a_evalC.simps)(auto simp add: HOL.Let_def simp del:a_evalF.simps)
   next
   fix lab binds c'
 
@@ -604,19 +604,19 @@ case 2
                       nb b lab))| \<sqsubseteq>
           \<aC>\<cdot>(Discr (call.Let lab binds c', |\<beta>|, ve_a, |b| ))"
     using abs_\<beta>
-    by (subst HOLCFAbsCF.evalC.simps)(auto simp add: HOL.Let_def simp del:HOLCFAbsCF.evalC.simps)
+    by (subst a_evalC.simps)(auto simp add: HOL.Let_def simp del:a_evalC.simps)
   qed
 }
 qed
 
-definition evalCPS_a :: "prog \<Rightarrow> ('c::contour) ans" ("\<aPR>")
+definition evalCPS_a :: "prog \<Rightarrow> ('c::contour) \<aans>" ("\<aPR>")
   where "\<aPR> l = (let ve = {}.;
                           \<beta> = empty;
                           f = \<aA> (L l) \<beta> ve
-                      in  \<aF>\<cdot>(Discr (contents f,[{Stop}],ve,\<abinit>)))"
+                      in  \<aF>\<cdot>(Discr (contents f,[{AStop}],ve,\<abinit>)))"
 
 lemma lemma6: "|\<PR> l| \<sqsubseteq> \<aPR> l"
   unfolding evalCPS_def evalCPS_a_def
-  by (auto intro:lemma89 simp del:evalF.simps HOLCFExCF.evalF.simps)
+  by (auto intro:lemma89 simp del:evalF.simps a_evalF.simps)
   
 end
