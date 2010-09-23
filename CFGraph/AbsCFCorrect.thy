@@ -79,6 +79,12 @@ definition abs_ccache :: "ccache \<Rightarrow> 'c::contour_a \<accache>"
 
 setup {* Adhoc_Overloading.add_variant @{const_name abs} @{const_name abs_ccache} *}
 
+lemma [simp]: "|{}| = {}" unfolding abs_ccache_def by auto
+
+lemma abs_cache_singleton [simp]: "|{((c,\<beta>),d)}| = {((c, |\<beta>| ), p) |p. p \<in> |d|}"
+  unfolding abs_ccache_def by simp
+
+
 fun abs_fstate :: "fstate \<Rightarrow> 'c::contour_a \<afstate>"
   where "abs_fstate (d,ds,ve,b) = (contents |d|, map abs_d ds, |ve|, |b| )"
 
@@ -92,19 +98,35 @@ setup {* Adhoc_Overloading.add_variant @{const_name abs} @{const_name abs_cstate
 lemma abs_venv_empty[simp]: "|empty| = {}."
   apply (rule ext) by (auto simp add: abs_venv_def smap_empty_def)
 
-lemma abs_venv_union: "\<And> ve1 ve2. |ve1 ++ ve2| \<sqsubseteq> |ve1| \<union>. |ve2|"
-  by (subst below_fun_def, auto simp add: sqsubset_is_subset abs_venv_def smap_union_def, split option.split_asm, auto)
 
-lemma abs_venv_map_of_rev: "|map_of (rev l)| \<sqsubseteq> \<Union>. (map (\<lambda>(v,k). |[v \<mapsto> k]| ) l)"
+subsection {* Approximates relation *}
+
+consts approx :: "'a \<Rightarrow> 'a \<Rightarrow> bool" ("_ \<lessapprox> _")
+
+setup {* Adhoc_Overloading.add_overloaded @{const_name approx} *}
+
+definition venv_approx :: "'c \<avenv> \<Rightarrow>'c \<avenv> \<Rightarrow> bool"
+  where "venv_approx = smap_less"
+
+setup {* Adhoc_Overloading.add_variant @{const_name approx} @{const_name venv_approx} *}
+
+lemma venv_approx_trans[trans]:
+  shows "\<lbrakk> ve1 \<lessapprox> ve2; ve2 \<lessapprox> ve3 \<rbrakk> \<Longrightarrow> ve1 \<lessapprox> ve3"
+  unfolding venv_approx_def by (rule smap_less_trans)
+
+lemma abs_venv_union: "|ve1 ++ ve2| \<lessapprox> |ve1| \<union>. |ve2|"
+  by (auto simp add: venv_approx_def smap_less_def abs_venv_def smap_union_def, split option.split_asm, auto)
+
+lemma abs_venv_map_of_rev: "|map_of (rev l)| \<lessapprox> \<Union>. (map (\<lambda>(v,k). |[v \<mapsto> k]| ) l)"
 proof (induct l)
-  case Nil show ?case unfolding abs_venv_def by (subst below_fun_def, auto simp: sqsubset_is_subset) next
+  case Nil show ?case unfolding abs_venv_def by (auto simp: venv_approx_def smap_less_def ) next
   case (Cons a l)
     obtain v k where "a=(v,k)" by (rule prod.exhaust)
-    hence "|map_of (rev (a#l))| \<sqsubseteq> |[v \<mapsto> k]| \<union>. |map_of (rev l)| :: 'a \<avenv>"
+    hence "|map_of (rev (a#l))| \<lessapprox> ( |[v \<mapsto> k]| \<union>. |map_of (rev l)| ):: 'a \<avenv>"
       by (auto intro: abs_venv_union)
     also
-    have "\<dots> \<sqsubseteq> |[v \<mapsto> k]| \<union>. (\<Union>. (map (\<lambda>(v,k). |[v  \<mapsto> k]| ) l))"
-      by (rule smap_union_mono[OF below_refl Cons])
+    have "\<dots> \<lessapprox> |[v \<mapsto> k]| \<union>. (\<Union>. (map (\<lambda>(v,k). |[v  \<mapsto> k]| ) l))"
+      by (auto intro!:smap_union_mono[OF smap_less_refl Cons[unfolded venv_approx_def]] simp:venv_approx_def)
     also
     have "\<dots> = \<Union>. ( |[v \<mapsto> k]| # map (\<lambda>(v,k). |[v \<mapsto> k]| ) l)"
       by (rule smap_Union_union)
@@ -116,27 +138,27 @@ proof (induct l)
     show ?case .
 qed
 
-lemma abs_venv_map_of: "|map_of l| \<sqsubseteq> \<Union>. (map (\<lambda>(v,k). |[v \<mapsto> k]| ) l)"
+lemma abs_venv_map_of: "|map_of l| \<lessapprox> \<Union>. (map (\<lambda>(v,k). |[v \<mapsto> k]| ) l)"
   using abs_venv_map_of_rev[of "rev l"] by simp
 
 lemma abs_venv_singleton: "|[(v,b) \<mapsto> d]| = {(v,|b| ) := |d|}."
   by (rule ext, auto simp add:abs_venv_def smap_singleton_def smap_empty_def)
 
-lemma abs_ccache_union: "|c1 \<union> c2| \<sqsubseteq> |c1| \<union> |c2|"
-  unfolding abs_ccache_def by (auto simp add:sqsubset_is_subset)
+definition ccache_approx :: "'c \<accache> \<Rightarrow>'c \<accache> \<Rightarrow> bool"
+  where "ccache_approx = below"
 
-lemma [simp]: "|{}| = {}" unfolding abs_ccache_def by auto
+setup {* Adhoc_Overloading.add_variant @{const_name approx} @{const_name ccache_approx} *}
 
-lemma abs_cache_singleton [simp]: "|{((c,\<beta>),d)}| = {((c, |\<beta>| ), p) |p. p \<in> |d|}"
-  unfolding abs_ccache_def by simp
+lemma abs_ccache_union: "|c1 \<union> c2| \<lessapprox> |c1| \<union> |c2|"
+  unfolding ccache_approx_def abs_ccache_def by auto
 
 lemma abs_d_evalV:
-  assumes "|ve::venv| \<sqsubseteq> ve_a"
+  assumes "|ve::venv| \<lessapprox> ve_a"
   shows "|\<A> f \<beta> ve| \<subseteq> \<aA> f |\<beta>| ve_a"
 proof(cases f)
 case (R _ v)
   from assms have assm': "\<And>v b. option_case {} abs_d (ve (v,b))  \<subseteq> ve_a (v,|b| )"
-    by (subst (asm) less_fun_def, auto simp add:abs_venv_def sqsubset_is_subset elim!:allE)
+    by (auto simp add:abs_venv_def venv_approx_def smap_less_def elim!:allE)
   show ?thesis
     proof(cases "\<beta> (binder v)")
     case None thus ?thesis using R by auto next
@@ -146,11 +168,16 @@ case (R _ v)
   qed
 qed auto
 
+definition d_approx :: "'c \<ad> \<Rightarrow>'c \<ad> \<Rightarrow> bool"
+  where "d_approx = less_eq"
+
+setup {* Adhoc_Overloading.add_variant @{const_name approx} @{const_name d_approx} *}
+
 lemma lemma7:
-  assumes "|ve::venv| \<sqsubseteq> ve_a"
-  shows "|\<A> a \<beta> ve| \<sqsubseteq> \<aA> a |\<beta>| ve_a"
+  assumes "|ve::venv| \<lessapprox> ve_a"
+  shows "|\<A> a \<beta> ve| \<lessapprox> \<aA> a |\<beta>| ve_a"
 using assms
- by (subst sqsubset_is_subset, rule abs_d_evalV)
+ by (subst d_approx_def, rule abs_d_evalV)
 
 lemma cont2cont_abs_ccache[cont2cont,simp]:
   assumes "cont f"

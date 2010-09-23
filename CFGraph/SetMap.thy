@@ -1,5 +1,5 @@
 theory SetMap
-  imports HOLCF HOLCFUtils
+  imports Main
 begin
 
 definition smap_empty ("{}.")
@@ -15,19 +15,33 @@ primrec smap_Union :: "('a::type \<Rightarrow> 'b::type set) list \<Rightarrow> 
 definition smap_singleton :: "'a::type \<Rightarrow> 'b::type set \<Rightarrow> 'a \<Rightarrow> 'b set" ("{ _ := _}.")
   where "{k := vs}. = {}. (k := vs)"
 
-lemma smap_union_mono: "\<lbrakk> ve1 \<sqsubseteq> ve1'; ve2 \<sqsubseteq> ve2' \<rbrakk> \<Longrightarrow> ve1 \<union>. ve2 \<sqsubseteq> ve1' \<union>. ve2'"
-  by (subst below_fun_def, subst (asm) (1 2) below_fun_def, auto simp add:sqsubset_is_subset smap_union_def)
+definition smap_less :: "('a \<Rightarrow> 'b set) \<Rightarrow> ('a \<Rightarrow> 'b set) \<Rightarrow> bool" ("_/ \<subseteq>. _" [50, 51] 50)
+  where "smap_less m1 m2 = (\<forall>k. m1 k \<subseteq> m2 k)"
+
+lemma smap_empty[simp]: "{}. \<subseteq>. {}."
+  unfolding smap_less_def by auto
+
+lemma smap_less_refl: "m \<subseteq>. m"
+  unfolding smap_less_def by simp
+
+lemma smap_less_trans[trans]: "\<lbrakk> m1 \<subseteq>. m2; m2 \<subseteq>. m3 \<rbrakk> \<Longrightarrow> m1 \<subseteq>. m3"
+  unfolding smap_less_def by auto
+
+lemma smap_union_mono: "\<lbrakk> ve1 \<subseteq>. ve1'; ve2 \<subseteq>. ve2' \<rbrakk> \<Longrightarrow> ve1 \<union>. ve2 \<subseteq>. ve1' \<union>. ve2'"
+  by (auto simp add:smap_less_def smap_union_def)
 
 lemma smap_Union_union: "m1 \<union>. \<Union>.ms = \<Union>.(m1#ms)"
   by (rule ext, auto simp add: smap_union_def smap_Union_def)
 
 lemma smap_Union_mono:
-  assumes "list_all2 (op \<sqsubseteq>) ms1 ms2"
-  shows "\<Union>. ms1 \<sqsubseteq> \<Union>. ms2"
-using assms by (induct rule:list_induct2[OF list_all2_lengthD[OF assms], case_names Nil Cons])(auto intro:smap_union_mono)
+  assumes "list_all2 smap_less ms1 ms2"
+  shows "\<Union>. ms1 \<subseteq>. \<Union>. ms2"
+using assms 
+  by(induct rule:list_induct2[OF list_all2_lengthD[OF assms]])
+    (auto intro:smap_union_mono)
 
-lemma smap_singleton_mono: "v \<sqsubseteq> v'\<Longrightarrow> {k := v}. \<sqsubseteq> {k := v'}."
- by (subst below_fun_def, auto simp add: smap_singleton_def)
+lemma smap_singleton_mono: "v \<subseteq> v' \<Longrightarrow> {k := v}. \<subseteq>. {k := v'}."
+ by (auto simp add: smap_singleton_def smap_less_def)
 
 lemma smap_union_comm: "m1 \<union>. m2 = m2 \<union>. m1"
 by (rule ext,auto simp add:smap_union_def)
