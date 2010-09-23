@@ -9,16 +9,16 @@ lemma cc_single_valued':
        ; \<forall>d' \<in> set ds. \<forall>b' \<in> contours_in_d d'. b' < b
        \<rbrakk>
        \<Longrightarrow>
-       (   single_valued (evalF\<cdot>(Discr (d,ds,ve,b)))
-       \<and> (\<forall> lab \<beta> t. ((lab,\<beta>),t) \<in> evalF\<cdot>(Discr (d,ds,ve, b)) \<longrightarrow> (\<exists> b'. b' \<in> ran \<beta> \<and> b \<le> b'))
+       (   single_valued (\<F>\<cdot>(Discr (d,ds,ve,b)))
+       \<and> (\<forall> lab \<beta> t. ((lab,\<beta>),t) \<in> \<F>\<cdot>(Discr (d,ds,ve, b)) \<longrightarrow> (\<exists> b'. b' \<in> ran \<beta> \<and> b \<le> b'))
        )"
   and "\<lbrakk> b \<in> ran \<beta>'
        ; \<forall>b'\<in>ran \<beta>'. b' \<le> b
        ; \<forall>b' \<in> contours_in_ve ve. b' \<le> b
        \<rbrakk>
        \<Longrightarrow>
-       (   single_valued (evalC\<cdot>(Discr (c,\<beta>',ve,b)))
-       \<and> (\<forall> lab \<beta> t. ((lab,\<beta>),t) \<in> evalC\<cdot>(Discr (c,\<beta>',ve,b)) \<longrightarrow> (\<exists> b'. b' \<in> ran \<beta> \<and> b \<le> b'))
+       (   single_valued (\<C>\<cdot>(Discr (c,\<beta>',ve,b)))
+       \<and> (\<forall> lab \<beta> t. ((lab,\<beta>),t) \<in> \<C>\<cdot>(Discr (c,\<beta>',ve,b)) \<longrightarrow> (\<exists> b'. b' \<in> ran \<beta> \<and> b \<le> b'))
        )"
 proof(induct arbitrary:d ds ve b c \<beta>' b' rule:evalF_evalC_induct)
 print_cases
@@ -198,7 +198,7 @@ next
 qed
 print_theorems (* Unselect-blocker *)
 
-lemma "single_valued (evalCPS prog)"
+lemma "single_valued (\<PR> prog)"
 unfolding evalCPS_def
 by ((subst HOL.Let_def)+, rule cc_single_valued'[THEN conjunct1], auto)
 end
