@@ -544,12 +544,6 @@ case 2
 }
 qed
 
-definition evalCPS_a :: "prog \<Rightarrow> ('c::contour_a) \<aans>" ("\<aPR>")
-  where "\<aPR> l = (let ve = {}.;
-                          \<beta> = empty;
-                          f = \<aA> (L l) \<beta> ve
-                      in  \<aF>\<cdot>(Discr (contents f,[{AStop}],ve,\<abinit>)))"
-
 lemma lemma6: "|\<PR> l| \<lessapprox> \<aPR> l"
   unfolding evalCPS_def evalCPS_a_def
   by (auto intro!:lemma89 fstate_approx.intros simp del:evalF.simps a_evalF.simps

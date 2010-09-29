@@ -139,4 +139,11 @@ lemmas a_fstate_case = prod_cases4[OF proc.exhaust, of _ "\<lambda>x _ _ _ . x",
   OF case_split a_ds_cases a_ds_cases a_ds_cases_stop,
   of _ "\<lambda>_ as _ _ _ _ _ _ vs _ . length vs = length as" _ "\<lambda> _ ds _ _ _ _ . ds" "\<lambda> _ ds _ _ _ _ _. ds" "\<lambda> _ ds _ _. ds"]
 
+
+definition evalCPS_a :: "prog \<Rightarrow> ('c::contour) \<aans>" ("\<aPR>")
+  where "\<aPR> l = (let ve = {}.;
+                          \<beta> = empty;
+                          f = \<aA> (L l) \<beta> ve
+                      in  \<aF>\<cdot>(Discr (contents f,[{AStop}],ve,\<abinit>)))"
+
 end

@@ -67,7 +67,8 @@ fixrec abs_R :: "('c::contour \<afstate> + 'c \<acstate>) discr \<rightarrow> ('
 lemma Un_commute_helper:"(a \<union> b) \<union> (c \<union> d) = (a \<union> c) \<union> (b \<union> d)"
 by auto
 
-lemma "\<aF> = fst (sum_to_tup\<cdot>(fix\<cdot>(\<Lambda> f x. (\<Union>y\<in>abs_R\<cdot>x. f\<cdot>y) \<union> abs_g\<cdot>x)))"
+lemma a_evalF_decomp:
+  "\<aF> = fst (sum_to_tup\<cdot>(fix\<cdot>(\<Lambda> f x. (\<Union>y\<in>abs_R\<cdot>x. f\<cdot>y) \<union> abs_g\<cdot>x)))"
 apply (subst a_evalF_def)
 apply (subst fix_transform_pair_sum)
 apply (rule arg_cong [of _ _ "\<lambda>x. fst (sum_to_tup\<cdot>(fix\<cdot>x))"])
@@ -81,5 +82,15 @@ apply (case_tac b rule:prod_cases4)
 apply (case_tac aa)
 apply (simp_all add:HOL.Let_def)
 done
+
+lemma a_evalF_iterative:
+  "\<aF>\<cdot>(Discr x) = \<^ps> abs_g\<cdot>(\<Union>i. iterate i\<cdot>(\<^ps> abs_R)\<cdot>{Discr (Inl x)})"
+by (simp del:abs_R.simps abs_g.simps add: theorem12 Un_commute a_evalF_decomp)
+
+lemma a_evalCPS_interative:
+"\<aPR> x = \<^ps> abs_g\<cdot>(\<Union>i. iterate i\<cdot>(\<^ps> abs_R)\<cdot>{Discr (Inl
+     (contents (\<aA> (L x) empty {}.), [{AStop}], {}., \<abinit>))})"
+unfolding evalCPS_a_def
+by(subst a_evalF_iterative, simp del:abs_R.simps abs_g.simps evalV_a.simps)
 
 end
