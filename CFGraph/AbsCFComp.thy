@@ -1,94 +1,85 @@
 theory AbsCFComp
-imports AbsCF Computability
+imports AbsCF Computability FixTransform
 begin
 
-lemma cont2cont_split_pair[cont2cont,simp]:
- assumes f1: "cont f"
-     and f2: "\<And> x. cont (f x)"
-     and g1: "cont g"
-     and g2: "\<And> x. cont (g x)"
- shows "cont (\<lambda>(a, b). (f a b, g a b))"
-apply (intro cont2cont)
-apply (rule cont_apply[OF cont_snd _ cont_const])
-apply (rule cont_apply[OF cont_snd f2])
-apply (rule cont_apply[OF cont_fst cont2cont_fun[OF f1] cont_const])
+fixrec abs_g :: "('c::contour \<afstate> + 'c \<acstate>) discr \<rightarrow> 'c \<aans>"
+  where "abs_g\<cdot>x = (case undiscr x of
+              (Inl (PC (Lambda lab vs c, \<beta>), as, ve, b)) \<Rightarrow> {}
+            | (Inl (PP (Plus c),[_,_,cnts],ve,b)) \<Rightarrow>
+                     let b' = \<anb> b c;
+                         \<beta>  = [c \<mapsto> b]
+                     in {((c, \<beta>), cont) | cont . cont \<in> cnts}
+            | (Inl (PP (prim.If ct cf),[_, cntts, cntfs],ve,b)) \<Rightarrow>
+                  ((   let b' = \<anb> b ct;
+                            \<beta> = [ct \<mapsto> b]
+                        in {((ct, \<beta>), cnt) | cnt . cnt \<in> cntts}
+                   )\<union>(
+                       let b' = \<anb> b cf;
+                            \<beta> = [cf \<mapsto> b]
+                        in {((cf, \<beta>), cnt) | cnt . cnt \<in> cntfs}
+                   ))
+            | (Inl (AStop,[_],_,_)) \<Rightarrow> {}
+            | (Inl _) \<Rightarrow> \<bottom>
+            | (Inr (App lab f vs,\<beta>,ve,b)) \<Rightarrow>
+                 let fs = \<aA> f \<beta> ve;
+                     as = map (\<lambda>v. \<aA> v \<beta> ve) vs;
+                     b' = \<anb> b lab
+                  in {((lab, \<beta>),f') | f' . f'\<in> fs}
+            | (Inr (Let lab ls c',\<beta>,ve,b)) \<Rightarrow> {}
+        )"
 
-apply (rule cont_apply[OF cont_snd _ cont_const])
-apply (rule cont_apply[OF cont_snd g2])
-apply (rule cont_apply[OF cont_fst cont2cont_fun[OF g1] cont_const])
-done
+fixrec abs_R :: "('c::contour \<afstate> + 'c \<acstate>) discr \<rightarrow> ('c::contour \<afstate> + 'c \<acstate>) discr set"
+  where "abs_R\<cdot>x = (case undiscr x of
+              (Inl (PC (Lambda lab vs c, \<beta>), as, ve, b)) \<Rightarrow>
+               (if length vs = length as
+                then let \<beta>' = \<beta> (lab \<mapsto> b);
+                         ve' = ve \<union>. (\<Union>. (map (\<lambda>(v,a). {(v,b) := a}.) (zip vs as)))
+                     in {Discr (Inr (c,\<beta>',ve',b))}
+                else \<bottom>)
+            | (Inl (PP (Plus c),[_,_,cnts],ve,b)) \<Rightarrow>
+                     let b' = \<anb> b c;
+                         \<beta>  = [c \<mapsto> b]
+                     in (\<Union>cnt\<in>cnts. {Discr (Inl (cnt,[{}],ve,b'))})
+            | (Inl (PP (prim.If ct cf),[_, cntts, cntfs],ve,b)) \<Rightarrow>
+                  ((   let b' = \<anb> b ct;
+                            \<beta> = [ct \<mapsto> b]
+                        in (\<Union>cnt\<in>cntts . {Discr (Inl (cnt,[],ve,b'))})
+                   )\<union>(
+                       let b' = \<anb> b cf;
+                            \<beta> = [cf \<mapsto> b]
+                        in (\<Union>cnt\<in>cntfs . {Discr (Inl (cnt,[],ve,b'))})
+                   ))
+            | (Inl (AStop,[_],_,_)) \<Rightarrow> {}
+            | (Inl _) \<Rightarrow> \<bottom>
+            | (Inr (App lab f vs,\<beta>,ve,b)) \<Rightarrow>
+                 let fs = \<aA> f \<beta> ve;
+                     as = map (\<lambda>v. \<aA> v \<beta> ve) vs;
+                     b' = \<anb> b lab
+                  in (\<Union>f' \<in> fs. {Discr (Inl (f',as,ve,b'))})
+            | (Inr (Let lab ls c',\<beta>,ve,b)) \<Rightarrow>
+                 let b' = \<anb> b lab;
+                     \<beta>' = \<beta> (lab \<mapsto> b');
+                     ve' = ve \<union>. (\<Union>. (map (\<lambda>(v,l). {(v,b') := (\<aA> (L l) \<beta>' ve)}.) ls))
+                 in {Discr (Inr (c',\<beta>',ve',b'))}
+        )"
 
-lemma from_to_discr_pair_oo[simp]:
- assumes f1: "cont f"
-     and f2: "\<And> x. cont (f x)"
-     and g1: "cont g"
-     and g2: "\<And> x. cont (g x)"
-  shows "(from_discr_pair oo (\<Lambda> p. (\<lambda>(a,b). (f a b, g a b)) p) oo to_discr_pair)
-   = (\<Lambda> p . (\<lambda>(a,b) . (from_discr\<cdot>(f (to_discr\<cdot>a) (to_discr\<cdot>b)),
-                       from_discr\<cdot>(g (to_discr\<cdot>a) (to_discr\<cdot>b)))) p)"
-apply (rule ext_cfun)
-apply (case_tac x)
-apply (auto simp add:cont2cont_split_pair[OF f1 f2 g1 g2])
-apply (subst beta_cfun)
-apply (auto simp add:from_discr_pair_app to_discr_pair_app)
 
-apply (rule cont2cont_split_pair)
+lemma Un_commute_helper:"(a \<union> b) \<union> (c \<union> d) = (a \<union> c) \<union> (b \<union> d)"
+by auto
 
-apply (intro cont2cont cont2cont_lambda)
-apply (rule cont2cont_fun)
-apply (intro cont2cont cont_compose[OF f1])
-apply (intro cont2cont cont_compose[OF f2])
-
-apply (intro cont2cont cont2cont_lambda)
-apply (rule cont2cont_fun)
-apply (intro cont2cont cont_compose[OF g1])
-apply (intro cont2cont cont_compose[OF g2])
-done
-
-lemma tup_sum_oo[simp]:
- assumes f1: "cont f"
-     and f2: "\<And> x. cont (f x)"
-     and g1: "cont g"
-     and g2: "\<And> x. cont (g x)"
-shows  "tup_to_sum oo (\<Lambda> p. (\<lambda>(a, b). (f a b, g a b)) p) oo sum_to_tup
-  = (\<Lambda> x. sum_case (f (x \<circ> Inl) (x \<circ> Inr)) (g (x \<circ> Inl) (x \<circ> Inr)))"
-apply (rule ext_cfun)
-apply (simp add: sum_to_tup_app tup_to_sum_app cont2cont_split_pair[OF f1 f2 g1 g2])
-
-apply (subst beta_cfun)
-
-apply (rule cont2cont_lambda[OF cont2cont_sum_case])
-apply (rule cont_apply[OF _ f2])
-apply (intro cont2cont)
-apply (rule cont2cont_fun[of "\<lambda>x. f (x \<circ> Inl)"])
-apply (rule cont_apply[OF cont2cont_circ f1 cont_const])
-
-apply (rule cont_apply[OF _ g2])
-apply (intro cont2cont)
-apply (rule cont2cont_fun[of "\<lambda>x. g (x \<circ> Inl)"])
-apply (rule cont_apply[OF cont2cont_circ g1 cont_const])
-
-apply (rule refl)
-done
-
-lemma fst_to_discr_pair[simp]:
-  "fst (to_discr_pair\<cdot>x) = to_discr\<cdot>(fst x)"
-by (cases x, simp add:to_discr_pair_def)
-
-lemma fst_sum_to_tup[simp]:
-  "fst (sum_to_tup\<cdot>x) = x \<circ> Inl"
-by (simp add: sum_to_tup_app)
-
-lemma "\<aF> = undefined"
+lemma "\<aF> = fst (sum_to_tup\<cdot>(fix\<cdot>(\<Lambda> f x. (\<Union>y\<in>abs_R\<cdot>x. f\<cdot>y) \<union> abs_g\<cdot>x)))"
 apply (subst a_evalF_def)
-apply (subst fix_transform_discr_pair)
 apply (subst fix_transform_pair_sum)
+apply (rule arg_cong [of _ _ "\<lambda>x. fst (sum_to_tup\<cdot>(fix\<cdot>x))"])
+apply (simp)
+apply (simp only: discr_app undiscr_Discr)
+apply (rule ext_cfun, rule ext_cfun, simp)
+apply (case_tac xa, case_tac a, simp)
+apply (case_tac aa rule:a_fstate_case, simp_all add: Un_commute_helper)
 
-apply (simp add:  from_discr_app)
-apply (simp only: to_discr_app')
-
-apply (subst tup_sum_oo)
-
-
+apply (case_tac b rule:prod_cases4)
+apply (case_tac aa)
+apply (simp_all add:HOL.Let_def)
+done
 
 end

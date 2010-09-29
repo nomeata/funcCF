@@ -123,8 +123,20 @@ fun a_evalF_cases
      | "a_evalF_cases (PP (prim.If cp1 cp2)) [v,cntt,cntf] ve b = undefined"
      | "a_evalF_cases AStop [v] ve b = undefined"
 
-lemmas a_fstate_case = a_evalF_cases.cases[
+lemmas a_fstate_case_x = a_evalF_cases.cases[
   OF case_split, of _ "\<lambda>_ vs _ _ as _ _ . length vs = length as",
   case_names "Closure" "Closure_inv" "Plus" "If" "Stop"]
+
+lemmas a_cl_cases = prod.exhaust[OF lambda.exhaust, of _ "\<lambda> a _ . a"]
+lemmas a_ds_cases = list.exhaust[
+  OF _ list.exhaust,  of _ _ "\<lambda>_ x. x",
+  OF _ _ list.exhaust  ,of _ _ "\<lambda>_ _ _ x. x" , 
+  OF _ _ _ list.exhaust,of _ _ "\<lambda>_ _ _ _ _ x. x"
+  ] 
+lemmas a_ds_cases_stop = list.exhaust[OF _ list.exhaust, of _ _ "\<lambda>_ x. x"]
+lemmas a_fstate_case = prod_cases4[OF proc.exhaust, of _ "\<lambda>x _ _ _ . x",
+  OF a_cl_cases prim.exhaust, of _ "\<lambda> _ _ _ _ a . a" _ "\<lambda> _ _ _ _ a. a",
+  OF case_split a_ds_cases a_ds_cases a_ds_cases_stop,
+  of _ "\<lambda>_ as _ _ _ _ _ _ vs _ . length vs = length as" _ "\<lambda> _ ds _ _ _ _ . ds" "\<lambda> _ ds _ _ _ _ _. ds" "\<lambda> _ ds _ _. ds"]
 
 end
