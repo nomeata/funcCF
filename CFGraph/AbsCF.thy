@@ -113,6 +113,8 @@ fixrec   a_evalF :: "'c::contour \<afstate> discr \<rightarrow> 'c \<aans>" ("\<
                  in \<aC>\<cdot>(Discr (c',\<beta>',ve',b'))
         )"
 
+print_theorems
+
 lemmas a_evalF_evalC_induct = a_evalF_a_evalC.induct[case_names Admissibility Bottom Next]
 
 fun a_evalF_cases

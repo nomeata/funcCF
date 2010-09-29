@@ -19,7 +19,7 @@ by auto
 
 lemma theorem10:
   fixes g :: "'a::cpo \<rightarrow> 'b::type set" and r :: "'a \<rightarrow> 'a"
-  shows "fix_syn (\<lambda> f.  (\<Lambda> x. g\<cdot>x \<union> f\<cdot>(r\<cdot>x))) = (\<Lambda> x. (\<Union>i. g\<cdot>(iterate i\<cdot>r\<cdot>x)))"
+  shows "fix\<cdot>(\<Lambda> f x. g\<cdot>x \<union> f\<cdot>(r\<cdot>x)) = (\<Lambda> x. (\<Union>i. g\<cdot>(iterate i\<cdot>r\<cdot>x)))"
 proof(induct rule:fix_eqI[OF ext_cfun below_cfun_ext, case_names fp least])
 case (fp x)
   have "g\<cdot>x \<union> (\<Union>i. g\<cdot>(iterate i\<cdot>r\<cdot>(r\<cdot>x))) = g\<cdot>(iterate 0\<cdot>r\<cdot>x) \<union> (\<Union>i. g\<cdot>(iterate (Suc i)\<cdot>r\<cdot>x))"
@@ -100,11 +100,11 @@ by (induct i, auto simp add:powerset_lift_UNION)
 
 lemmas powerset_distr = powerset_lift_UNION powerset_lift_iterate_UNION
 
-(* discrete_cpo, otherwise x \<mapsto> {x} nicht continous *)
-lemma theorem12:
+(* discrete_cpo, otherwise x \<mapsto> {x} not continous *)
+lemma theorem12':
   fixes g :: "'a::discrete_cpo \<rightarrow> 'b::type set" and R :: "'a \<rightarrow> 'a set"
   assumes F_fix: "F = fix_syn (\<lambda>F. \<Lambda> x. \<^ps> g\<cdot>x \<union> F\<cdot>(\<^ps> R\<cdot>x))"
-  shows "fix_syn (\<lambda>f. \<Lambda> x. g\<cdot>x \<union> (\<Union>y\<in>R\<cdot>x. f\<cdot>y)) = (\<Lambda> x. F\<cdot>{x})"
+  shows "fix\<cdot>(\<Lambda> f x. g\<cdot>x \<union> (\<Union>y\<in>R\<cdot>x. f\<cdot>y)) = (\<Lambda> x. F\<cdot>{x})"
 proof(induct rule:fix_eqI[OF ext_cfun below_cfun_ext, case_names fp least])
 have F_union: "F = (\<Lambda> x. \<Union>i. \<^ps> g\<cdot>(iterate i\<cdot>(\<^ps> R)\<cdot>x))"
   using F_fix by(simp)(rule theorem10ps)
@@ -128,9 +128,115 @@ case (least f' x)
   thus ?case by (auto simp add:sqsubset_is_subset)
 qed
 
-lemma
+lemma theorem12:
   fixes g :: "'a::discrete_cpo \<rightarrow> 'b::type set" and R :: "'a \<rightarrow> 'a set"
-  shows "fix_syn (\<lambda>f. \<Lambda> x. g\<cdot>x \<union> (\<Union>y\<in>R\<cdot>x. f\<cdot>y))\<cdot>x =  \<^ps> g\<cdot>(\<Union>i.(iterate i\<cdot>(\<^ps> R)\<cdot>{x}))"
-  by(subst theorem12[OF theorem10ps[THEN sym]], auto simp add:powerset_distr)
+  shows "fix\<cdot>(\<Lambda> f x. g\<cdot>x \<union> (\<Union>y\<in>R\<cdot>x. f\<cdot>y))\<cdot>x =  \<^ps> g\<cdot>(\<Union>i.(iterate i\<cdot>(\<^ps> R)\<cdot>{x}))"
+  by(subst theorem12'[OF theorem10ps[THEN sym]], auto simp add:powerset_distr)
+
+lemma fix_transform:
+  assumes "\<And>x. g\<cdot>(f\<cdot>x)=x"
+  shows "fix\<cdot>F = g\<cdot>(fix\<cdot>(f oo F oo g))"
+using assms apply -
+apply (rule parallel_fix_ind)
+apply (rule adm_eq)
+apply auto
+apply (erule retraction_strict[of g f,rule_format])
+done
+
+definition from_discr
+  where "from_discr = (\<Lambda> f. (\<lambda> x. f\<cdot>(Discr x)))"
+definition to_discr
+  where "to_discr = (\<Lambda> f. (\<Lambda> x. f (undiscr x)))"
+
+(*
+lemma to_discr_cont[simp]:
+  "cont (\<lambda>f. \<Lambda> (x::'a::discrete_cpo). f (p x))"
+apply (rule contI2[OF monofunI[OF below_cfun_ext] below_cfun_ext])
+apply (auto simp add:below_fun_def thelub_fun contlub_cfun_fun)
+done
+*)
+
+lemma from_discr_app:
+  "from_discr\<cdot>f = (\<lambda> x. f\<cdot>(Discr x))"
+unfolding from_discr_def by auto
+
+lemma to_discr_app:
+  "to_discr\<cdot>f = (\<Lambda> x. f (undiscr x))"
+unfolding to_discr_def
+apply (subst beta_cfun)
+apply (rule contI2[OF monofunI[OF below_cfun_ext] below_cfun_ext])
+apply (auto simp add:below_fun_def thelub_fun contlub_cfun_fun)
+done
+
+lemma to_discr_app'[simp]:
+  "to_discr\<cdot>f\<cdot>(Discr x) = f x"
+by (simp add:to_discr_app)
+
+lemma from_to_discr[simp]:
+  "to_discr\<cdot>(from_discr\<cdot>x) = x"
+by (auto intro: ext_cfun simp add: from_discr_app to_discr_app)
+
+lemma fix_transform_discr:
+  shows "fix\<cdot>F = to_discr\<cdot>(fix\<cdot>(from_discr oo F oo to_discr))"
+by (rule fix_transform[OF from_to_discr])
+
+definition from_discr_pair
+  where "from_discr_pair = (\<Lambda> (f,g). (from_discr\<cdot>f, from_discr\<cdot>g))"
+definition to_discr_pair
+  where "to_discr_pair = (\<Lambda> (f,g). (to_discr\<cdot>f, to_discr\<cdot>g))"
+
+lemma from_discr_pair_app:
+  "from_discr_pair\<cdot>(f,g) = (from_discr\<cdot>f, from_discr\<cdot>g)"
+unfolding from_discr_pair_def by auto
+
+lemma to_discr_pair_app:
+  "to_discr_pair\<cdot>(f,g) = (to_discr\<cdot>f, to_discr\<cdot>g)"
+unfolding to_discr_pair_def by auto
+
+lemma from_to_discr_pair[simp]:
+  "to_discr_pair\<cdot>(from_discr_pair\<cdot>x) = x"
+by (cases x, auto simp add:from_discr_pair_app to_discr_pair_app)
+
+lemma fix_transform_discr_pair:
+  shows "fix\<cdot>F = to_discr_pair\<cdot>(fix\<cdot>(from_discr_pair oo F oo to_discr_pair))"
+by (rule fix_transform[OF from_to_discr_pair])
+
+definition tup_to_sum
+ where "tup_to_sum = (\<Lambda> p. split sum_case p)"
+
+definition sum_to_tup
+ where "sum_to_tup = (\<Lambda> f. (f \<circ> Inl, f \<circ> Inr))"
+
+lemma cont2cont_sum_case[simp,cont2cont]:
+  assumes "cont f" and "cont g"
+  shows "cont (\<lambda>x. sum_case (f x) (g x) s)"
+using assms
+by (cases s, auto intro:cont2cont_fun)
+
+lemma cont2cont_circ[simp,cont2cont]:
+ "cont (\<lambda>f. f \<circ> g)"
+apply (rule cont2cont_lambda)
+apply (subst comp_def)
+apply (rule  cont2cont_fun[of "\<lambda>x. x", OF "cont_id"])
+done
+
+lemma sum_to_tup_app:
+ "sum_to_tup\<cdot>f = (f \<circ> Inl, f \<circ> Inr)"
+unfolding sum_to_tup_def by auto 
+
+lemma tup_to_sum_app:
+  "tup_to_sum\<cdot>p = split sum_case p"
+unfolding tup_to_sum_def by simp
+
+lemma tup_to_sum_to_tup[simp]:
+  shows   "sum_to_tup\<cdot>(tup_to_sum\<cdot>F) = F"
+unfolding sum_to_tup_def and tup_to_sum_def
+by (cases F, auto intro:ext)
+
+lemma fix_transform_pair_sum:
+  shows "fix\<cdot>F = sum_to_tup\<cdot>(fix\<cdot>(tup_to_sum oo F oo sum_to_tup))"
+by (rule fix_transform[OF tup_to_sum_to_tup])
+
+
 
 end
