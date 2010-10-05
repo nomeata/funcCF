@@ -32,6 +32,24 @@ definition smap_singleton :: "'a::type \<Rightarrow> 'b::type set \<Rightarrow> 
 definition smap_less :: "('a \<Rightarrow> 'b set) \<Rightarrow> ('a \<Rightarrow> 'b set) \<Rightarrow> bool" ("_/ \<subseteq>. _" [50, 51] 50)
   where "smap_less m1 m2 = (\<forall>k. m1 k \<subseteq> m2 k)"
 
+lemma sdom_empty[simp]: "sdom {}. = {}"
+  unfolding sdom_def smap_empty_def by auto
+
+lemma sdom_singleton[simp]: "sdom {k := vs}. \<subseteq> {k}"
+  by (auto simp add: sdom_def smap_singleton_def smap_empty_def)
+
+lemma sran_singleton[simp]: "sran {k := vs}. = vs"
+  by (auto simp add: sran_def smap_singleton_def smap_empty_def)
+
+lemma sran_empty[simp]: "sran {}. = {}"
+  unfolding sran_def smap_empty_def by auto
+
+lemma sdom_union[simp]: "sdom (m \<union>. n) = sdom m \<union> sdom n"
+  by(auto simp add:smap_union_def sdom_def)
+
+lemma sran_union[simp]: "sran (m \<union>. n) = sran m \<union> sran n"
+  by(auto simp add:smap_union_def sran_def)
+
 lemma smap_empty[simp]: "{}. \<subseteq>. {}."
   unfolding smap_less_def by auto
 

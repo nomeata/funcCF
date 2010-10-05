@@ -35,6 +35,11 @@ apply (rule chfindom_monofun2cont)
 apply (rule monofunI, simp add: below_bool_def)
 done
 
+lemma cont2cont_imp[simp, cont2cont]:
+  assumes f: "cont (\<lambda>x. \<not> f x)" and g: "cont (\<lambda>x. g x)"
+  shows "cont (\<lambda>x. f x \<longrightarrow> g x)"
+unfolding imp_conv_disj by (rule cont2cont_disj[OF f g])
+
 lemma cont2cont_Collect [simp, cont2cont]:
   assumes "\<And>y. cont (\<lambda>x. f x y)"
   shows "cont (\<lambda>x. {y. f x y})"

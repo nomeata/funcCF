@@ -8,12 +8,12 @@ types label = nat
 types var = "label \<times> string"
 
 definition "binder" :: "var \<Rightarrow> label" where  [simp]:"binder v = fst v"
- 
+
+datatype prim = Plus label | If label label
 datatype lambda = Lambda label "var list" call
      and call = App label val "val list"
               | Let label "(var \<times> lambda) list" call
      and val = L lambda | R label var | C label int | P prim
-     and prim = Plus label | If label label
 
 types prog = lambda
 

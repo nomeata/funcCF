@@ -32,7 +32,6 @@ next
   }
 next
   case (Next evalF evalC)
-  print_cases
   {
   case (1 d ds ve b)
   thus ?case
