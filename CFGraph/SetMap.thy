@@ -2,6 +2,20 @@ theory SetMap
   imports Main
 begin
 
+definition
+  sdom :: "('a => 'b set) => 'a set" where
+  "sdom m = {a. m a ~= {}}"
+
+definition
+  sran :: "('a => 'b set) => 'b set" where
+  "sran m = {b. EX a. b \<in> m a}"
+
+lemma sranI: "b \<in> m a \<Longrightarrow> b \<in> sran m"
+  by(auto simp: sran_def)
+
+lemma sdom_not_mem[elim]: "a \<notin> sdom m \<Longrightarrow> m a = {}"
+  by (auto simp: sdom_def)
+
 definition smap_empty ("{}.")
  where "{}. k = {}"
 

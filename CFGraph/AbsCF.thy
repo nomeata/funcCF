@@ -1,5 +1,5 @@
 theory AbsCF
-  imports CPSUtils HOLCF HOLCFUtils CPSScheme Utils SetMap
+  imports HOLCF HOLCFUtils CPSScheme Utils SetMap
 begin
 
 default_sort type
@@ -7,12 +7,13 @@ default_sort type
 class contour =
   fixes nb_a :: "'a \<Rightarrow> label \<Rightarrow> 'a" ("\<anb>")
     and a_initial_contour :: 'a ("\<abinit>")
+  assumes contour_finite: "finite (UNIV :: 'a set)"
 
 instantiation unit :: contour
 begin
 definition "\<anb> _ _ = ()"
 definition "\<abinit> = ()"
-instance by default
+instance by default auto
 end
 
 types 'c a_benv = "label \<rightharpoonup> 'c" ("_ \<abenv>" [1000])

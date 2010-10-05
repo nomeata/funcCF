@@ -1,5 +1,5 @@
 theory ExCF
-  imports CPSUtils HOLCF HOLCFUtils CPSScheme Utils
+  imports HOLCF HOLCFUtils CPSScheme Utils
 begin
 
 typedef contour = "UNIV::label list set" by auto

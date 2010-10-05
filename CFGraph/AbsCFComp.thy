@@ -1,6 +1,8 @@
 theory AbsCFComp
-imports AbsCF Computability FixTransform
+imports AbsCF Computability FixTransform CPSUtils
 begin
+
+default_sort type
 
 fixrec abs_g :: "('c::contour \<afstate> + 'c \<acstate>) discr \<rightarrow> 'c \<aans>"
   where "abs_g\<cdot>x = (case undiscr x of
@@ -63,6 +65,84 @@ fixrec abs_R :: "('c::contour \<afstate> + 'c \<acstate>) discr \<rightarrow> ('
                  in {Discr (Inr (c',\<beta>',ve',b'))}
         )"
 
+definition maps_over :: "'a::type set \<Rightarrow> 'b::type set \<Rightarrow> ('a \<rightharpoonup> 'b) set"
+  where "maps_over A B = {m. dom m \<subseteq> A \<and> ran m \<subseteq> B}"
+
+lemma maps_over_finite[intro]:
+  assumes "finite A" and "finite B" shows "finite (maps_over A B)"
+proof-
+  have inj_map_graph: "inj (\<lambda>f. {(x, y). Some y = f x})"
+  proof (induct rule: inj_onI)
+    case (1 x y)
+    from "1.hyps"(3) have hyp: "\<And> a b. (Some b = x a) \<longleftrightarrow> (Some b = y a)"
+      by (simp add:expand_set_eq)
+    show ?case
+    proof (rule ext)
+    fix z show "x z = y z"
+      using hyp[of _ z]
+      by (cases "x z", cases "y z", auto)
+    qed
+  qed
+
+  have "(\<lambda>f. {(x, y). Some y = f x}) ` maps_over A B \<subseteq> Pow( A \<times> B )" (is "?graph \<subseteq> _")
+    unfolding maps_over_def
+    by (auto dest!:subsetD[of _ A] subsetD[of _ B] intro:ranI)
+  moreover
+  have "finite (Pow( A \<times> B ))" using assms by auto
+  ultimately
+  have "finite ?graph" by (rule finite_subset)
+  thus ?thesis
+    by (rule finite_imageD[OF _ subset_inj_on[OF inj_map_graph subset_UNIV]])
+qed
+
+definition smaps_over :: "'a::type set \<Rightarrow> 'b::type set \<Rightarrow> ('a \<Rightarrow> 'b set) set"
+  where "smaps_over A B = {m. sdom m \<subseteq> A \<and> sran m \<subseteq> B}"
+
+lemma smaps_over_finite[intro]: 
+  assumes "finite A" and "finite B" shows "finite (smaps_over A B)"
+proof-
+  have inj_smap_graph: "inj (\<lambda>f. {(x, y). y = f x \<and> y \<noteq> {}})" (is "inj ?gr")
+  proof (induct rule: inj_onI)
+    case (1 x y)
+    from "1.hyps"(3) have hyp: "\<And> a b. (b = x a \<and> b \<noteq> {}) = (b = y a \<and> b \<noteq> {})"
+      by -(subst (asm) (3) expand_set_eq, simp)
+    show ?case
+    proof (rule ext)
+    fix z show "x z = y z"
+      using hyp[of _ z]
+      by (cases "x z \<noteq> {}", cases "y z \<noteq> {}", auto)
+    qed
+  qed
+
+  have "?gr ` smaps_over A B \<subseteq> Pow( A \<times> Pow  B )" (is "?graph \<subseteq> _")
+    unfolding smaps_over_def
+    by (auto dest!:subsetD[of _ A] subsetD[of _ "Pow B"] sdom_not_mem intro:sranI)
+  moreover
+  have "finite (Pow( A \<times> Pow B ))" using assms by auto
+  ultimately
+  have "finite ?graph" by (rule finite_subset)
+  thus ?thesis
+    by (rule finite_imageD[OF _ subset_inj_on[OF inj_smap_graph subset_UNIV]])
+qed
+
+definition prim_poss :: "prog \<Rightarrow> prim set"
+  where "prim_poss p = (Plus ` labels p \<union> { prim.If p1 p1 | p1 p2 .  p1 \<in> labels p \<and> p2 \<in> labels p})"
+
+definition proc_poss :: "prog \<Rightarrow> 'c::contour proc set"
+  where "proc_poss p = PC ` (lambdas p \<times> maps_over (labels p) UNIV) \<union> PP ` prim_poss p \<union> {AStop}"
+
+definition fstate_poss :: "prog \<Rightarrow> 'c::contour a_fstate set"
+  where "fstate_poss p = (proc_poss p \<times> NList (Pow (proc_poss p)) (call_list_lengths p) \<times> smaps_over (vars p \<times> UNIV) (proc_poss p) \<times> UNIV)"
+
+definition cstate_poss :: "prog \<Rightarrow> 'c::contour a_cstate set"
+  where "cstate_poss p = (calls p \<times> maps_over (labels p) UNIV \<times> smaps_over (vars p \<times> UNIV) (proc_poss p) \<times> UNIV)"
+
+definition arg_poss :: "prog \<Rightarrow> ('c::contour a_fstate + 'c a_cstate) set"
+  where "arg_poss p = fstate_poss p <+> cstate_poss p"
+
+lemma finite_arg_space: "finite (arg_poss p)"
+  unfolding prim_poss_def and arg_poss_def and cstate_poss_def and fstate_poss_def and proc_poss_def
+  by (auto intro!: finite_cartesian_product finite_imageI maps_over_finite smaps_over_finite contour_finite finite_Nlist)
 
 lemma Un_commute_helper:"(a \<union> b) \<union> (c \<union> d) = (a \<union> c) \<union> (b \<union> d)"
 by auto
