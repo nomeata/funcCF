@@ -106,31 +106,23 @@ proof- {
 qed
 
 lemma
-  assumes finite: "finite (F {})"
-      and nonstrict: "F {} \<noteq> {}"
+  assumes finite: "\<And> S. finite S \<Longrightarrow> finite (F S)"
       and mono: "mono F"
       and desc: "descending_functional F"
   shows "\<exists> i0 :: nat . \<forall>i . i > i0 \<longrightarrow> F (iterate i F {}) - iterate i F {} = {}"
 proof-
   def i0 == "Max (size ` (F {}))"
-  find_theorems Max
-  have "i0 \<in>  size ` (F {})"
-    unfolding i0_def using finite nonstrict by auto
+  
+  from finite have finite_it: "\<And> i. finite (iterate i F {})" by (induct_tac i, auto)
 
   { fix i
-    have "finite (iterate (Suc i) F {} - iterate i F {} )"
-     and "iterate (Suc i) F {} - iterate i F {} \<noteq> {} \<Longrightarrow> Max (size ` (iterate (Suc i) F {} - iterate i F {} )) + i \<le> i0"
+    have "iterate (Suc i) F {} - iterate i F {} \<noteq> {} \<Longrightarrow> Max (size ` (iterate (Suc i) F {} - iterate i F {} )) + i \<le> i0"
     proof(induct i)
-    case 0
-      show "finite (iterate (Suc 0) F {} - iterate 0 F {})"
-        using finite nonstrict by auto 
-      show "iterate (Suc 0) F {} - iterate 0 F {} \<noteq> {} \<Longrightarrow> Max (size ` (iterate (Suc 0) F {} - iterate 0 F {})) + 0 \<le> i0"
-         by (auto simp add:i0_def)
+    case 0 show ?case by (auto simp add:i0_def) next
     case (Suc i)
       from Suc(1) 
-      show "finite (iterate (Suc (Suc i)) F {} - iterate (Suc i) F {})" (is "finite ?Diff'")
-        sorry (* Maybe finiteness statement only over one set *)
-      from `finite ?Diff'` have fin_size': "finite (size ` ?Diff')" by simp
+      have fin_size': "finite (size ` (iterate (Suc (Suc i)) F {} - iterate (Suc i) F {}))"        
+        (is "finite (size `?Diff')") using finite_it[of "Suc (Suc i)"] by simp
 
       show "?Diff' \<noteq> {} \<Longrightarrow> Max (size ` ?Diff') + Suc i \<le> i0"
       proof(cases "iterate (Suc i) F {} - iterate i F {} = {}")
@@ -141,12 +133,13 @@ proof-
       case False 
         hence ne_size: "size ` (iterate (Suc i) F {} - iterate i F {}) \<noteq> {}" (is "size ` ?Diff \<noteq> _")
           by simp
-        from False and Suc(2) have asm: "Max (size ` ?Diff) + i \<le> i0" by simp
+        from False and Suc(1) have asm: "Max (size ` ?Diff) + i \<le> i0" by simp
 
         assume "?Diff' \<noteq> {}"
         hence ne_size': "size ` ?Diff' \<noteq> {}" by auto
 
-        from Suc have fin_size: "finite (size ` ?Diff)" by simp
+        have fin_size: "finite (size ` ?Diff)"
+          using finite_it[of "Suc i"] by simp
 
         have "Max (size ` ?Diff') < Max (size ` ?Diff)"
         apply (subst Max_less_iff[OF fin_size' ne_size'])
@@ -156,13 +149,13 @@ proof-
         with asm show ?thesis by auto
       qed
     qed
-  } note maxbound = this(2)
- 
+  } note maxbound = this
+
   {
-  fix i
-  assume "i0 < i"
-  hence "iterate (Suc i) F {} - iterate i F {} = {}"
-  by -(rule ccontr, drule maxbound, auto)
+    fix i
+    assume "i0 < i"
+    hence "iterate (Suc i) F {} - iterate i F {} = {}"
+    by -(rule ccontr, drule maxbound, auto)
   }
   thus ?thesis by auto
 qed
