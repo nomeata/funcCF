@@ -110,7 +110,7 @@ lemma
       and nonstrict: "F {} \<noteq> {}"
       and mono: "mono F"
       and desc: "descending_functional F"
-  shows "\<exists>i . i > (i0::nat) \<longrightarrow> f (iterate i F {}) - iterate i F {} = {}"
+  shows "\<exists> i0 :: nat . \<forall>i . i > i0 \<longrightarrow> F (iterate i F {}) - iterate i F {} = {}"
 proof-
   def i0 == "Max (size ` (F {}))"
   find_theorems Max
@@ -159,6 +159,7 @@ proof-
   } note maxbound = this(2)
  
   {
+  fix i
   assume "i0 < i"
   hence "iterate (Suc i) F {} - iterate i F {} = {}"
   by -(rule ccontr, drule maxbound, auto)
