@@ -167,17 +167,4 @@ proof-
 qed
 
 
-      
-
-      
-
-
-
-lemma
-  assumes "F S - S \<noteq> {}"
-  shows "(GREATEST v. v \<in> size` (F S - S)) < (GREATEST v. v \<in> size` S)"
-
-
-
-
 end
