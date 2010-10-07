@@ -2,80 +2,32 @@ theory Finite_Inductive_Set
 imports Main
 begin
 
-inductive tails for l
-  where "tails l l"
-      | "tails l (x#xs) \<Longrightarrow> tails l xs"
-
-print_theorems
-
-definition "Ft l = (\<lambda>p. {x. x = l \<or> (\<exists>xa. (xa # x) \<in> p)})"
-
-thm tails_def[simplified]
-
 primrec iterate 
   where it_0: "iterate 0 f x = x"
       | it_Suc: "iterate (Suc n) f x = f (iterate n f x)"
 
-(* lemma "mono f \<Longrightarrow> F (\<Union>S) \<le> \<Union> (F`S)" *)
-
-lemma assumes "\<And> S. F (\<Union>S) \<le> \<Union> (F`S)"
-  shows "lfp F \<le> (\<Union>i. iterate i F {})"
-by (auto
-  intro!: lfp_lowerbound
-  simp del:iterate.simps  Union_image_eq
-  simp add: it_Suc[THEN sym, of F _ "{}"] UNION_eq_Union_image
-  dest!: subsetD[OF assms]
-  )
-
-lemma union_difference: "(\<Union>i. S i) = (\<Union>i. S (Suc i) - S i) \<union> S 0" (is "?lhs = ?rhs")
-proof
-  show "?lhs \<subseteq> ?rhs"
-  proof fix x
-    def i == "LEAST i. x \<in> S i"
-    assume "x \<in> (\<Union>i. S i)"
-    hence i: "x \<in> S i"
-      unfolding i_def
-      by -(rule LeastI_ex, auto)
-    show "x\<in>?rhs"
-    proof(cases i)
-      case 0 thus ?thesis using i by auto next
-      case (Suc i')
-      hence "x \<notin> S i'"
-        unfolding i_def
-        by -(rule not_less_Least, auto)
-      with i and Suc show ?thesis by auto
-    qed
-  qed
-qed auto
-
-lemma UNION_event_empty:
-  assumes "\<And>(i::nat). i > (i0::nat) \<Longrightarrow> S i = {}"
-  shows "(\<Union>i. S i) = (\<Union>i\<in>{i. i \<le> i0}. S i)" (is "?lhs = ?rhs")
-proof
-  show "?lhs \<subseteq> ?rhs"
-  proof fix x assume "x \<in> ?lhs"
-    then obtain i where i: "x \<in> S i" by auto
-    show "x\<in>?rhs"
-    proof(cases "i > i0")
-    case True hence "S i = {}" using assms by simp
-      with i show ?thesis by auto next
-    case False hence "i \<in> {i. i\<le>i0}" by  auto 
-      thus?thesis using i by auto
-    qed
-  qed
-qed auto
-
-thm union_difference[of "\<lambda>i. iterate i f {}", simplified]
-thm trans[OF union_difference[of "\<lambda>i. iterate i f {}", simplified] UNION_event_empty]
-
-find_theorems Greatest
-
-definition descending_functional
-  where "descending_functional F = (\<forall> S. \<forall> x \<in> F (F S) - (F S).  \<exists> y \<in> (F S) - S . size x < size y)"
+definition descending_functional :: "('a \<Rightarrow> nat) \<Rightarrow> ('a set \<Rightarrow> 'a set) \<Rightarrow> bool"
+  where "descending_functional p F = (\<forall> S. \<forall> x \<in> F (F S) - (F S).  \<exists> y \<in> (F S) - S . p x < p y)"
 
 lemma descending_functionalD:
-  "\<lbrakk> descending_functional F ; x \<in> F (F S); x \<notin> F S \<rbrakk> \<Longrightarrow> \<exists> y \<in> (F S) - S. size x < size y"
+  "\<lbrakk> descending_functional p F ; x \<in> F (F S); x \<notin> F S \<rbrakk> \<Longrightarrow> \<exists> y \<in> (F S) - S. p x < p y"
 unfolding descending_functional_def by auto
+
+lemma descending_functionalI[intro]:
+  "(\<And>S x. \<lbrakk> x \<in> F (F S);  x \<notin> F S \<rbrakk> \<Longrightarrow> \<exists> y \<in> (F S) - S. p x < p y) \<Longrightarrow> descending_functional p F"
+unfolding descending_functional_def by auto
+
+definition finiteness_preserving
+  where "finiteness_preserving  F = (\<forall>S . finite S \<longrightarrow> finite (F S))"
+
+lemma finiteness_preservingD:
+  "\<lbrakk> finiteness_preserving F ; finite S \<rbrakk> \<Longrightarrow> finite (F S)"
+unfolding finiteness_preserving_def by auto
+
+lemma finiteness_preservingI[intro]:
+  "\<lbrakk> \<And> S. finite S \<Longrightarrow> finite (F S) \<rbrakk> \<Longrightarrow> finiteness_preserving F"
+unfolding finiteness_preserving_def by auto
+
 
 lemma diff_empty_iff: "A - B = {} \<longleftrightarrow> A \<subseteq> B" by auto
 
@@ -86,79 +38,242 @@ lemma diff_zero:
 using assms
 by (auto simp add:diff_empty_iff iterate.simps dest: monoD)
 
-lemma "descending_functional (Ft l)"
-proof- {
-  fix S x
-  assume "x\<in>Ft l (Ft l S)" and "x \<notin> (Ft l S)"
-  hence "x \<noteq> l" unfolding Ft_def  by auto
-  from `x\<in>Ft l (Ft l S)` and `x \<noteq> l`
-  obtain a x' where "x' \<in> (Ft l S)" and "x' =a#x"
-    unfolding Ft_def by auto
-  moreover
-  have "x' \<notin> S" proof(rule ccontr, drule notnotD)
-    assume "x' \<in> S" hence "x \<in> Ft l S" using `x' =a#x`
-      unfolding Ft_def by auto
-    thus False using `x \<notin> Ft l S` by contradiction
-  qed
-  ultimately
-  have "\<exists>x'. x' \<in> (Ft l S - S) \<and> length x < length x'" by auto
-  } thus ?thesis unfolding descending_functional_def by auto
-qed
-
-lemma
+lemma iteration_stops:
   assumes finite: "\<And> S. finite S \<Longrightarrow> finite (F S)"
       and mono: "mono F"
-      and desc: "descending_functional F"
-  shows "\<exists> i0 :: nat . \<forall>i . i > i0 \<longrightarrow> F (iterate i F {}) - iterate i F {} = {}"
+      and desc: "descending_functional p F"
+  shows "\<exists> i :: nat . F (iterate i F {}) - iterate i F {} = {}"
 proof-
-  def i0 == "Max (size ` (F {}))"
+  def i0 == "Suc (Max (p ` (F {})))"
+  let "?Diff i" = "iterate (Suc i) F {} - iterate i F {}"
   
   from finite have finite_it: "\<And> i. finite (iterate i F {})" by (induct_tac i, auto)
+  have finite_p: "\<And> i. finite (p ` ?Diff i)" by (intro finite_imageI finite_Diff finite_it)
 
-  { fix i
-    have "iterate (Suc i) F {} - iterate i F {} \<noteq> {} \<Longrightarrow> Max (size ` (iterate (Suc i) F {} - iterate i F {} )) + i \<le> i0"
-    proof(induct i)
+  def i \<equiv> i0
+  have maxbound: "?Diff i \<noteq> {} \<Longrightarrow> Max (p ` ?Diff i) + i < i0"
+  proof(induct i)
     case 0 show ?case by (auto simp add:i0_def) next
     case (Suc i)
-      from Suc(1) 
-      have fin_size': "finite (size ` (iterate (Suc (Suc i)) F {} - iterate (Suc i) F {}))"        
-        (is "finite (size `?Diff')") using finite_it[of "Suc (Suc i)"] by simp
+      hence ne_p': "p ` ?Diff (Suc i) \<noteq> {}" by auto
 
-      show "?Diff' \<noteq> {} \<Longrightarrow> Max (size ` ?Diff') + Suc i \<le> i0"
-      proof(cases "iterate (Suc i) F {} - iterate i F {} = {}")
+      show "?Diff (Suc i) \<noteq> {} \<Longrightarrow> Max (p ` ?Diff (Suc i)) + Suc i < i0"
+      proof(cases "?Diff i = {}")
       case True 
-        hence "?Diff' = {}" by (rule diff_zero[OF mono])
-        moreover assume "?Diff' \<noteq> {}"
+        hence "?Diff (Suc i) = {}" by (rule diff_zero[OF mono])
+        moreover assume "?Diff (Suc i) \<noteq> {}"
         ultimately show  ?thesis by contradiction next
       case False 
-        hence ne_size: "size ` (iterate (Suc i) F {} - iterate i F {}) \<noteq> {}" (is "size ` ?Diff \<noteq> _")
-          by simp
-        from False and Suc(1) have asm: "Max (size ` ?Diff) + i \<le> i0" by simp
+        hence ne_p: "p ` ?Diff i \<noteq> {}" by simp
 
-        assume "?Diff' \<noteq> {}"
-        hence ne_size': "size ` ?Diff' \<noteq> {}" by auto
-
-        have fin_size: "finite (size ` ?Diff)"
-          using finite_it[of "Suc i"] by simp
-
-        have "Max (size ` ?Diff') < Max (size ` ?Diff)"
-        apply (subst Max_less_iff[OF fin_size' ne_size'])
-        apply (subst Max_gr_iff[OF fin_size ne_size])
-        by (auto dest: descending_functionalD[OF desc])
-
-        with asm show ?thesis by auto
+        have "Max (p ` ?Diff (Suc i)) < Max (p ` ?Diff i)"
+          apply (subst Max_less_iff[OF finite_p[of "Suc i"] ne_p'])
+          apply (subst Max_gr_iff[OF finite_p[of i] ne_p])
+          by (auto dest: descending_functionalD[OF desc])
+        moreover
+        have "Max (p ` ?Diff i) + i < i0" 
+          using False and Suc(1) by simp
+        ultimately
+        show ?thesis by auto
       qed
-    qed
-  } note maxbound = this
-
-  {
-    fix i
-    assume "i0 < i"
-    hence "iterate (Suc i) F {} - iterate i F {} = {}"
-    by -(rule ccontr, drule maxbound, auto)
-  }
+  qed
+  have "?Diff i0 = {}" using maxbound[unfolded i_def] by auto
   thus ?thesis by auto
 qed
 
+lemma lfp_finite:
+  assumes finite: "finiteness_preserving F"
+      and mono: "mono F"
+      and desc: "descending_functional p F"
+  shows "finite (lfp F)"
+proof-
+  from iteration_stops[OF finiteness_preservingD[OF finite] mono desc]
+  obtain i where "F (iterate i F {}) - iterate i F {} = {}" by auto
+  hence "F (iterate i F {}) \<subseteq> iterate i F {}" by auto
+  hence "lfp F \<subseteq> iterate i F {}" by(rule lfp_lowerbound)
+  moreover
+  have "finite (iterate i F {})" 
+  apply(induct i) by (auto intro: finiteness_preservingD[OF finite])
+  ultimately
+  show ?thesis by (rule finite_subset)
+qed
+
+lemma finite_at_most_one:
+  assumes "\<And> x x'. \<lbrakk> x \<in> S ; x' \<in> S \<rbrakk> \<Longrightarrow> x = x'"
+  shows "finite S"
+proof(cases "S = {}")
+  case False
+    then obtain x where "x \<in> S" by auto
+    with assms have "S = {x}" by auto
+    thus ?thesis by auto
+qed auto
+
+lemma finite_inj_collect:
+  assumes inj: "\<And> x x'. f x = f x' \<Longrightarrow> x = x'"
+    and  fin: "finite S" 
+  shows "finite (\<lambda> x. S (f x))"
+proof-
+  have "finite (\<Union> z\<in>S. {x. f x = z})"
+    by (auto intro: finite_UN_I[OF fin] finite_at_most_one dest: inj)
+  moreover
+  have "(\<Union> z\<in>S. {x. f x = z}) = {x. f x \<in> S}"
+    by auto
+  ultimately
+  have "finite {x. f x \<in> S}" by auto
+  thus ?thesis unfolding mem_def Collect_def by auto
+qed
+
+lemmas finite_inj_collect_lfp (* Help the pattern matcher *)
+ = finite_inj_collect[of _ "lfp F", standard]
+
+lemma ind_set_finite:
+  assumes defn: "S = lfp F"
+      and finite: "finiteness_preserving F"
+      and mono: "mono F"
+      and desc: "descending_functional p F"
+  shows "finite S"
+by (subst defn, rule lfp_finite[OF finite mono desc])
+
+lemma finiteness_preserving_disj:
+  assumes F1: "finiteness_preserving F1"
+      and F2: "finiteness_preserving F2"
+  shows "finiteness_preserving (\<lambda>p x.  F1 p x \<or> F2 p x)"
+proof 
+  fix S :: "'a set"
+  assume fin: "finite S"
+  from finiteness_preservingD[OF F1 fin] finiteness_preservingD[OF F2 fin]
+  have "finite (F1 S \<union> F2 S)" by auto
+  thus "finite (\<lambda>x. F1 S x \<or> F2 S x)"
+    unfolding Un_def mem_def Collect_def by auto
+qed
+
+lemma finiteness_preserving_singleton:
+  "finiteness_preserving (\<lambda>p x. x = y)"
+proof
+  have "finite {y}" by auto
+  thus "finite (\<lambda>x. x = y)"
+    unfolding insert_def mem_def Collect_def by auto
+qed
+
+lemma finiteness_preserving_bex_conj:
+  assumes "finiteness_preserving (\<lambda>p x. \<exists>y. p (f x y))"
+  shows "finiteness_preserving (\<lambda>p x. \<exists>y z. x = z \<and> p (f z y))"
+using assms by simp
+
+lemma finiteness_preserving_bex:
+  assumes "\<And> x x' y y'. f x y = f x' y' \<Longrightarrow> x = x'"
+  shows "finiteness_preserving (\<lambda>p x. \<exists>y. p (f x y))"
+proof
+  fix S :: "'c set"
+  assume fin: "finite S"
+  have "finite (\<Union> z\<in>S. {x. \<exists>y. f x y = z})"
+    by (auto intro: finite_UN_I[OF fin] finite_at_most_one dest: assms)
+  moreover
+  have "(\<Union> z\<in>S. {x. \<exists>y. f x y = z}) = {x. \<exists>y. f x y \<in> S}"
+    by auto
+  ultimately
+  have "finite {x. \<exists>y. f x y \<in> S}" by auto
+  thus "finite (\<lambda>x. \<exists>y. S (f x y))"
+    unfolding mem_def Collect_def by auto
+qed
+
+lemmas finiteness_preserving_lemmas =
+  finiteness_preserving_disj
+  finiteness_preserving_singleton
+  finiteness_preserving_bex
+  finiteness_preserving_bex_conj
+
+text {* Example application *}
+
+inductive tails for l
+  where "tails l l"
+      | "tails l (x#xs) \<Longrightarrow> tails l xs"
+
+lemma "finite (tails l)"
+unfolding tails_def
+proof (induct rule: lfp_finite[of _ size, case_names finiteness mono desc])
+case finiteness show ?case by (intro finiteness_preserving_lemmas, simp)
+next
+case mono show ?case 
+by (tactic {*
+(* This is taken from inductive.ML. Maybe the tactic should be exported somehow? *)
+( EVERY [rtac @{thm monoI} 1,
+      REPEAT (resolve_tac [@{thm le_funI}, @{thm le_boolI'}] 1),
+      REPEAT (FIRST
+        [atac 1,
+         resolve_tac (Inductive.get_monos @{context}) 1,
+         etac @{thm le_funE} 1, dtac @{thm le_boolD} 1])]) *})       
+next
+case desc show ?case
+  by (rule, auto simp add: Bex_def mem_def  fun_diff_def bool_diff_def)
+qed
+
+text {* Transform a least fixpoint with multiple parameters to one
+ with one paramter, to be able to consider it a set *}
+
+definition splitF :: "(('a \<Rightarrow> 'b \<Rightarrow> 'c) \<Rightarrow> ('a \<Rightarrow> 'b \<Rightarrow> 'c)) \<Rightarrow> ((('a\<times>'b) \<Rightarrow> 'c) \<Rightarrow> (('a\<times>'b) \<Rightarrow> 'c))"
+  where [simp]:"splitF f = (\<lambda>S. split (f (curry S)))"
+
+lemma split_mono_iff[simp]:
+  "split S \<le> split S' \<longleftrightarrow> S \<le> S'"
+proof
+  assume "split S \<le> split S'"
+  show "S \<le> S'"
+  apply (rule le_funI, rule le_funI)
+  proof-
+    fix x y 
+    from le_funD[OF `split S \<le> split S'`, of "(x,y)"]
+    show "S x y \<le> S' x y"
+      by auto
+  qed 
+qed (auto intro: le_funI dest:le_funD simp add:split_def)
+
+lemma split_mono: "mono split" by (rule monoI, auto)
+
+lemma curry_mono_iff[simp]:
+  "curry S \<le> curry S' \<longleftrightarrow> S \<le> S'"
+apply (subst (3 4) split_curry[THEN sym])
+apply (subst split_mono_iff)
+apply (rule refl)
+done
+
+lemma curry_mono: "mono curry" by (rule monoI, auto)
+
+lemma splitF_mono:
+  assumes "mono f" shows "mono (splitF f)"
+unfolding splitF_def
+by(intro monoI monoD[OF split_mono] monoD[OF assms] monoD[OF curry_mono])
+
+lemma lfp_curry':
+  assumes mono: "mono f"
+  shows  "lfp(\<lambda> p x y. f p x y) = curry (lfp (splitF f))" (is "?lhs = ?rhs")
+proof(rule antisym)
+  show "lfp f \<le> curry (lfp (splitF f))"
+  proof (rule lfp_lowerbound)
+    have "f (curry (lfp (splitF f))) = curry (split (f (curry (lfp (splitF f)))))" by simp
+    also
+    have "\<dots> = curry (splitF f (lfp (splitF f)))" by simp
+    also
+    have "\<dots> = curry (lfp (splitF f))"
+      by (subst lfp_unfold[OF splitF_mono[OF mono], THEN sym], rule refl)
+    finally
+    show "f (curry (lfp (splitF f))) \<le> curry (lfp (splitF f))" by simp
+  qed
+
+  have "lfp (splitF f) \<le> split (lfp f)"
+  proof (rule lfp_lowerbound)
+    have "splitF f (split (lfp f)) = split (f (lfp f))" by simp
+    also
+    have "\<dots> = split (lfp f)"
+      by (subst lfp_unfold[OF mono, THEN sym], rule refl)
+    finally
+    show "splitF f (split (lfp f)) \<le> split (lfp f)" by simp
+  qed
+  hence "curry (lfp (splitF f)) \<le> curry (split (lfp f))"
+    by (rule monoD[OF curry_mono])
+  thus "curry (lfp (splitF f)) \<le> lfp f" by simp
+qed
+
+lemmas lfp_curry = lfp_curry'[simplified splitF_def curry_def]
 
 end

@@ -1,5 +1,5 @@
 theory CPSUtils
-imports CPSScheme
+imports CPSScheme Finite_Inductive_Set
 begin
 
 fun lambdas :: "lambda \<Rightarrow> lambda set"
@@ -24,6 +24,7 @@ where "calls  (Lambda l vs c) = callsC c"
     | "callsV (L l) = calls l"
     | "callsV _     = {}"
 
+(* Failed attempt using inductive_set: *)
 
 inductive_set lambdas' and calls' and values'
   for p
@@ -35,22 +36,25 @@ inductive_set lambdas' and calls' and values'
       | "\<lbrakk> Let l binds c' \<in> calls' p ; l' \<in> snd ` set binds \<rbrakk> \<Longrightarrow> l' \<in> lambdas' p"
       | "L l \<in> values' p \<Longrightarrow> l \<in> lambdas' p"
 
-(* thm  lambdas'p_calls'p_values'p_def *)
-
-
-(*
-lemma "l \<in> lambdas' p \<Longrightarrow> l \<in> lambdas p" and "c \<in> calls' p \<Longrightarrow> c \<in> calls p" and "v \<in> values' p \<Longrightarrow> True"
-(* apply (rule lambdas_lambdasC_lambdasV.induct) *)
-(* apply (auto intro: lambdas'_calls'_values'.intros) *)
-thm lambdas'_calls'_values'.inducts
-apply (induct rule: lambdas'_calls'_values'.inducts)
-
-lemma "l \<in> lambdas p \<Longrightarrow> l \<in> lambdas' p" and "l \<in> lambdas p \<Longrightarrow> l \<in> lambdas' p"
-thm lambdas_lambdasC_lambdasV.induct
-apply (induct rule: lambdas_lambdasC_lambdasV.induct)
-apply auto
-*)
-
+lemma "finite (lambdas' p)"
+  apply (subst lambdas'_def)
+  apply (subst Collect_def)
+  apply (subst lambdas'p_def)
+  apply (subst lambdas'p_calls'p_values'p_def)
+  apply (subst lfp_curry)
+  prefer 2
+  apply (subst lfp_curry)
+  prefer 2
+  apply (subst lfp_curry)
+  prefer 2
+  apply (subst lfp_curry)
+  prefer 2
+  apply (rule finite_inj_collect_lfp)
+  apply (simp)[1]
+  apply (rule lfp_finite[of _ size])
+  apply ((subst split_def)+)[1]
+  apply (intro finiteness_preserving_lemmas)
+oops
 
 lemma finite_lambdas[simp]: "finite (lambdas l)" and "finite (lambdasC c)" "finite (lambdasV v)"
 by (induct rule: lambdas_lambdasC_lambdasV.induct, auto, blast)
