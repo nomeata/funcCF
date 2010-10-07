@@ -39,8 +39,8 @@ using assms
 by (auto simp add:diff_empty_iff iterate.simps dest: monoD)
 
 lemma iteration_stops:
-  assumes finite: "\<And> S. finite S \<Longrightarrow> finite (F S)"
-      and mono: "mono F"
+  assumes mono: "mono F"
+      and finite: "\<And> S. finite S \<Longrightarrow> finite (F S)"
       and desc: "descending_functional p F"
   shows "\<exists> i :: nat . F (iterate i F {}) - iterate i F {} = {}"
 proof-
@@ -82,12 +82,12 @@ proof-
 qed
 
 lemma lfp_finite:
-  assumes finite: "finiteness_preserving F"
-      and mono: "mono F"
+  assumes mono: "mono F"
+      and finite: "finiteness_preserving F"
       and desc: "descending_functional p F"
   shows "finite (lfp F)"
 proof-
-  from iteration_stops[OF finiteness_preservingD[OF finite] mono desc]
+  from iteration_stops[OF mono finiteness_preservingD[OF finite] desc]
   obtain i where "F (iterate i F {}) - iterate i F {} = {}" by auto
   hence "F (iterate i F {}) \<subseteq> iterate i F {}" by auto
   hence "lfp F \<subseteq> iterate i F {}" by(rule lfp_lowerbound)
@@ -128,11 +128,11 @@ lemmas finite_inj_collect_lfp (* Help the pattern matcher *)
 
 lemma ind_set_finite:
   assumes defn: "S = lfp F"
-      and finite: "finiteness_preserving F"
       and mono: "mono F"
+      and finite: "finiteness_preserving F"
       and desc: "descending_functional p F"
   shows "finite S"
-by (subst defn, rule lfp_finite[OF finite mono desc])
+by (subst defn, rule lfp_finite[OF mono finite desc])
 
 lemma finiteness_preserving_disj:
   assumes F1: "finiteness_preserving F1"
@@ -177,11 +177,17 @@ proof
     unfolding mem_def Collect_def by auto
 qed
 
+lemma finiteness_preserving_split:
+  assumes "finiteness_preserving (\<lambda>p x. f p (fst x) (snd x))"
+  shows "finiteness_preserving (\<lambda>p (a,b). f p a b)"
+using assms by (simp add:split_def)
+
 lemmas finiteness_preserving_lemmas =
   finiteness_preserving_disj
   finiteness_preserving_singleton
   finiteness_preserving_bex
   finiteness_preserving_bex_conj
+  (* finiteness_preserving_split *)
 
 text {* Example application *}
 
@@ -189,23 +195,24 @@ inductive tails for l
   where "tails l l"
       | "tails l (x#xs) \<Longrightarrow> tails l xs"
 
-lemma "finite (tails l)"
-unfolding tails_def
-proof (induct rule: lfp_finite[of _ size, case_names finiteness mono desc])
-case finiteness show ?case by (intro finiteness_preserving_lemmas, simp)
-next
-case mono show ?case 
-by (tactic {*
-(* This is taken from inductive.ML. Maybe the tactic should be exported somehow? *)
-( EVERY [rtac @{thm monoI} 1,
+method_setup mono =
+"Scan.succeed (K (SIMPLE_METHOD (EVERY [rtac @{thm monoI} 1,
       REPEAT (resolve_tac [@{thm le_funI}, @{thm le_boolI'}] 1),
       REPEAT (FIRST
         [atac 1,
          resolve_tac (Inductive.get_monos @{context}) 1,
-         etac @{thm le_funE} 1, dtac @{thm le_boolD} 1])]) *})       
+         etac @{thm le_funE} 1, dtac @{thm le_boolD} 1])])))"
+"Solves monotonicity goals"
+
+lemma "finite (tails l)"
+unfolding tails_def
+proof (induct rule: lfp_finite[of _ size, case_names mono finiteness desc])
+case mono show ?case by mono
+next
+case finiteness show ?case by (intro finiteness_preserving_lemmas, simp)
 next
 case desc show ?case
-  by (rule, auto simp add: Bex_def mem_def  fun_diff_def bool_diff_def)
+  by (rule, auto simp add: Bex_def mem_def fun_diff_def bool_diff_def)
 qed
 
 text {* Transform a least fixpoint with multiple parameters to one
@@ -275,5 +282,33 @@ proof(rule antisym)
 qed
 
 lemmas lfp_curry = lfp_curry'[simplified splitF_def curry_def]
+
+lemma lfp_curryD':
+  assumes mono: "mono f"
+  and curried: "mono (splitF f) \<Longrightarrow> P (curry (lfp (splitF f)))"
+  shows  "P (lfp f)"
+by (subst lfp_curry'[OF mono], rule curried[OF splitF_mono[OF mono]])
+
+lemmas lfp_curryD = lfp_curryD'[simplified splitF_def curry_def split_def]
+
+text {* Now lets try this for a recursively defined functorial *}
+
+inductive tails' and elems' for l
+  where "tails' l l"
+      | "tails' l (x#xs) \<Longrightarrow> tails' l xs"
+      | "tails' l (x#xs) \<Longrightarrow> elems' l x"
+
+lemma "finite (tails' l)"
+unfolding tails'_def
+unfolding tails'_elems'_def
+apply (rule lfp_curryD[of _ "\<lambda>l. finite (l False undefined)"])
+apply mono
+apply (erule lfp_curryD)
+apply (rule finite_inj_collect_lfp)
+apply auto[1]
+apply (erule lfp_finite[of _ size])
+apply (intro finiteness_preserving_lemmas)
+
+oops
 
 end

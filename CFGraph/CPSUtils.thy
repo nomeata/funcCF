@@ -41,18 +41,14 @@ lemma "finite (lambdas' p)"
   apply (subst Collect_def)
   apply (subst lambdas'p_def)
   apply (subst lambdas'p_calls'p_values'p_def)
-  apply (subst lfp_curry)
-  prefer 2
-  apply (subst lfp_curry)
-  prefer 2
-  apply (subst lfp_curry)
-  prefer 2
-  apply (subst lfp_curry)
-  prefer 2
+  apply (rule lfp_curryD[of _ "\<lambda>l. finite (l False False undefined undefined)"])
+  apply mono
+  apply (erule lfp_curryD)
+  apply (erule lfp_curryD)
+  apply (erule lfp_curryD)
   apply (rule finite_inj_collect_lfp)
   apply (simp)[1]
-  apply (rule lfp_finite[of _ size])
-  apply ((subst split_def)+)[1]
+  apply (erule lfp_finite[of _ size])
   apply (intro finiteness_preserving_lemmas)
 oops
 
@@ -117,9 +113,6 @@ where "vals (Lambda _ vs c) = valsC c"
     | "valsV (R l v) = {R l v}"
     | "valsV (P prim) = {P prim}"
     | "valsV (C l v) = {C l v}"
-
-
-thm lambda_call_val.inducts
 
 lemma 
   shows lambdas1: "Lambda l vs c \<in> lambdas x \<Longrightarrow> c \<in> calls x"
