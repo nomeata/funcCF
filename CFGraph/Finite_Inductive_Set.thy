@@ -2,9 +2,9 @@ theory Finite_Inductive_Set
 imports Main
 begin
 
-primrec iterate 
-  where it_0: "iterate 0 f x = x"
-      | it_Suc: "iterate (Suc n) f x = f (iterate n f x)"
+primrec iter
+  where it_0: "iter 0 f x = x"
+      | it_Suc: "iter (Suc n) f x = f (iter n f x)"
 
 definition descending_functional :: "('a \<Rightarrow> nat) \<Rightarrow> ('a set \<Rightarrow> 'a set) \<Rightarrow> bool"
   where "descending_functional p F = (\<forall> S. \<forall> x \<in> F (F S) - (F S).  \<exists> y \<in> (F S) - S . p x < p y)"
@@ -33,21 +33,21 @@ lemma diff_empty_iff: "A - B = {} \<longleftrightarrow> A \<subseteq> B" by auto
 
 lemma diff_zero:
   assumes mono: "mono F"
-     and "iterate (Suc i) F {} - iterate i F {} = {}"
-  shows "iterate (Suc (Suc i)) F {} - iterate (Suc i) F {} = {}"
+     and "iter (Suc i) F {} - iter i F {} = {}"
+  shows "iter (Suc (Suc i)) F {} - iter (Suc i) F {} = {}"
 using assms
-by (auto simp add:diff_empty_iff iterate.simps dest: monoD)
+by (auto simp add:diff_empty_iff iter.simps dest: monoD)
 
 lemma iteration_stops:
   assumes mono: "mono F"
       and finite: "\<And> S. finite S \<Longrightarrow> finite (F S)"
       and desc: "descending_functional p F"
-  shows "\<exists> i :: nat . F (iterate i F {}) - iterate i F {} = {}"
+  shows "\<exists> i :: nat . F (iter i F {}) - iter i F {} = {}"
 proof-
   def i0 == "Suc (Max (p ` (F {})))"
-  let "?Diff i" = "iterate (Suc i) F {} - iterate i F {}"
+  let "?Diff i" = "iter (Suc i) F {} - iter i F {}"
   
-  from finite have finite_it: "\<And> i. finite (iterate i F {})" by (induct_tac i, auto)
+  from finite have finite_it: "\<And> i. finite (iter i F {})" by (induct_tac i, auto)
   have finite_p: "\<And> i. finite (p ` ?Diff i)" by (intro finite_imageI finite_Diff finite_it)
 
   def i \<equiv> i0
@@ -88,11 +88,11 @@ lemma lfp_finite:
   shows "finite (lfp F)"
 proof-
   from iteration_stops[OF mono finiteness_preservingD[OF finite] desc]
-  obtain i where "F (iterate i F {}) - iterate i F {} = {}" by auto
-  hence "F (iterate i F {}) \<subseteq> iterate i F {}" by auto
-  hence "lfp F \<subseteq> iterate i F {}" by(rule lfp_lowerbound)
+  obtain i where "F (iter i F {}) - iter i F {} = {}" by auto
+  hence "F (iter i F {}) \<subseteq> iter i F {}" by auto
+  hence "lfp F \<subseteq> iter i F {}" by(rule lfp_lowerbound)
   moreover
-  have "finite (iterate i F {})" 
+  have "finite (iter i F {})"
   apply(induct i) by (auto intro: finiteness_preservingD[OF finite])
   ultimately
   show ?thesis by (rule finite_subset)
@@ -310,5 +310,27 @@ apply (erule lfp_finite[of _ size])
 apply (intro finiteness_preserving_lemmas)
 
 oops
+
+
+(*
+inductive tailselems for l
+  where "tailselems l (Inl l)"
+      | "tailselems l (Inl (x#xs)) \<Longrightarrow> tailselems l (Inl xs)"
+      | "tailselems l (Inl (x#xs)) \<Longrightarrow> tailselems l (Inr x)"
+
+lemma "finite (tailselems (l::'a::size list))"
+unfolding tailselems_def
+proof (induct rule: lfp_finite[of _ "sum_case (list_size size) size", case_names mono finiteness desc])
+case mono show ?case by mono 
+next
+case finiteness show ?case
+apply (intro finiteness_preserving_lemmas)
+sorry
+next
+case desc show ?case
+  apply (rule)
+  apply (simp add:mem_def Bex_def Ball_def fun_diff_def bool_diff_def)
+oops
+*)
 
 end

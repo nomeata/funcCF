@@ -1,13 +1,29 @@
-header "Control Flow Graph"
+header "Syntax"
 
 theory CPSScheme
   imports Main 
 begin
 
+text {*
+First, we define the syntax tree of a program in our toy functional language, using continuation passing style, corresponding to section 3.2 in Shivers’ dissertation.
+*}
+
+text {*
+We assume that the program to be investigates is already parsed into a syntaxtree. Furthermore, we assume that distinct labels were added to distinguish different code positions and that the program has been alphatised, i.e. that each variable name is only bound one. This binding position is, as a convenience, considered part of the variable name.
+*}
+
 types label = nat
 types var = "label \<times> string"
 
-definition "binder" :: "var \<Rightarrow> label" where  [simp]:"binder v = fst v"
+definition "binder" :: "var \<Rightarrow> label" where [simp]: "binder v = fst v"
+
+text {*
+The syntax consists now of lambda abstractions, call expressions and values, which can either be lambdas, variables references, constants or primitive operations. A program is a lambda expression.
+
+Shivers language has as the set of basic values integers plus a special value for \textit{false}. We simplified this to just the set of integers. The conditional @{text If} considers zero as false and any other number as true.
+
+Shivers also restricts the values in a call expression: No constant maybe be used as the called value, and no primitive operation may occur as an argument. This restriction is dropped here and just leads to runtime errors when evaluating the program.
+*}
 
 datatype prim = Plus label | If label label
 datatype lambda = Lambda label "var list" call
@@ -16,6 +32,11 @@ datatype lambda = Lambda label "var list" call
      and val = L lambda | R label var | C label int | P prim
 
 types prog = lambda
+
+text {*
+Three example programs. These can be generated using the Haskell implementation
+of Shivers’ algorithm that we wrote as a prototype.
+*}
 
 abbreviation "ex1 == (Lambda 1 [(1,''cont'')] (App 2 (R 3 (1,''cont'')) [(C 4 0)]))"
 abbreviation "ex2 == (Lambda 1 [(1,''cont'')] (App 2 (P (Plus 3)) [(C 4 1), (C 5 1), (R 6 (1,''cont''))]))"

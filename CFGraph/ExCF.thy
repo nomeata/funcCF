@@ -1,6 +1,18 @@
+header "Exact nonstandard semantics"
+
 theory ExCF
   imports HOLCF HOLCFUtils CPSScheme Utils
 begin
+
+text {*
+We now alter the standard semantics given in the previous section to calculate a control flow graph instead of the return value. At this point, we still “run” the program in full, so this is not yet the statical analysis that we aim for. Instead, this is the reference for the correctness proof of the statical analysis: If an edge is recorded here, we expect it to be found by the statical analysis as well.
+*}
+
+text {*
+In preparation of the correctness proof we change the type of the contour counters. Instead of plain natural numbers as in the previous sections we use lists of labels, remembering at each step which part of the program was just evaluated.
+
+Note that for the exact semantics, this is information is not used in any way and it would have been possible to just use natural numbers again. This is reflected by the preorder instance for the contours which only look at the length of the list, but not the entries.
+*}
 
 typedef contour = "UNIV::label list set" by auto
 
@@ -18,6 +30,10 @@ instance proof
 qed(auto simp add:le_contour_def less_contour_def Rep_contour_inverse Abs_contour_inverse contour_def)
 end
 
+text {*
+Three simple lemmas helping isabelle to automatically proof statements about contour numbers.
+*}
+
 lemma nb_le_less[iff]: "nb b c \<le> b' \<longleftrightarrow> b < b'"
   unfolding nb_def
   by (auto simp add:le_contour_def less_contour_def Rep_contour_inverse Abs_contour_inverse contour_def)
@@ -28,11 +44,10 @@ lemma nb_less[iff]: "b' < nb b c \<longleftrightarrow> b' \<le> b"
 
 declare less_imp_le[where 'a = contour, intro]
 
-instantiation contour :: discrete_cpo
-begin
-definition [simp]: "(x::contour) \<sqsubseteq> y \<longleftrightarrow> x = y"
-instance by default simp
-end
+
+text {*
+The other types used in our semantics functions have not changed.
+*}
 
 types benv = "label \<rightharpoonup> contour"
       closure = "lambda \<times> benv"
@@ -42,12 +57,27 @@ datatype d = DI int
            | DP prim
            | Stop
 
+types venv = "var \<times> contour \<rightharpoonup> d"
+
+text {*
+As we do not use the type system to distinguish procedural from non-procedural values, we define a predicate for that.
+*}
+
 primrec isProc 
   where "isProc (DI _) = False"
       | "isProc (DC _) = True"
       | "isProc (DP _) = True"
       | "isProc Stop   = True"
 
+text {*
+To please @{theory HOLCF}, we declare the discrete partial order for our types:
+*}
+
+instantiation contour :: discrete_cpo
+begin
+definition [simp]: "(x::contour) \<sqsubseteq> y \<longleftrightarrow> x = y"
+instance by default simp
+end
 instantiation d :: discrete_cpo begin
 definition  [simp]: "(x::d) \<sqsubseteq> y \<longleftrightarrow> x = y"
 instance by default simp
@@ -58,7 +88,10 @@ definition  [simp]: "(x::call) \<sqsubseteq> y \<longleftrightarrow> x = y"
 instance by default simp
 end
 
-types venv = "var \<times> contour \<rightharpoonup> d"
+text {*
+The evaluation function for values has only changed slighty: To avoid worrying about incorrect programs, we return zero when a variable lookup fails. If the labels in the program given are correct, this will not happen. Shivers makes this explicit in Section 4.1.3 by restricting the function domains to the valid programs. This is omitted here.
+*}
+
 
 fun evalV :: "val \<Rightarrow> benv \<Rightarrow> venv \<Rightarrow> d" ("\<A>")
   where "\<A> (C _ i) \<beta> ve = DI i"
@@ -70,28 +103,7 @@ fun evalV :: "val \<Rightarrow> benv \<Rightarrow> venv \<Rightarrow> d" ("\<A>"
   |     "\<A> (L lam) \<beta> ve = DC (lam, \<beta>)"
 
 
-types ccache = "((label \<times> benv) \<times> d) set"
-      ans = ccache
-
-(*
-definition covers :: "prog \<Rightarrow> benv \<Rightarrow>venv \<Rightarrow> bool" where
-     "covers prog \<beta> ve = (\<forall> l\<in>dom \<beta>. \<forall> v \<in> vars prog. (binder v = l \<longrightarrow> (case \<beta> l of Some cnt \<Rightarrow> (v,cnt) \<in> dom ve)))"
-
-definition ve_consistent :: "prog \<Rightarrow> call \<Rightarrow> benv \<Rightarrow> venv \<Rightarrow> bool" where
-     "ve_consistent prog c \<beta> ve =
-        ((\<forall> ctx \<in> subterms (Inl prog). (Inr c \<in> subterms ctx \<longrightarrow> label ctx \<in> dom \<beta>))
-         \<and> covers prog \<beta> ve)"
-
-definition closure_consistent :: "prog \<Rightarrow> closure \<Rightarrow> venv \<Rightarrow> bool" where
-     "closure_consistent prog cls ve =
-        ((\<forall> ctx \<in> subterms (Inl prog). (Inl (fst cls) \<in> subterms ctx \<longrightarrow> label ctx \<in> dom (snd cls)))
-         \<and> covers prog (snd cls) ve)"
-
-definition cstate_ok :: "cstate \<Rightarrow> bool" where
-     "cstate_ok s = (case s of (c,\<beta>,ve,_) \<Rightarrow> ve_consistent c \<beta> ve)"
-*)
-types fstate = "(d \<times> d list \<times> venv \<times> contour)"
-      cstate = "(call \<times> benv \<times> venv \<times> contour)"
+text {* TODO move away *}
 
 lemma cont2cont_lambda_case [simp, cont2cont]:
   assumes "\<And>a b c. cont (\<lambda>x. f x a b c)"
@@ -121,6 +133,18 @@ lemma cont2cont_prim_case [simp, cont2cont]:
   shows "cont (\<lambda>x. prim_case (f1 x) (f2 x) p)"
 using assms
 by (cases p) auto
+
+text {*
+Now, our answer domain is not any more the integers, but rather call caches. These are represented as sets containing tuples of call sites (given by their label) and binding environments to the called value. The argument types are unaltered.
+
+In the functions @{text \<F>} and @{text \<C>}, upon every call, a new element is added to the resulting set. The @{text STOP} continuation now ignores its argument and retuns the empty set instead.
+*}
+
+types ccache = "((label \<times> benv) \<times> d) set"
+      ans = ccache
+
+types fstate = "(d \<times> d list \<times> venv \<times> contour)"
+      cstate = "(call \<times> benv \<times> venv \<times> contour)"
 
 
 fixrec   evalF :: "fstate discr \<rightarrow> ans" ("\<F>")
@@ -169,6 +193,11 @@ fixrec   evalF :: "fstate discr \<rightarrow> ans" ("\<F>")
                     ve' = ve ++ map_of (map (\<lambda>(v,l). ((v,b'), \<A> (L l) \<beta>' ve)) ls)
                  in \<C>\<cdot>(Discr (c',\<beta>',ve',b'))
         )"
+
+text {*
+In preparation of later proofs, we give the cases of the generated induction rule names and also create a large rule to deconstruct the an value of type @{text fstate} into the various cases that were used in the definition of @{text \<F>}.
+*}
+
 lemmas evalF_evalC_induct = evalF_evalC.induct[case_names Admissibility Bottom Next]
 
 lemmas cl_cases = prod.exhaust[OF lambda.exhaust, of _ "\<lambda> a _ . a"]
@@ -189,59 +218,10 @@ lemmas fstate_case = prod_cases4[OF d.exhaust, of _ "\<lambda>x _ _ _ . x",
   of _ _ "\<lambda>_ as _ _ _ _ _ _ vs _ . length vs = length as" "\<lambda> _ ds _ _ _ _ . ds" "\<lambda> _ ds _ _ _ _ _. ds" "\<lambda> _ ds _ _. ds",
   case_names "x" "Closure" "x" "x"  "x" "x" "Plus" "x" "x" "x" "x" "x" "x" "x" "x"   "x" "x" "If_True" "If_False" "x" "x" "x" "x" "x" "Stop"  "x" "x" "x" "x" "x"]
 
-(* unsuccesfully attempt to define a more useful induction rule:
 
-lemma eval_induct:
-  assumes admF: "adm PF"
-      and amdC: "adm PC"
-      and bottomF: "PF {}"
-      and bottomC: "PC {}"
-      and lamF: "\<And> (evalC::cstate discr \<rightarrow> ans) lab vs c \<beta> as ve b.
-        \<lbrakk> PC (evalC\<cdot>(Discr (c, \<beta>(lab \<mapsto> b), ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] as), b)))
-        ;  length vs = length as
-        \<rbrakk>
-        \<Longrightarrow> PF (evalC\<cdot>(Discr (c, \<beta>(lab \<mapsto> b), ve(map (\<lambda>v. (v, b)) vs [\<mapsto>] as), b)))"
-      and plusF: "\<And> (evalF::fstate discr \<rightarrow> ans) c a1 a2 cnt ve b.
-        PF (evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, Suc b)))
-         \<Longrightarrow> PF (evalF\<cdot>(Discr (cnt, [DI (a1 + a2)], ve, Suc b)) \<union> {((c, [c \<mapsto> b]), cnt)})"
-      and ifF_True:  "\<And> (evalF::fstate discr \<rightarrow> ans) ct (v::int) cntt ve b.
-        \<lbrakk> PF (evalF\<cdot>(Discr (cntt, [], ve, Suc b)))
-        ; v \<noteq> 0
-        \<rbrakk>
-         \<Longrightarrow> PF (evalF\<cdot>(Discr (cntt, [], ve, Suc b)) \<union> {((ct, [ct \<mapsto> b]), cntt)})"
-      and ifF_False:  "\<And> (evalF::fstate discr \<rightarrow> ans) cf  cntf ve b.
-        PF (evalF\<cdot>(Discr (cntf, [], ve, Suc b)))
-         \<Longrightarrow> PF (evalF\<cdot>(Discr (cntf, [], ve, Suc b)) \<union> {((cf, [cf \<mapsto> b]), cntf)})"
-      and appC: "\<And> (evalF::fstate discr \<rightarrow> ans) c f vs ve \<beta> b.
-         PF (evalF\<cdot>(Discr (\<A> f \<beta> ve, map (\<lambda>v. \<A> v \<beta> ve) vs, ve, Suc b)))
-         \<Longrightarrow> PC ((evalF\<cdot>(Discr (\<A> f \<beta> ve, map (\<lambda>v. \<A> v \<beta> ve) vs, ve, Suc b)))
-                  \<union> {((c, \<beta>), \<A> f \<beta> ve)})"
-shows "PF (evalF\<cdot>fstate)" and "PC (evalC\<cdot>cstate)"
-proof(induct arbitrary: fstate cstate rule: evalF_evalC.induct)
-print_cases
-case 1 from admF and amdC show ?case
- by (intro adm_lemmas adm_prod_split)
-    (auto intro:adm_subst[of _ "PF"] adm_subst[of _ "PC"])
-next
-case 2 case 1 from bottomF show ?case by simp next
-case 2 case 2 from bottomC show ?case by simp next
-case (3 evalF evalC)
-{
-  print_cases
-  case (1 fstate)
-  from "3.hyps" and bottomF and bottomC and plusF and ifF_True and ifF_False and lamF
-  show ?case
-    apply (auto split: d.split prod.split lambda.split)
-    apply (auto split: d.split prod.split list.split prim.split lambda.split)
-    done
-  next
-  case (2 cstate)
-  from "3.hyps" and appC 
-  show ?case
-    by (auto split: call.split prod.split simp add:HOL.Let_def)
-} 
-qed
-*)
+text {*
+The exact semantics of a program again uses @{text \<F>} with properly initialized arguments. For the first two example, we see that the function works as expected.
+*}
 
 definition evalCPS :: "prog \<Rightarrow> ans" ("\<PR>")
   where "\<PR> l = (let ve = empty;
@@ -256,7 +236,7 @@ by simp
 lemma correct_ex2: "\<PR> ex2 = {((2, [1 \<mapsto> \<binit>]), DP (Plus 3)),
                                    ((3, [3 \<mapsto> nb \<binit> 2]),  Stop)}"
 unfolding evalCPS_def
-by (simp)
+by simp
 
 fun benv_in_d 
   where "benv_in_d (DC (l,\<beta>)) = {\<beta>}"
