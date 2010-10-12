@@ -246,7 +246,7 @@ next
     thus "\<exists>b'. b' \<in> ran \<beta> \<and> b \<le> b'"
       by (auto dest: hyps_F_b[OF b_dom_ve b_dom_d b_dom_ds])
   next
-  txt {* Case If (false branch). Fixed variables reversed for easier code reuse. *}
+  txt {* Case If (false branch). Variable names swapped for easier code reuse. *}
     fix cp2 cp1 i cntf cntt
     assume "\<forall>b'\<in>contours_in_d cntt. b' < b"
     hence b_dom_d: "\<forall>b'\<in>contours_in_d cntt. b' < nb b cp1" by auto

@@ -1,8 +1,16 @@
+header {* The abstract semantics is computable *}
+
 theory AbsCFComp
-imports AbsCF Computability FixTransform CPSUtils
+imports AbsCF Computability FixTransform CPSUtils MapSets
 begin
 
 default_sort type
+
+text {*
+The point of the abstract semantics is that it is computable. To show this, we exploit the special structure of @{text \<aF>} and @{text \<aC>}: Each call adds some elements to the result set and joins this with the results from a number of recursive calls. So we separate these two actions into separate functions. These take as arguments the direct sum of @{text \<afstate>} and @{text \<acstate>}, i.e.\ we treat the two mutually recursive functions now as one.
+
+@{text abs_g} gives the local result for the given argument.
+*}
 
 fixrec abs_g :: "('c::contour \<afstate> + 'c \<acstate>) discr \<rightarrow> 'c \<aans>"
   where "abs_g\<cdot>x = (case undiscr x of
@@ -29,6 +37,10 @@ fixrec abs_g :: "('c::contour \<afstate> + 'c \<acstate>) discr \<rightarrow> 'c
                   in {((lab, \<beta>),f') | f' . f'\<in> fs}
             | (Inr (Let lab ls c',\<beta>,ve,b)) \<Rightarrow> {}
         )"
+
+text {*
+@{text abs_R} gives the set of arguments passed to the recursive calls.
+*}
 
 fixrec abs_R :: "('c::contour \<afstate> + 'c \<acstate>) discr \<rightarrow> ('c::contour \<afstate> + 'c \<acstate>) discr set"
   where "abs_R\<cdot>x = (case undiscr x of
@@ -65,102 +77,11 @@ fixrec abs_R :: "('c::contour \<afstate> + 'c \<acstate>) discr \<rightarrow> ('
                  in {Discr (Inr (c',\<beta>',ve',b'))}
         )"
 
-definition maps_over :: "'a::type set \<Rightarrow> 'b::type set \<Rightarrow> ('a \<rightharpoonup> 'b) set"
-  where "maps_over A B = {m. dom m \<subseteq> A \<and> ran m \<subseteq> B}"
+subsection {* Towards finiteness *}
 
-lemma maps_over_empty[simp]:
-  "empty \<in> maps_over A B"
-unfolding maps_over_def by simp
-
-lemma maps_over_upd:
-  assumes "m \<in> maps_over A B"
-  and "v \<in> A" and "k \<in> B"
-shows "m(v \<mapsto> k) \<in> maps_over A B"
-  using assms unfolding maps_over_def
-  by (auto dest: subsetD[OF ran_upd])
-
-lemma maps_over_finite[intro]:
-  assumes "finite A" and "finite B" shows "finite (maps_over A B)"
-proof-
-  have inj_map_graph: "inj (\<lambda>f. {(x, y). Some y = f x})"
-  proof (induct rule: inj_onI)
-    case (1 x y)
-    from "1.hyps"(3) have hyp: "\<And> a b. (Some b = x a) \<longleftrightarrow> (Some b = y a)"
-      by (simp add:expand_set_eq)
-    show ?case
-    proof (rule ext)
-    fix z show "x z = y z"
-      using hyp[of _ z]
-      by (cases "x z", cases "y z", auto)
-    qed
-  qed
-
-  have "(\<lambda>f. {(x, y). Some y = f x}) ` maps_over A B \<subseteq> Pow( A \<times> B )" (is "?graph \<subseteq> _")
-    unfolding maps_over_def
-    by (auto dest!:subsetD[of _ A] subsetD[of _ B] intro:ranI)
-  moreover
-  have "finite (Pow( A \<times> B ))" using assms by auto
-  ultimately
-  have "finite ?graph" by (rule finite_subset)
-  thus ?thesis
-    by (rule finite_imageD[OF _ subset_inj_on[OF inj_map_graph subset_UNIV]])
-qed
-
-definition smaps_over :: "'a::type set \<Rightarrow> 'b::type set \<Rightarrow> ('a \<Rightarrow> 'b set) set"
-  where "smaps_over A B = {m. sdom m \<subseteq> A \<and> sran m \<subseteq> B}"
-
-lemma smaps_over_empty[simp]:
-  "{}. \<in> smaps_over A B"
-unfolding smaps_over_def by simp
-
-lemma smaps_over_singleton:
-  assumes "k \<in> A" and "vs \<subseteq> B"
-shows "{k := vs}. \<in> smaps_over A B"
-  using assms unfolding smaps_over_def
-  by(auto dest: subsetD[OF sdom_singleton])
-
-lemma smaps_over_un:
-  assumes "m1 \<in> smaps_over A B" and "m2 \<in> smaps_over A B"
-  shows "m1 \<union>. m2 \<in> smaps_over A B"
-using assms unfolding smaps_over_def
-by (auto simp add:smap_union_def)
-
-lemma smaps_over_Union:
-  assumes "set ms \<subseteq> smaps_over A B"
-  shows "\<Union>.ms \<in> smaps_over A B"
-using assms
-by (induct ms)(auto intro: smaps_over_un)
-
-lemma smaps_over_im:
- "\<lbrakk> f \<in> m a ; m \<in> smaps_over A B \<rbrakk> \<Longrightarrow> f \<in> B"
-unfolding smaps_over_def by (auto simp add:sran_def)
-
-lemma smaps_over_finite[intro]: 
-  assumes "finite A" and "finite B" shows "finite (smaps_over A B)"
-proof-
-  have inj_smap_graph: "inj (\<lambda>f. {(x, y). y = f x \<and> y \<noteq> {}})" (is "inj ?gr")
-  proof (induct rule: inj_onI)
-    case (1 x y)
-    from "1.hyps"(3) have hyp: "\<And> a b. (b = x a \<and> b \<noteq> {}) = (b = y a \<and> b \<noteq> {})"
-      by -(subst (asm) (3) expand_set_eq, simp)
-    show ?case
-    proof (rule ext)
-    fix z show "x z = y z"
-      using hyp[of _ z]
-      by (cases "x z \<noteq> {}", cases "y z \<noteq> {}", auto)
-    qed
-  qed
-
-  have "?gr ` smaps_over A B \<subseteq> Pow( A \<times> Pow  B )" (is "?graph \<subseteq> _")
-    unfolding smaps_over_def
-    by (auto dest!:subsetD[of _ A] subsetD[of _ "Pow B"] sdom_not_mem intro:sranI)
-  moreover
-  have "finite (Pow( A \<times> Pow B ))" using assms by auto
-  ultimately
-  have "finite ?graph" by (rule finite_subset)
-  thus ?thesis
-    by (rule finite_imageD[OF _ subset_inj_on[OF inj_smap_graph subset_UNIV]])
-qed
+text {*
+We need to show that the set of possible arguments for a given program @{text p} is finite. Therefore, we define the set of possible procedures, of possible arguments to @{text \<aF>}, or possible arguments to @{text \<aC>} and of possible arguments.
+*}
 
 definition proc_poss :: "prog \<Rightarrow> 'c::contour proc set"
   where "proc_poss p = PC ` (lambdas p \<times> maps_over (labels p) UNIV) \<union> PP ` prims p \<union> {AStop}"
@@ -174,12 +95,18 @@ definition cstate_poss :: "prog \<Rightarrow> 'c::contour a_cstate set"
 definition arg_poss :: "prog \<Rightarrow> ('c::contour a_fstate + 'c a_cstate) discr set"
   where "arg_poss p = Discr ` (fstate_poss p <+> cstate_poss p)"
 
+text {*
+Using the auxillary results from @{theory CPSUtils}, we see that the argument space as defined here is finite.
+*}
+
 lemma finite_arg_space: "finite (arg_poss p)"
   unfolding arg_poss_def and cstate_poss_def and fstate_poss_def and proc_poss_def
   by (auto intro!: finite_cartesian_product finite_imageI maps_over_finite smaps_over_finite finite_UNIV finite_Nlist)
 
-lemma adm_subset: "cont (\<lambda>x. f x) \<Longrightarrow>  adm (\<lambda>x. f x \<subseteq> S)"
-by (subst sqsubset_is_subset[THEN sym], intro adm_lemmas cont2cont)
+
+text {*
+But is it closed? I.e.\ if we pass a member of @{text arg_poss} to @{text abs_R}, are the generated recursive call arguments also in @{text arg_poss}? This is shown in @{text arg_space_complete}, after proving an auxillary result about the possible outcome of a call to @{text \<aA>} and an admissibiliy lemma.
+*}
 
 lemma evalV_possible:
   assumes f: "f \<in> \<aA> d \<beta> ve"
@@ -203,6 +130,9 @@ case (4 l \<beta> ve)
   by (auto dest!: vals3 simp add:proc_poss_def)
 qed
 
+lemma adm_subset: "cont (\<lambda>x. f x) \<Longrightarrow>  adm (\<lambda>x. f x \<subseteq> S)"
+by (subst sqsubset_is_subset[THEN sym], intro adm_lemmas cont2cont)
+
 
 lemma arg_space_complete:
   "state \<in> arg_poss p \<Longrightarrow> abs_R\<cdot>state \<subseteq> arg_poss p"
@@ -221,7 +151,7 @@ case (Step abs_R)
      using Inl Discr state
      proof (cases fstate rule:a_fstate_case)
      apply_end(auto)
-     (* Lambda *)
+     txt {* Case Lambda *}
      fix l vs c \<beta> as ve b
      assume "Discr (Inl (PC (Lambda l vs c, \<beta>), as, ve, b)) \<in> arg_poss p"
        hence lam: "Lambda l vs c \<in> lambdas p"
@@ -255,7 +185,7 @@ case (Step abs_R)
        unfolding arg_poss_def by auto
      next
 
-     (* Plus *)
+     txt {* Case Plus *}
      fix ve b l v1 v2 cnts cnt
      assume "Discr (Inl (PP (prim.Plus l), [v1, v2, cnts], ve, b)) \<in> arg_poss p"
          and "cnt \<in> cnts"
@@ -273,7 +203,7 @@ case (Step abs_R)
        unfolding arg_poss_def by auto
      next
   
-     (* If True *)
+     txt {* Case If (true case) *}
      fix ve b l1 l2 v cntst cntsf cnt
      assume "Discr (Inl (PP (prim.If l1 l2), [v, cntst, cntsf], ve, b)) \<in> arg_poss p"
          and "cnt \<in> cntst"
@@ -291,7 +221,7 @@ case (Step abs_R)
        unfolding arg_poss_def by auto
      next
   
-     (* If False *)
+     txt {* Case If (false case) *}
      fix ve b l1 l2 v cntst cntsf cnt
      assume "Discr (Inl (PP (prim.If l1 l2), [v, cntst, cntsf], ve, b)) \<in> arg_poss p"
          and "cnt \<in> cntsf"
@@ -313,7 +243,8 @@ case (Step abs_R)
   show ?thesis proof(cases cstate rule: prod_cases4)
    case (fields c \<beta> ve b)
    show ?thesis using Discr Inr fields state proof(cases c, auto simp add:HOL.Let_def simp del:evalV_a.simps)
-     (* App *)
+
+     txt {* Case App *}
      fix l d ds f
      assume arg: "Discr (Inr (App l d ds, \<beta>, ve, b)) \<in> arg_poss p"
        and f: "f \<in> \<aA> d \<beta> ve"
@@ -341,7 +272,7 @@ case (Step abs_R)
        unfolding arg_poss_def by auto
 
    next
-     (* Let *)
+     txt {* Case Let *}
      fix l binds c'
      assume arg: "Discr (Inr (Let l binds c', \<beta>, ve, b)) \<in> arg_poss p"
      hence l: "l \<in> labels p"
@@ -375,6 +306,17 @@ qed
 qed
 qed
 
+text {*
+This result is now lifted to the powerset of @{text abs_R}.
+*}
+
+lemma arg_space_complete_ps: "states \<subseteq> arg_poss p \<Longrightarrow> (\<^ps> abs_R)\<cdot>states \<subseteq> arg_poss p"
+using arg_space_complete unfolding powerset_lift_def by auto
+
+text {*
+We are not so much interested in the finiteness of the set of possible arguments but rather of the the set of occuring arguments, when we start with the initial argument. But as this is of course a subset of the set of possible arguments, this is not hard to show.
+*}
+
 lemma UN_iterate_less: 
   assumes start: "x \<in> S"
   and step: "\<And>y. y\<subseteq>S \<Longrightarrow> (f\<cdot>y) \<subseteq> S"
@@ -389,9 +331,6 @@ proof- {
   } thus ?thesis by auto
 qed
 
-lemma arg_space_complete_ps: "states \<subseteq> arg_poss p \<Longrightarrow> (\<^ps> abs_R)\<cdot>states \<subseteq> arg_poss p"
-using arg_space_complete unfolding powerset_lift_def by auto
-
 lemma args_finite: "finite (\<Union>i. iterate i\<cdot>(\<^ps> abs_R)\<cdot>{Discr (Inl
      (contents (\<aA> (L p) empty {}.), [{AStop}], {}., \<abinit>))})" (is "finite ?S")
 proof (rule finite_subset[OF _finite_arg_space])
@@ -401,6 +340,12 @@ proof (rule finite_subset[OF _finite_arg_space])
       (auto simp add:arg_poss_def fstate_poss_def proc_poss_def call_list_lengths_def NList_def nList_def
          intro!: imageI)
 qed
+
+subsection {* A decomposition *}
+
+text {*
+The functions @{text abs_g} and @{text abs_R} are derived from @{text \<aF>} and @{text \<aC>}. This connection has yet to expressed explicitely. 
+*}
 
 lemma Un_commute_helper:"(a \<union> b) \<union> (c \<union> d) = (a \<union> c) \<union> (b \<union> d)"
 by auto
@@ -415,11 +360,16 @@ apply (simp only: discr_app undiscr_Discr)
 apply (rule ext_cfun, rule ext_cfun, simp)
 apply (case_tac xa, case_tac a, simp)
 apply (case_tac aa rule:a_fstate_case, simp_all add: Un_commute_helper)
-
 apply (case_tac b rule:prod_cases4)
 apply (case_tac aa)
 apply (simp_all add:HOL.Let_def)
 done
+
+subsection {* The iterative equation *}
+
+text {*
+Because of the special form of @{text \<aF>} (and thus @{text \<aPR>}) derived in the previous lemma, we can apply our generic results from @{theory Computability} and express the abstract semantics as the image of a finite set under a computable function.
+*}
 
 lemma a_evalF_iterative:
   "\<aF>\<cdot>(Discr x) = \<^ps> abs_g\<cdot>(\<Union>i. iterate i\<cdot>(\<^ps> abs_R)\<cdot>{Discr (Inl x)})"
