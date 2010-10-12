@@ -176,7 +176,7 @@ definition arg_poss :: "prog \<Rightarrow> ('c::contour a_fstate + 'c a_cstate) 
 
 lemma finite_arg_space: "finite (arg_poss p)"
   unfolding arg_poss_def and cstate_poss_def and fstate_poss_def and proc_poss_def
-  by (auto intro!: finite_cartesian_product finite_imageI maps_over_finite smaps_over_finite contour_finite finite_Nlist)
+  by (auto intro!: finite_cartesian_product finite_imageI maps_over_finite smaps_over_finite finite_UNIV finite_Nlist)
 
 lemma adm_subset: "cont (\<lambda>x. f x) \<Longrightarrow>  adm (\<lambda>x. f x \<subseteq> S)"
 by (subst sqsubset_is_subset[THEN sym], intro adm_lemmas cont2cont)

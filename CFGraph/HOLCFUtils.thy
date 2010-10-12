@@ -159,6 +159,10 @@ lemma adm_prod_split:
   shows "adm (\<lambda>(x,y). f x y)"
 using assms unfolding split_def .
 
+lemma adm_ball':
+  assumes "\<And> y. adm (\<lambda>x. y \<in> A x \<longrightarrow> P x y)"
+  shows "adm (\<lambda>x. \<forall>y \<in> A x . P x y)"
+by (subst Ball_def, rule adm_all[OF assms])
 
 lemma adm_single_valued:
  assumes "cont (\<lambda>x. f x)"

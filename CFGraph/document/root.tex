@@ -1,6 +1,6 @@
 % $Id: root.tex,v 1.2 2007-11-12 21:00:45 nipkow Exp $
 
-\documentclass[11pt,a4paper]{article}
+\documentclass[11pt,a4paper,parskip,abstract]{scrartcl}
 \usepackage{isabelle,isabellesym}
 
 \usepackage[normalem]{ulem}
@@ -77,9 +77,15 @@
 
 Blubb blah
 
+\part{The definitions}
 \input{CPSScheme}
 \input{Eval}
 \input{ExCF}
+\input{AbsCF}
+\part{The results}
+\input{ExCFSV}
+
+\part{The auxillary theories}
 
 \bibliographystyle{abbrv}
 \bibliography{root}

@@ -103,7 +103,9 @@ fun evalV :: "val \<Rightarrow> benv \<Rightarrow> venv \<Rightarrow> d" ("\<A>"
   |     "\<A> (L lam) \<beta> ve = DC (lam, \<beta>)"
 
 
-text {* TODO move away *}
+text {*
+To be able to do case analysis on the custom datatypes @{text lambda}, @{text d}, @{text call} and @{text prim} inside a function defined with @{text fixrec}, we need continuity results for them. These are all of the same shape and proven by case analysis on the discriminator.
+*}
 
 lemma cont2cont_lambda_case [simp, cont2cont]:
   assumes "\<And>a b c. cont (\<lambda>x. f x a b c)"
@@ -137,7 +139,7 @@ by (cases p) auto
 text {*
 Now, our answer domain is not any more the integers, but rather call caches. These are represented as sets containing tuples of call sites (given by their label) and binding environments to the called value. The argument types are unaltered.
 
-In the functions @{text \<F>} and @{text \<C>}, upon every call, a new element is added to the resulting set. The @{text STOP} continuation now ignores its argument and retuns the empty set instead.
+In the functions @{text \<F>} and @{text \<C>}, upon every call, a new element is added to the resulting set. The @{text STOP} continuation now ignores its argument and retuns the empty set instead. This corresponds to Figure 4.2 and 4.3 in Shivers’ dissertation.
 *}
 
 types ccache = "((label \<times> benv) \<times> d) set"
@@ -220,7 +222,7 @@ lemmas fstate_case = prod_cases4[OF d.exhaust, of _ "\<lambda>x _ _ _ . x",
 
 
 text {*
-The exact semantics of a program again uses @{text \<F>} with properly initialized arguments. For the first two example, we see that the function works as expected.
+The exact semantics of a program again uses @{text \<F>} with properly initialized arguments. For the first two examples, we see that the function works as expected.
 *}
 
 definition evalCPS :: "prog \<Rightarrow> ans" ("\<PR>")
@@ -238,115 +240,5 @@ lemma correct_ex2: "\<PR> ex2 = {((2, [1 \<mapsto> \<binit>]), DP (Plus 3)),
 unfolding evalCPS_def
 by simp
 
-fun benv_in_d 
-  where "benv_in_d (DC (l,\<beta>)) = {\<beta>}"
-      | "benv_in_d _ = {}"
-
-definition benv_in_ve
-  where "benv_in_ve ve = \<Union>{benv_in_d d | d . d \<in> ran ve}"
-
-fun contours_in_d
-  where "contours_in_d (DC (l,\<beta>)) = ran \<beta>"
-      | "contours_in_d _ = {}"
-
-definition contours_in_ve :: "venv \<Rightarrow> contour set"
-  where "contours_in_ve ve = \<Union>{contours_in_d d | d . d \<in> ran ve}"
-
-lemma benv_in_ve_upds:
-  assumes eq_length: "length vs = length ds"
-      and "\<forall>\<beta>\<in>benv_in_ve ve. Q \<beta>"
-      and "\<forall>d'\<in>set ds. \<forall>\<beta>\<in>benv_in_d d'. Q \<beta>"
-  shows   "\<forall>\<beta>\<in>benv_in_ve (ve(map (\<lambda>v. (v, b'')) vs [\<mapsto>] ds)). Q \<beta>"
-proof
-  fix \<beta>
-  assume ass:"\<beta> \<in> benv_in_ve (ve(map (\<lambda>v. (v, b'')) vs [\<mapsto>] ds))"
-  then obtain d where "\<beta>\<in>benv_in_d d" and "d \<in> ran (ve(map (\<lambda>v. (v, b'')) vs [\<mapsto>] ds))" unfolding benv_in_ve_def by auto
-  moreover have "ran (ve(map (\<lambda>v. (v, b'')) vs [\<mapsto>] ds)) \<subseteq> ran ve \<union> set ds" using eq_length by(auto intro!:ran_upds) 
-  ultimately
-  have "d \<in> ran ve \<or> d \<in> set ds" by auto
-  thus "Q \<beta>" using assms(2,3) `\<beta>\<in>benv_in_d d` unfolding benv_in_ve_def by auto
-qed
-
-lemma benv_in_eval:
-  assumes "\<forall>\<beta>'\<in>benv_in_ve ve. Q \<beta>'"
-      and "Q \<beta>"
-  shows "\<forall>\<beta>\<in>benv_in_d (\<A> v \<beta> ve). Q \<beta>"
-proof(cases v)
-  case (R _ var)
-  thus ?thesis
-  proof (cases "\<beta> (fst var)")
-    case None with R show ?thesis by simp next
-    case (Some cnt) show ?thesis
-    proof (cases "ve (var,cnt)")
-      case None with Some R show ?thesis by simp next
-      case (Some d)
-        hence "d \<in> ran ve" unfolding ran_def by blast
-        thus ?thesis using Some `\<beta> (fst var) = Some cnt` R assms(1)
-          unfolding benv_in_ve_def by auto
-    qed
-  qed next
-  case (L l) thus ?thesis using assms(2) by simp next
-  case C thus ?thesis by simp next
-  case P thus ?thesis by simp
-qed
-
-lemma contours_in_ve_empty[simp]: "contours_in_ve empty = {}"
-  unfolding contours_in_ve_def by auto
-
-lemma contours_in_ve_upds:
-  assumes eq_length: "length vs = length ds"
-      and "\<forall>b'\<in>contours_in_ve ve. Q b'"
-      and "\<forall>d'\<in>set ds. \<forall>b'\<in>contours_in_d d'. Q b'"
-  shows   "\<forall>b'\<in>contours_in_ve (ve(map (\<lambda>v. (v, b'')) vs [\<mapsto>] ds)). Q b'"
-proof-
-  have "ran (ve(map (\<lambda>v. (v, b'')) vs [\<mapsto>] ds)) \<subseteq> ran ve \<union> set ds" using eq_length by(auto intro!:ran_upds)
-  thus ?thesis using assms(2,3) unfolding contours_in_ve_def  by blast
-qed
-
-lemma contours_in_ve_upds_binds:
-  assumes "\<forall>b'\<in>contours_in_ve ve. Q b'"
-      and "\<forall>b'\<in>ran \<beta>'. Q b'"
-  shows   "\<forall>b'\<in>contours_in_ve (ve ++ map_of (map (\<lambda>(v,l). ((v,b''), \<A> (L l) \<beta>' ve)) ls)). Q b'"
-proof
-  fix b' assume "b'\<in>contours_in_ve (ve ++ map_of (map (\<lambda>(v,l). ((v,b''), \<A> (L l) \<beta>' ve)) ls))"
-  then obtain d where d:"d \<in> ran (ve ++ map_of (map (\<lambda>(v,l). ((v,b''), \<A> (L l) \<beta>' ve)) ls))" and b:"b' \<in> contours_in_d d" unfolding contours_in_ve_def by auto
-  
-  have "ran (ve ++ map_of (map (\<lambda>(v,l). ((v,b''), \<A> (L l) \<beta>' ve)) ls)) \<subseteq> ran ve \<union> ran (map_of (map (\<lambda>(v,l). ((v,b''), \<A> (L l) \<beta>' ve)) ls))"
-    by(auto intro!:ran_concat)
-  also
-  have "\<dots> \<subseteq> ran ve \<union> snd ` set (map (\<lambda>(v,l). ((v,b''), \<A> (L l) \<beta>' ve)) ls)"
-    by (rule Un_mono[of "ran ve" "ran ve", OF subset_refl ran_map_of])
-  also
-  have "\<dots> \<subseteq> ran ve \<union> set (map (\<lambda>(v,l). (\<A> (L l) \<beta>' ve)) ls)"
-    by (rule Un_mono[of "ran ve" "ran ve", OF subset_refl ])auto
-  finally
-  have "d \<in>  ran ve \<union> set (map (\<lambda>(v,l). (\<A> (L l) \<beta>' ve)) ls)" using d by auto
-  thus "Q b'"  using assms b unfolding contours_in_ve_def by auto
-qed
-
-lemma contours_in_eval:
-  assumes "\<forall>b'\<in>contours_in_ve ve. Q b'"
-      and "\<forall>b'\<in> ran \<beta>. Q b'"
-  shows "\<forall>b'\<in>contours_in_d (\<A> f \<beta> ve). Q b'"
-unfolding contours_in_ve_def
-proof(cases f)
-  case (R _ var)
-  thus ?thesis
-  proof (cases "\<beta> (fst var)")
-    case None with R show ?thesis by simp next
-    case (Some cnt) show ?thesis
-    proof (cases "ve (var,cnt)")
-      case None with Some R show ?thesis by simp next
-      case (Some d)
-        hence "d \<in> ran ve" unfolding ran_def by blast
-        thus ?thesis using Some `\<beta> (fst var) = Some cnt` R `\<forall>b'\<in>contours_in_ve ve. Q b'`
-          unfolding contours_in_ve_def
-          by auto
-    qed
-  qed next
-  case (L l) thus ?thesis using `\<forall>b'\<in> ran \<beta>. Q b'` by simp next
-  case C thus ?thesis by simp next
-  case P thus ?thesis by simp
-qed
 
 end

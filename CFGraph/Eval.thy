@@ -49,7 +49,7 @@ The answer domain of our semantic is the set of integers, lifted to obtain an ad
 types ans = "int lift"
 
 text {*
-TODO: Move in an aux theory
+To be able to do case analysis on the custom datatypes @{text lambda}, @{text d}, @{text call} and @{text prim} inside a function defined with @{text fixrec}, we need continuity results for them. These are all of the same shape and proven by case analysis on the discriminator.
 *}
 
 lemma cont2cont_lambda_case [simp, cont2cont]:
