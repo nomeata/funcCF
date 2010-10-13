@@ -310,7 +310,7 @@ text {*
 This result is now lifted to the powerset of @{text abs_R}.
 *}
 
-lemma arg_space_complete_ps: "states \<subseteq> arg_poss p \<Longrightarrow> (\<^ps> abs_R)\<cdot>states \<subseteq> arg_poss p"
+lemma arg_space_complete_ps: "states \<subseteq> arg_poss p \<Longrightarrow> (\<^ps>abs_R)\<cdot>states \<subseteq> arg_poss p"
 using arg_space_complete unfolding powerset_lift_def by auto
 
 text {*
@@ -331,7 +331,7 @@ proof- {
   } thus ?thesis by auto
 qed
 
-lemma args_finite: "finite (\<Union>i. iterate i\<cdot>(\<^ps> abs_R)\<cdot>{Discr (Inl
+lemma args_finite: "finite (\<Union>i. iterate i\<cdot>(\<^ps>abs_R)\<cdot>{Discr (Inl
      (contents (\<aA> (L p) empty {}.), [{AStop}], {}., \<abinit>))})" (is "finite ?S")
 proof (rule finite_subset[OF _finite_arg_space])
   have [simp]:"p \<in> lambdas p" by (cases p, simp)
@@ -372,11 +372,11 @@ Because of the special form of @{text \<aF>} (and thus @{text \<aPR>}) derived i
 *}
 
 lemma a_evalF_iterative:
-  "\<aF>\<cdot>(Discr x) = \<^ps> abs_g\<cdot>(\<Union>i. iterate i\<cdot>(\<^ps> abs_R)\<cdot>{Discr (Inl x)})"
+  "\<aF>\<cdot>(Discr x) = \<^ps>abs_g\<cdot>(\<Union>i. iterate i\<cdot>(\<^ps>abs_R)\<cdot>{Discr (Inl x)})"
 by (simp del:abs_R.simps abs_g.simps add: theorem12 Un_commute a_evalF_decomp)
 
 lemma a_evalCPS_interative:
-"\<aPR> x = \<^ps> abs_g\<cdot>(\<Union>i. iterate i\<cdot>(\<^ps> abs_R)\<cdot>{Discr (Inl
+"\<aPR> x = \<^ps>abs_g\<cdot>(\<Union>i. iterate i\<cdot>(\<^ps>abs_R)\<cdot>{Discr (Inl
      (contents (\<aA> (L x) empty {}.), [{AStop}], {}., \<abinit>))})"
 unfolding evalCPS_a_def
 by(subst a_evalF_iterative, simp del:abs_R.simps abs_g.simps evalV_a.simps)

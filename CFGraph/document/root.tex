@@ -25,6 +25,8 @@
                                        % (only needed if amssymb not used)
 %\usepackage{textcomp}                 % for \<cent>, \<currency>
 
+\usepackage{amsmath}
+
 % this should be the last package used
 \usepackage{pdfsetup}
 
@@ -82,12 +84,20 @@ Blubb blah
 \input{Eval}
 \input{ExCF}
 \input{AbsCF}
-\part{The results}
+
+\part{The main results}
 \input{ExCFSV}
 \input{AbsCFCorrect}
+\input{Computability}
 \input{AbsCFComp}
 
 \part{The auxillary theories}
+\input{CPSUtils}
+\input{Utils}
+\input{SetMap}
+\input{MapSets}
+\input{HOLCFUtils}
+\input{FixTransform}
 
 \bibliographystyle{abbrv}
 \bibliography{root}

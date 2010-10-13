@@ -1,6 +1,15 @@
+header  {* Syntax tree helpers *}
+
 theory CPSUtils
 imports CPSScheme Finite_Inductive_Set
 begin
+
+text {*
+This theory defines the sets @{text "lambdas p"}, @{text "calls p"}, @{text "calls p"}, @{text "vars p"}, @{text "labels p"} and @{text "prims p"} as the subexpressions of the program @{text "p"}. Finiteness is shown for each of these sets, and some rules about how these sets relate. All these rules are proven more or less the same ways, which is very inelegent due to the nesting of the type and the shape of the derived induction rule.
+
+It would be much nicer to start with these rules and define the set inductively. Unfortunately, that approach would make it very hard to show the finiteness of the sets in question.
+*}
+
 
 fun lambdas :: "lambda \<Rightarrow> lambda set"
 and lambdasC :: "call \<Rightarrow> lambda set"

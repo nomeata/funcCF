@@ -1,6 +1,14 @@
+header {* General utility lemmas *}
 theory Utils imports Main
 begin
 
+text {*
+This is potpourri of various lemmas not specific to our project. Some of them could very well be included in the default Isabelle library.
+*}
+
+text {*
+Lemmas about the @{text single_valued} predicate.
+*}
 
 lemma single_valued_empty[simp]:"single_valued {}"
 by (rule single_valuedI) auto
@@ -12,6 +20,10 @@ lemma single_valued_insert:
 using assms
 by (auto intro:single_valuedI dest:single_valuedD)
 
+text {*
+Lemmas about @{text ran}, the range of a finite map.
+*}
+
 lemma ran_upd: "ran (m (k \<mapsto> v)) \<subseteq> ran m \<union> {v}"
 unfolding ran_def by auto
 
@@ -21,12 +33,6 @@ lemma ran_map_of: "ran (map_of xs) \<subseteq> snd ` set xs"
 lemma ran_concat: "ran (m1 ++ m2) \<subseteq> ran m1 \<union> ran m2"
 unfolding ran_def
 by auto
-
-lemma map_fst_zip: "length xs = length ys ==> map fst (zip xs ys) = xs"
-apply (induct xs ys rule:list_induct2) by auto
-
-lemma map_snd_zip: "length xs = length ys ==> map snd (zip xs ys) = ys"
-apply (induct xs ys rule:list_induct2) by auto
 
 lemma ran_upds:
   assumes eq_length: "length ks = length vs"
@@ -45,5 +51,14 @@ qed
 lemma ran_upd_mem[simp]: "v \<in> ran (m (k \<mapsto> v))"
 unfolding ran_def by auto
 
+text {*
+Lemmas about @{text map}, @{text zip} and @{text fst}/@{text snd}
+*}
+
+lemma map_fst_zip: "length xs = length ys ==> map fst (zip xs ys) = xs"
+apply (induct xs ys rule:list_induct2) by auto
+
+lemma map_snd_zip: "length xs = length ys ==> map snd (zip xs ys) = ys"
+apply (induct xs ys rule:list_induct2) by auto
 
 end

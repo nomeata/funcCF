@@ -98,7 +98,7 @@ fun evalV :: "val \<Rightarrow> benv \<Rightarrow> venv \<Rightarrow> d" ("\<A>"
   |     "\<A> (P prim) \<beta> ve = DP prim"
   |     "\<A> (R _ var) \<beta> ve =
            (case \<beta> (binder var) of
-              Some l \<Rightarrow> (case ve (var,l) of Some d \<Rightarrow> d | None \<Rightarrow> DI 0) (* I prefer this to be total\<dots> *)
+              Some l \<Rightarrow> (case ve (var,l) of Some d \<Rightarrow> d | None \<Rightarrow> DI 0)
              | None \<Rightarrow> DI 0)"
   |     "\<A> (L lam) \<beta> ve = DC (lam, \<beta>)"
 
