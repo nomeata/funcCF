@@ -62,7 +62,7 @@ type Const = Integer
 
 -- | Primitive operations. The primitive operations are annotated by labels. These mark the (invisible) call sites that call the continuations, and are one per continuation.
 data Prim = Plus Label -- ^ Integer addition. Expected parameters: two integers, one continuation.
-          | If Label Label -- ^ Conditional branching. Expected paramters: one integer, one continuation to be called if the argument is nonzero, one continuation to be called if the argument is zero (“false”)
+          | If Label Label -- ^ Conditional branching. Expected paramters: one integer, one continuation to be called if the argument is nonzero, one continuation to be called if the argument is zero ("false")
     deriving (Show, Eq, Ord)
 
 -- * Smart constructors
