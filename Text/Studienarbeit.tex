@@ -1,4 +1,4 @@
-\documentclass[a4paper,parskip,BCOR=12mm,DIV=10]{scrbook}
+\documentclass[a4paper,parskip,BCOR=12mm,DIV=10,11pt]{scrbook}
 
 %\usepackage{german}
 \usepackage[utf8]{inputenc}
@@ -21,8 +21,8 @@
 \usepackage{cancel}
 \usepackage[pdfauthor={Joachim Breitner}]{hyperref}
 \usepackage[capitalise]{cleveref}
-% \usepackage{tikz}
-% %\usepackage[tracking=true,kerning=true,spacing=true]{microtype}
+\usepackage{tikz}
+\usetikzlibrary{snakes,arrows,shapes}
 % \usetikzlibrary{automata}
 % \usetikzlibrary{decorations}
 % \usetikzlibrary{snakes}
@@ -152,6 +152,17 @@
 % FrameSep default
 \setlength{\FrameSep}{2pt}
 
+% Float placement
+%\renewcommand{\topfraction}{.95}
+%\renewcommand{\bottomfraction}{.7}
+%\renewcommand{\textfraction}{.05}
+\renewcommand{\floatpagefraction}{.60}
+%\renewcommand{\dbltopfraction}{.66}
+%\renewcommand{\dblfloatpagefraction}{.66}
+\setcounter{topnumber}{1}
+\setcounter{bottomnumber}{1}
+
+
 \newcommand{\C}{\mathcal C}
 \newcommand{\F}{\mathcal F}
 \newcommand{\PR}{\mathcal {PR}}
@@ -226,7 +237,6 @@ Shivers approaches this problem in his 1991 Ph.D.\ thesis, subtitled “taming l
 main = print ((x + y) * (z - w))
 \end{lstlisting}
 In continuation-passing style, the operations \lstinline!+!, \lstinline!*!, \lstinline!-! and \lstinline!print! all take a continuation argument, and the \lstinline!main! function is being passed a top-level continuation: 
-\enlargethispage{1em}
 \begin{lstlisting}[language=Haskell]
 main c = + x y (\xy. - z w (\zw. * xy zw (\prod. print prod c)))
 \end{lstlisting}
@@ -391,41 +401,19 @@ to be able to apply the previous result.
 
 The required steps to apply this result to the mutually recursive definitions $\aF$ and $\aC$ are not explained in the dissertation.
 
-\chapter{The Haskell prototype}
+\chapter{The Haskell Prototype}
 
 \lettrine T{o} get a better understanding of the algorithms, a prototype was first implemented in Haskell. As the semantics are given in denotational style, they are easily translated into a functional program. The elements of the syntax definition of the CPS style language are directly turned into data type definitions.
 
-At this point, we slightly deviate from the original: Shivers distinguishes the sets FUN and ARG as direct sums (cf.\ \vref{fig:syntax}) and later defines $\A$ on the union of FUN and ARG (cf.\ \vref{fig:semdoms}). This would be tedious and unwieldy to express in the Haskell type system, therefore we use one type VAL instead of FUN and ARG:
+At this point, we slightly deviate from the original: Shivers distinguishes the sets FUN and ARG as direct sums (cf.\ \vref{fig:syntax}) and later defines $\A$ on the union of FUN and ARG (cf.\ \vref{fig:semdoms}). This would be tedious and unwieldy to express in the Haskell type system, therefore we use one type VAL instead of FUN and ARG, which does not affect the alogithms in any notable way:
 \begin{align*}
 \text{VAL} &\Coloneqq \text{LAM} + \text{REF} + \text{PRIM} + \text{CONST}
 \end{align*}
-The change has very little effect on the following.
+We also drop the special constant \texttt{\#f} representing false from the syntax and the corresponding value false from the set of semantic values, which are now just the integers. The \texttt{if} primitive operation consders zero as false and any other integer as true.
 
 \section{Type system tricks}
 
 As mentioned in the last chapter, most elements of the syntax carry a label. These labels need to be unique and every mention of a variable needs to carry the label of the variable’s binding position. To prevent the hypothetical user of the library from getting the labels wrong, the \textit{smart constructor} idiom was exploited.
-
-A type alias is introduced to mark not-fully-constructed syntax tree values and prevent their use in other functions.
-\begin{lstlisting}
-newtype Inv a = Inv { unsafeFinish :: a } deriving (Show, Eq)
-\end{lstlisting}
-The accessor function \lstinline!unsafeFinish :: Inv a → a! is only to be used internally.
-
-Now a value of type \lstinline-Inv Lambda- represents a lambda expression without correct labels. For each constructor there is a function (the smart constructor), taking the same arguments except the label, and building the unfinished value. For example, the smart constructor for lambda expressions is defined as
-\begin{lstlisting}
-lambda :: [Inv Var] -> Inv Call -> Inv Lambda
-lambda vs (Inv c) = Inv $ Lambda noProg (map unsafeFinish vs) c
-\end{lstlisting}
-where \lstinline!noProg! throws, if it were evaluated, an exception:
-\begin{lstlisting}
-noProg :: a
-noProg = error "Smart constructors used without calling prog"
-\end{lstlisting}
-
-
-There is only one function for public consumption that removes the \lstinline-Inv--wrapper, with signature \lstinline!prog :: Inv Lambda -> Prog!. It uses a state monad to hand out correct labels and keeps track of binding positions to correctly set the reference to the binding position. 
-
-For additional convenience, the types \lstinline!Var!, \lstinline!Val! and \lstinline!Inv a! are made instances of the \lstinline!IsString! type class which allows the compiler together with the language extension \lstinline!OverloadedStrings! to turn string literals into values of these kinds, and similar with the \lstinline!Num!-instance for \lstinline!Val! to enter constants directly as literals.
 
 \begin{figure}
 \begin{framed}
@@ -451,9 +439,31 @@ ex3 = prog $ lambda ["cont"] $
         )] $ app "rec" [0, 10, "cont"]
 \end{lstlisting}
 \end{framed}
-\caption{Example Code}
+\caption{Example Code, defined using smart constructors}
 \label{fig:sum10}
 \end{figure}
+
+A type alias is introduced to mark not-fully-constructed syntax tree values and prevent their use in other functions.
+\begin{lstlisting}
+newtype Inv a = Inv { unsafeFinish :: a } deriving (Show, Eq)
+\end{lstlisting}
+The deconstructor \lstinline!unsafeFinish :: Inv a → a! is only to be used internally.
+
+Now a value of type \lstinline-Inv Lambda- represents a lambda expression without correct labels. For each constructor there is a function (the smart constructor), taking the same arguments except the label, and building the unfinished value. For example, the smart constructor for lambda expressions is defined as
+\begin{lstlisting}
+lambda :: [Inv Var] -> Inv Call -> Inv Lambda
+lambda vs (Inv c) = Inv $ Lambda noProg (map unsafeFinish vs) c
+\end{lstlisting}
+where \lstinline!noProg! throws, if it were evaluated, an exception:
+\begin{lstlisting}
+noProg :: a
+noProg = error "Smart constructors used without calling prog"
+\end{lstlisting}
+
+
+There is only one function for public consumption that removes the \lstinline-Inv--wrapper, with signature \lstinline!prog :: Inv Lambda -> Prog!. It uses a state monad to hand out correct labels and keeps track of binding positions to correctly set the reference to the binding position. 
+
+For additional convenience, the types \lstinline!Var!, \lstinline!Val! and \lstinline!Inv a! are made instances of the \lstinline!IsString! type class which allows the compiler together with the language extension \lstinline!OverloadedStrings! to turn string literals into values of these kinds, and similar with the \lstinline!Num!-instance for \lstinline!Val! to enter constants directly as literals.
 
 A simple example program, returning the result of the worldshaking calculation $1 + 1$, is now written as
 \begin{lstlisting}
@@ -494,9 +504,9 @@ Another feature of the Haskell prototype is pretty-printing of an abstract synta
 \label{fig:prettyprint}
 \end{figure}
 
-After having pretty-printed the code, we wished a nicer presentation for the call caches returned by the semantics functions function. Recall that the call cache is a map from call sites, represented by labels, and binding environments to values. This can be turned into a map from labels to labels (hereby losing the context information) and thus arrows in the source code.
+After having pretty-printed the code, we wished we had a nice presentation of the call caches returned by the semantics functions. Recall that the call cache is a map from call sites, represented by labels, and binding environments to values. This can be turned into a map from labels to labels (hereby losing the context information) and thus arrows in the source code.
 
-It turned out that the mapping from labels to coordinates in the source code is tricky to achieve: The used pretty printing library’s API has no way of marking positions in the result. An alternative would have been re-implementing the pretty printing library with this additional feature, but this would be out of scope for this project (even more than the graphical output). Instead we employed a hack abusing the wide range of characters that Unicode based strings provide: When pretty printing the code, labels (which are positive integers) are inserted as singe characters with a code point of U+100000 plus the number of the label. These are in the Private Use Area of the Unicode specification.
+It turned out that the mapping from labels to coordinates in the source code is tricky to come by: The pretty printing library’s API offers no way of marking positions in the resulting string. An alternative would have been to re-implement the pretty printing library with this additional feature, but this would be out of scope for this project (even more than the graphical output). Instead we employed a hack abusing the wide range of characters that Unicode based strings provide: When pretty printing the code, labels (which are positive integers) are inserted as single characters with a code point of U+100000 plus the number of the label. These are in the Private Use Area of the Unicode specification.
 
 \begin{figure}
 \centering
@@ -507,13 +517,61 @@ It turned out that the mapping from labels to coordinates in the source code is 
 \label{fig:ccgraph}
 \end{figure}
 
-After the pretty printer has laid out the code, we can gather the coordinates of all characters with code points larger or equal to U+100000 and replace them by a placeholder symbol (we chose $\bullet$). The pretty printed code is written to a PDF using the HPDF library\cite{HPDF}, which is implemented in pure Haskell. This gives us maximal control over the positioning and allows us to render the document without padding.
+After the pretty printer has laid out the code, we can gather the coordinates of all characters with code points larger or equal to U+100000 and replace them by a placeholder symbol (we chose $\bullet$). The pretty printed code is written to a PDF file using the HPDF library\cite{HPDF}, which is implemented in pure Haskell. This gives us maximal control over the positioning and allows us to render the document without padding.
 
-To draw the arrows, we want to use the graphviz suite\cite{Graphviz} which includes several graph layout mechanisms. From the edges given by the control cache and the label coordinates from the pretty-printed code a graph description in the dot-format is generated and rendered to PDF using the \texttt{neato} command. The two PDF files are now mapped onto each other using \texttt{pdftk}\cite{pdftk}. If everything went right, the arrows will begin and end exactly at the character that replaced the label. The result is included in \vref{fig:ccgraph}.
+To draw the arrows, we want to use the graphviz suite\cite{Graphviz} which includes several graph layout mechanisms. From the edges given by the control cache and the label coordinates from the pretty-printed code a graph description in the dot-format is generated and rendered to PDF using the \texttt{neato} command. The two PDF files are now mapped onto each other using \texttt{pdftk}\cite{pdftk}. If everything went right, the arrows will begin and end exactly at the character that replaced the label. A result is included in \vref{fig:ccgraph}.
 
-This was just a quick experiment and proof-of-concept. Obviously, this presentation has its weakness, as the reduced legibility of the code due to the arrows passing semi-transparently over the text.
+This was just a quick experiment and serves as a proof-of-concept. Obviously, this presentation has its weakness, such as the reduced legibility of the code due to the arrows passing semi-transparently over the text.
 
-Another conversion function is included that turn a program into the syntax used by Isabelle, to make it easier to obtain the example programs there as well.
+Another conversion function is included that turns a program into the syntax used by Isabelle, to make it more convenient to define example programs in Isabelle.
+
+\chapter{The Isabelle Formalization}
+
+The main mission of this student research project was to implement Shivers’ algorithms in the theorem proover Isabelle\citep{isabelle} and proof his main results. The main hurdles to take were
+\begin{itemize}
+\item representing partial functions such as the semantics functions in Isabelle/HOL, which is a logic of total funcitons,
+\item and obtaining the fact that the set of subterms of a program is finite.
+\end{itemize}
+
+\section{Structure}
+
+\begin{figure}
+\begin{framed}
+\centering
+%\includegraphics{sessionGraph.pdf}
+\input{sessionGraph.tex}
+\end{framed}
+\caption{Isabelle theories and their dependencies}
+\label{fig:sessionGraph}
+\end{figure}
+
+I separated the formalizations into several files (called theories in Isabelle-speak). Their dependencies are given in \vref{fig:sessionGraph}, where squared theories contain definition, boxed theories contain the main results and theories in rounded boxes contain auxillary definitions and lemmas. The definitorial theories have directly corresponding counter-parts in the Haskell prototype. The follwing list gives a quick summary of their content.
+
+\begin{description}
+\setlength\parskip{0pt}
+\item[CPSScheme] contains the definitions of the abstract syntax to represent the functional programs.
+\item[Eval] is an implementation of the standard semantics.
+\item[ExCF] is an implementation of the exact nonstandard semantics.
+\item[AbsCF] is an implementation of the abstract nonstandard semantics.
+\vspace{1em}
+\item[ExCFSV] proves that a call cache returned by the exact nonstandard semantics is indeed a partial map.
+\item[AbsCFCorrect] proves that the abstract nonstandard semantis safely approximate the exact nonstandard semantics.
+\item[Computability] contains Shivers’ general treatment of equations whose least solution is computable.
+\item[AbsCFComp] applies the results from the previous theory to the abstract nonstandard semantics. This step was skipped by Shivers.
+\vspace{1em}
+\item[Utils] is a potpourri of various lemmas not specific to our project, some of which could very well be included in the default Isabelle library.
+\item[HOLCFUtils] contains generic lemmas related to the use of \isatext{HOLCF}, a domain theory extension to Isabelle.
+\item[CPSUtils] defines sets of subterms for \isatext{CPSScheme} programs and proves their finiteness.
+\item[FixTransform] transform fixed point expressions defining two mutually recursive functions to fixed point expressions defining a single function.
+\item[SetMap] contiains functions and lemmas to work with set-valued maps.
+\item[MapSets] defines sets of functions and sets of maps, and shows the finiteness of such maps, if their domains and ranges are finite.
+\end{description}
+
+Generally it is straight-forward to transform functional code, such as the Haskell prototype, into Isabelle. For total functions, the \isatext{function} package\citep{isabelle-function} provides a great deal of convenience, such as automatic termination proofs, overlapping pattern in the defining equations and mutual recursion. Unfortunately, the important functions that we would like to define, $\F$ and $\C$, are not total funcunction: For non-terminating programs they recurse endlessly.
+
+The function package has some support for partial function using the \texttt{domintros} option, which introduces a termination predicate that appears in the premisses to any lemma about the functions. After having formalized the functions in that setting this turned out to be a major restriction and we looked for alternatives.
+
+Shivers handles the issue using the machinery of domain theory, where functions defined by recursive definitions are obtained by construction a functional on the space of function, proving that it is continues and then taking the least fixed point of the function as the desired definition. The \isatext{HOLCF}-package\citep{HOLCF}, which is an extension to the standard Higher Order Logic of Isabelle, provides the necessary definitions to do domain theory in Isabelle..
 
 \appendix
 
