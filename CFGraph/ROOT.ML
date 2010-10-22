@@ -4,4 +4,4 @@ add_path "../Example";
 
 no_document use_thys ["Adhoc_Overloading"];
 
-use_thys ["Eval","AbsCFCorrect","ExCFSV","AbsCFComp"];
+use_thys ["Eval","AbsCFCorrect","ExCFSV","AbsCFComp","Collatz"];

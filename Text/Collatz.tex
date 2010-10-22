@@ -1,0 +1,63 @@
+%
+\begin{isabellebody}%
+\def\isabellecontext{Collatz}%
+%
+\isadelimtheory
+%
+\endisadelimtheory
+%
+\isatagtheory
+\isacommand{theory}\isamarkupfalse%
+\ Collatz\ \isakeyword{imports}\ HOLCF\ \isakeyword{begin}%
+\endisatagtheory
+{\isafoldtheory}%
+%
+\isadelimtheory
+\isanewline
+%
+\endisadelimtheory
+\isanewline
+\isacommand{fixrec}\isamarkupfalse%
+\ f\ {\isacharcolon}{\isacharcolon}\ {\isachardoublequoteopen}nat\ discr\ {\isasymrightarrow}\ nat\ lift{\isachardoublequoteclose}\isanewline
+\isakeyword{where}\ {\isachardoublequoteopen}f{\isasymcdot}n\ {\isacharequal}\ {\isacharparenleft}if\ undiscr\ n\ {\isacharequal}\ {\isadigit{1}}\ then\isanewline
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ Def\ {\isadigit{1}}\isanewline
+\ \ \ \ \ \ \ \ \ \ \ \ \ else\ if\ even\ {\isacharparenleft}undiscr\ n{\isacharparenright}\ then\isanewline
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ f{\isasymcdot}{\isacharparenleft}Discr\ {\isacharparenleft}{\isacharparenleft}undiscr\ n{\isacharparenright}\ div\ {\isadigit{2}}{\isacharparenright}{\isacharparenright}\isanewline
+\ \ \ \ \ \ \ \ \ \ \ \ \ else\isanewline
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ f{\isasymcdot}{\isacharparenleft}Discr\ {\isacharparenleft}{\isadigit{3}}\ {\isacharasterisk}\ undiscr\ n\ {\isacharplus}\ {\isadigit{1}}{\isacharparenright}{\isacharparenright}{\isacharparenright}{\isachardoublequoteclose}\isanewline
+\isanewline
+\isacommand{lemma}\isamarkupfalse%
+\ {\isachardoublequoteopen}f{\isasymcdot}{\isacharparenleft}Discr\ {\isadigit{4}}{\isadigit{2}}{\isacharparenright}\ {\isacharequal}\ Def\ {\isadigit{1}}{\isachardoublequoteclose}%
+\isadelimproof
+\ %
+\endisadelimproof
+%
+\isatagproof
+\isacommand{by}\isamarkupfalse%
+\ simp%
+\endisatagproof
+{\isafoldproof}%
+%
+\isadelimproof
+%
+\endisadelimproof
+\isanewline
+%
+\isadelimtheory
+%
+\endisadelimtheory
+%
+\isatagtheory
+\isacommand{end}\isamarkupfalse%
+%
+\endisatagtheory
+{\isafoldtheory}%
+%
+\isadelimtheory
+%
+\endisadelimtheory
+\end{isabellebody}%
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "root"
+%%% End:

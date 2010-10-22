@@ -1,0 +1,33 @@
+%
+\begin{isabellebody}%
+\def\isabellecontext{ExCFSV}%
+\isamarkuptrue%
+\isacommand{lemma}\isamarkupfalse%
+\ cc{\isacharunderscore}single{\isacharunderscore}valued{\isacharprime}{\isacharcolon}\isanewline
+\ \ \ \ \ \ {\isachardoublequoteopen}{\isasymlbrakk}\ {\isasymforall}b{\isacharprime}\ {\isasymin}\ contours{\isacharunderscore}in{\isacharunderscore}ve\ ve{\isachardot}\ b{\isacharprime}\ {\isacharless}\ b\isanewline
+\ \ \ \ \ \ \ {\isacharsemicolon}\ {\isasymforall}b{\isacharprime}\ {\isasymin}\ contours{\isacharunderscore}in{\isacharunderscore}d\ d{\isachardot}\ b{\isacharprime}\ {\isacharless}\ b\isanewline
+\ \ \ \ \ \ \ {\isacharsemicolon}\ {\isasymforall}d{\isacharprime}\ {\isasymin}\ set\ ds{\isachardot}\ {\isasymforall}b{\isacharprime}\ {\isasymin}\ contours{\isacharunderscore}in{\isacharunderscore}d\ d{\isacharprime}{\isachardot}\ b{\isacharprime}\ {\isacharless}\ b\isanewline
+\ \ \ \ \ \ \ {\isasymrbrakk}\isanewline
+\ \ \ \ \ \ \ {\isasymLongrightarrow}\isanewline
+\ \ \ \ \ \ \ {\isacharparenleft}\ \ \ single{\isacharunderscore}valued\ {\isacharparenleft}{\isasymF}{\isasymcdot}{\isacharparenleft}Discr\ {\isacharparenleft}d{\isacharcomma}ds{\isacharcomma}ve{\isacharcomma}b{\isacharparenright}{\isacharparenright}{\isacharparenright}\isanewline
+\ \ \ \ \ \ \ {\isasymand}\ {\isacharparenleft}{\isasymforall}\ {\isacharparenleft}{\isacharparenleft}lab{\isacharcomma}{\isasymbeta}{\isacharparenright}{\isacharcomma}t{\isacharparenright}\ {\isasymin}\ {\isasymF}{\isasymcdot}{\isacharparenleft}Discr\ {\isacharparenleft}d{\isacharcomma}ds{\isacharcomma}ve{\isacharcomma}\ b{\isacharparenright}{\isacharparenright}{\isachardot}\isanewline
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ {\isasymexists}\ b{\isacharprime}{\isachardot}\ b{\isacharprime}\ {\isasymin}\ ran\ {\isasymbeta}\ {\isasymand}\ b\ {\isasymle}\ b{\isacharprime}{\isacharparenright}\isanewline
+\ \ \ \ \ \ \ {\isacharparenright}{\isachardoublequoteclose}\isanewline
+\ \ \isakeyword{and}\ {\isachardoublequoteopen}{\isasymlbrakk}\ b\ {\isasymin}\ ran\ {\isasymbeta}{\isacharprime}\isanewline
+\ \ \ \ \ \ \ {\isacharsemicolon}\ {\isasymforall}b{\isacharprime}{\isasymin}ran\ {\isasymbeta}{\isacharprime}{\isachardot}\ b{\isacharprime}\ {\isasymle}\ b\isanewline
+\ \ \ \ \ \ \ {\isacharsemicolon}\ {\isasymforall}b{\isacharprime}\ {\isasymin}\ contours{\isacharunderscore}in{\isacharunderscore}ve\ ve{\isachardot}\ b{\isacharprime}\ {\isasymle}\ b\isanewline
+\ \ \ \ \ \ \ {\isasymrbrakk}\isanewline
+\ \ \ \ \ \ \ {\isasymLongrightarrow}\isanewline
+\ \ \ \ \ \ \ {\isacharparenleft}\ \ \ single{\isacharunderscore}valued\ {\isacharparenleft}{\isasymC}{\isasymcdot}{\isacharparenleft}Discr\ {\isacharparenleft}c{\isacharcomma}{\isasymbeta}{\isacharprime}{\isacharcomma}ve{\isacharcomma}b{\isacharparenright}{\isacharparenright}{\isacharparenright}\isanewline
+\ \ \ \ \ \ \ {\isasymand}\ {\isacharparenleft}{\isasymforall}\ {\isacharparenleft}{\isacharparenleft}lab{\isacharcomma}{\isasymbeta}{\isacharparenright}{\isacharcomma}t{\isacharparenright}\ {\isasymin}\ {\isasymC}{\isasymcdot}{\isacharparenleft}Discr\ {\isacharparenleft}c{\isacharcomma}{\isasymbeta}{\isacharprime}{\isacharcomma}ve{\isacharcomma}b{\isacharparenright}{\isacharparenright}{\isachardot}\isanewline
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ {\isasymexists}\ b{\isacharprime}{\isachardot}\ b{\isacharprime}\ {\isasymin}\ ran\ {\isasymbeta}\ {\isasymand}\ b\ {\isasymle}\ b{\isacharprime}{\isacharparenright}\isanewline
+\ \ \ \ \ \ \ {\isacharparenright}{\isachardoublequoteclose}\isanewline
+%
+\isadelimproof
+%
+\endisadelimproof
+\end{isabellebody}%
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "root"
+%%% End:
