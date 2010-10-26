@@ -2,7 +2,7 @@ theory CPSSmallStep
 imports CPSScheme CPSUtils Eval
 begin
 
-types state = "venv \<times> d list option \<times> benv option \<times> contour"
+types state = "venv \<times> d list \<times> benv \<times> contour"
 
 datatype node
   = StartNode lambda
@@ -11,25 +11,22 @@ datatype node
   | PrimNode prim
   | CallNode call
 
-fun callD :: "d \<Rightarrow> venv \<Rightarrow> d list \<Rightarrow> contour \<Rightarrow> (node \<times> state)"
- where "callD (DC (l,\<beta>)) ve ds b = (LambdaNode l,  (ve, Some ds, Some \<beta>, b))"
-     | "callD (DP prim)  ve ds b = (PrimNode prim, (ve, Some ds, None, b))"
-     | "callD Stop       ve ds b = (StopNode, (ve, Some ds, None, b))"
+fun callD :: "d \<Rightarrow> venv \<Rightarrow> d list \<Rightarrow> benv \<Rightarrow> contour \<Rightarrow> (node \<times> state) option"
+ where "callD (DC (l,\<beta>)) ve ds _ b = Some (LambdaNode l,  (ve, ds, \<beta>, b))"
+     | "callD (DP prim)  ve ds \<beta> b = Some (PrimNode prim, (ve, ds, \<beta>, b))"
+     | "callD Stop       ve ds \<beta> b = Some (StopNode,      (ve, ds, \<beta>, b))"
+     | "callD (DI _)     ve ds \<beta> b = None"
 
-inductive CPSStep :: "node \<Rightarrow> state \<Rightarrow> node \<Rightarrow> state \<Rightarrow> bool" ("_:_ \<Rightarrow> _:_") where
-  "StartNode prog :   state \<Rightarrow> LambdaNode prog : (empty , Some [ Stop ] , Some empty, 0 )"
-  | "\<lbrakk> length vs = length as \<rbrakk>
-     \<Longrightarrow> LambdaNode (Lambda lab vs c) : (ve, Some ds, Some \<beta>, b) \<Rightarrow> CallNode c : (map_upds ve (map (\<lambda>v. (v,b)) vs) as, None, Some (\<beta>(lab \<mapsto> b)), b)"
-  | "\<lbrakk> (n', s') = callD cnt ve [DI (a1+a2)] (Suc b) \<rbrakk> 
-     \<Longrightarrow> PrimNode (Plus lab) : (ve, Some [DI a1, DI a2, cnt], None, b) \<Rightarrow> n' : s'"
-  | "\<lbrakk> v \<noteq> 0 ; (n', s') = callD cntt ve [] (Suc b) \<rbrakk> 
-     \<Longrightarrow> PrimNode (prim.If labt labf) : (ve, Some [DI v, cntt, cntf], None, b) \<Rightarrow> n' : s'"
-  | "\<lbrakk> v = 0 ; (n', s') = callD cntf ve [] (Suc b) \<rbrakk> 
-     \<Longrightarrow> PrimNode (prim.If labt labf) : (ve, Some [DI v, cntt, cntf], None, b) \<Rightarrow> n' : s'"
-  | "\<lbrakk> (n', s') = callD (\<A> f \<beta> ve) ve (map (\<lambda>v . \<A> v \<beta> ve) vs) (Suc b) \<rbrakk> 
-     \<Longrightarrow> CallNode (App lab f vs) : (ve, None, Some \<beta>, b) \<Rightarrow> n' : s'"
-  | "\<lbrakk> (n', s') = callD (\<A> f \<beta> ve) ve (map (\<lambda>v . \<A> v \<beta> ve) vs) (Suc b); b' = Suc b ; \<beta>' = \<beta>(lab \<mapsto> b') \<rbrakk> 
-     \<Longrightarrow> CallNode (Let lab binds c) : (ve, None, Some \<beta>, b) \<Rightarrow> CallNode c : (ve ++ map_of (map (\<lambda>(v,l). ((v,b'), DC (l,\<beta>'))) binds), None, Some \<beta>', b')"
-
+fun CPSStep :: "node \<Rightarrow> state \<Rightarrow> (node \<times> state) option" ("\<langle>_:_\<rangle>") where
+  "\<langle>StartNode prog : _\<rangle> = Some (LambdaNode prog, (empty , [ Stop ], empty, 0 ))"
+ |"\<langle>LambdaNode (Lambda lab vs c) : (ve, ds, \<beta>, b)\<rangle> =
+       (if length vs = length ds then Some (CallNode c , (map_upds ve (map (\<lambda>v. (v,b)) vs) ds, ds, (\<beta>(lab \<mapsto> b)), b)) else None)"
+ |"\<langle>PrimNode (Plus lab) : (ve, [DI a1, DI a2, cnt], \<beta>, b)\<rangle> = callD cnt ve [DI (a1+a2)] \<beta> (Suc b)"
+ |"\<langle>PrimNode (prim.If labt labf) : (ve, [DI v, cntt, cntf], \<beta>, b)\<rangle> = callD (if v\<noteq>0 then cntt else cntf) ve [] \<beta> (Suc b)"
+ |"\<langle>CallNode (App lab f vs) : (ve, ds, \<beta>, b)\<rangle> = callD (\<A> f \<beta> ve) ve (map (\<lambda>v . \<A> v \<beta> ve) vs) \<beta> (Suc b) "
+ |"\<langle>CallNode (Let lab binds c) : (ve, ds, \<beta>, b)\<rangle> =
+     (let b' = Suc b;  \<beta>' = \<beta>(lab \<mapsto> b')
+      in Some (CallNode c, (ve ++ map_of (map (\<lambda>(v,l). ((v,b'), DC (l,\<beta>'))) binds), ds, \<beta>', b')))"
+ |"\<langle>_ : _\<rangle> = None"
 
 end
