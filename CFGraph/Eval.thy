@@ -1,7 +1,7 @@
 header "Standard semantics"
 
 theory Eval
-  imports CPSUtils HOLCF HOLCFUtils CPSScheme
+  imports HOLCF HOLCFUtils CPSScheme
 begin
 
 text {*
