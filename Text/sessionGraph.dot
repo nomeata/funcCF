@@ -2,45 +2,64 @@ digraph session{
 rankdir=RL; 
 pad=0;
 ranksep=0.3;
-node height=0;
-node width=0;
-node shape=box;
+node [height=0];
+node [width=0];
+node [shape=box];
+//splines=ortho;
+edge[weight=0];
 
-"CPSScheme" [shape=box];
+{rank=same;
+node[shape=box];
+"CPSScheme" ;
+"Eval" ;
+"AbsCF" ;
+"ExCF" ;
+}
+
+{rank=same;
+node[style=rounded];
+"CPSUtils";
+"HOLCFUtils";
+"Utils";
+"SetMap";
+"FixTransform";
+"MapSets";
+}
+
+{rank=same;
+node[shape=box3d];
+"AbsCFCorrect" ;
+"ExCFSV" ;
+"Computability" ;
+"AbsCFComp" ;
+}
+// Edges um dot ein wenig in die richitge richtung zu bewegen
+//"Utils" -> "MapSets" [style=invis]; "MapSets" -> "SetMap" [style=invis];
+
 // "Finite_Inductive_Set";
-"CPSUtils"[style=rounded];
 "CPSUtils" -> "CPSScheme";
 // "CPSUtils" -> "Finite_Inductive_Set";
-"HOLCFUtils"[style=rounded];
-"Eval" [shape=box];
-"Eval" -> "CPSUtils";
 "Eval" -> "HOLCFUtils";
-"Utils"[style=rounded];
-"SetMap"[style=rounded];
-"AbsCF" [shape=box];
-"AbsCF" -> "HOLCFUtils";
+"AbsCF" -> "HOLCFUtils"[weight=1];
 "AbsCF" -> "CPSScheme";
-"AbsCF" -> "Utils";
+"AbsCF" -> "Utils"[weight=1];
 "AbsCF" -> "SetMap";
-"ExCF" [shape=box];
 "ExCF" -> "HOLCFUtils";
 "ExCF" -> "CPSScheme";
-"ExCF" -> "Utils";
-"AbsCFCorrect" [shape=box3d];
-"AbsCFCorrect" -> "AbsCF";
-"AbsCFCorrect" -> "ExCF";
-"ExCFSV" [shape=box3d];
+"ExCF" -> "Utils"[weight=1];
+"AbsCFCorrect" -> "AbsCF"[weight=1];
+"AbsCFCorrect" -> "ExCF"[weight=1];
 "ExCFSV" -> "ExCF";
-"Computability" [shape=box3d];
 "Computability" -> "HOLCFUtils";
-"FixTransform"[style=rounded];
-"MapSets"[style=rounded];
 "MapSets" -> "SetMap";
 "MapSets" -> "Utils";
-"AbsCFComp" [shape=box3d];
 "AbsCFComp" -> "AbsCF";
 "AbsCFComp" -> "Computability";
-"AbsCFComp" -> "FixTransform";
-"AbsCFComp" -> "CPSUtils";
+"AbsCFComp" -> "FixTransform"[weight=1];
+"AbsCFComp" -> "CPSUtils"[weight=1];
 "AbsCFComp" -> "MapSets";
+
+//"Utils" -> "MapSets" [style=invis];
+//"MapSets" -> "SetMap" [style=invis];
+//"CPSScheme" -> "FixTransform"[style=invis];
 }
