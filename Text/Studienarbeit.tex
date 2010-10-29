@@ -1,4 +1,4 @@
-\documentclass[a4paper,parskip,DIV=10,11pt]{scrbook}
+\documentclass[a4paper,halfparskip,DIV=10,11pt]{scrbook}
 
 %\usepackage{german}
 \usepackage[T3,T1]{fontenc}
@@ -7,6 +7,7 @@
 \usepackage{amsfonts}
 \usepackage{amssymb}
 \usepackage{mathtools}
+\usepackage{stmaryrd}
 \usepackage{faktor}
 \usepackage{nicefrac}
 \usepackage{listings}
@@ -36,8 +37,31 @@
 \DeclareTextSymbol\textlambda{T3}{171}           % Lambda
 \DeclareTextSymbolDefault\textlambda{T3}
 
+
 \usepackage{isabelle,isabellesym}
 \isabellestyle{it}
+
+\newcommand{\isasymbinit}{\isamath{b_0}}
+\newcommand{\isasymabinit}{\isamath{\widehat{b_0}}}
+\newcommand{\isasymPR}{\isamath{\mathcal{PR}}}
+\newcommand{\isasymaPR}{\isamath{\widehat{\mathcal{PR}}}}
+\newcommand{\isasymanb}{\isamath{\widehat{{nb}}}}
+\newcommand{\isasymaA}{\isamath{\widehat{\mathcal{A}}}}
+\newcommand{\isasymaF}{\isamath{\widehat{\mathcal{F}}}}
+\newcommand{\isasymaC}{\isamath{\widehat{\mathcal{C}}}}
+% Types
+\newcommand{\isasymabenv}{\isamath{\widehat{{benv}}}}
+\newcommand{\isasymavenv}{\isamath{\widehat{{venv}}}}
+\newcommand{\isasymaclosure}{\isamath{\widehat{{closure}}}}
+\newcommand{\isasymaproc}{\isamath{\widehat{{proc}}}}
+\newcommand{\isasymad}{\isamath{\widehat{{d}}}}
+\newcommand{\isasymafstate}{\isamath{\widehat{{fstate}}}}
+\newcommand{\isasymacstate}{\isamath{\widehat{{cstate}}}}
+\newcommand{\isasymaccache}{\isamath{\widehat{{ccache}}}}
+\newcommand{\isasymaans}{\isamath{\widehat{{ans}}}}
+
+\newcommand{\isactrlps}[1]{{\uline #1}}
+
 
 \usepackage[numbers,square]{natbib}
 \bibliographystyle{amsplain}
@@ -226,6 +250,7 @@ Andreas Lochbihler \\
 
 
 \tableofcontents
+%\listoffigures
 
 \chapter{Introduction}
 
@@ -441,9 +466,32 @@ The required steps to apply this result to the mutually recursive definitions $\
 \chapter{The Haskell Prototype}
 \label{chaphaskell}
 
-\lettrine T{o} get a better understanding of the algorithms, a prototype was first implemented in Haskell. As the semantics are given in denotational style, they are easily translated into a functional program. The elements of the syntax definition of the CPS style language are directly turned into data type definitions.
+\lettrine T{o} get a better understanding of the algorithms, a prototype was first implemented in Haskell. As the semantics are given in denotational style, they are easily translated into a functional program. The elements of the syntax definition of the CPS style language are directly turned into data type definitions, given in \vref{fig:haskelldatatypes}:
 
-At this point, we slightly deviate from the original: Shivers distinguishes the sets FUN and ARG as direct sums (cf.\ \vref{fig:syntax}) and later defines $\A$ on the union of FUN and ARG (cf.\ \vref{fig:semdoms}). This would be tedious and unwieldy to express in the Haskell type system, therefore we use one type VAL instead of FUN and ARG, which does not affect the algorithms in any notable way:
+\begin{figure}
+\begin{framed}
+\begin{lstlisting}
+type Prog = Lambda
+newtype Label = Label Integer
+data Var = Var Label String
+data Lambda = Lambda Label [Var] Call
+data Call = App Label Val [Val]
+          | Let Label [(Var, Lambda)] Call
+data Val = L Lambda
+         | R Label Var
+         | C Label Const
+         | P Prim
+type Const = Integer
+data Prim = Plus Label
+          | If Label Label 
+\end{lstlisting}
+\end{framed}
+\caption{The Haskell representation of abstract syntax trees.}
+\label{fig:haskelldatatypes}
+\end{figure}
+
+
+At this point, we slightly deviate from the original: Shivers distinguishes the sets FUN and ARG as direct sums (cf.\ \vref{fig:syntax}) and later defines $\A$ on the union of FUN and ARG (cf.\ \vref{fig:semdoms}). This would be tedious and unwieldy to express in the Haskell type system, therefore we use one set VAL instead of FUN and ARG, which does not affect the algorithms in any notable way:
 \begin{align*}
 \text{VAL} &\Coloneqq \text{LAM} + \text{REF} + \text{PRIM} + \text{CONST}
 \end{align*}
@@ -487,7 +535,7 @@ newtype Inv a = Inv { unsafeFinish :: a } deriving (Show, Eq)
 \end{lstlisting}
 The deconstructor \lstinline!unsafeFinish :: Inv a → a! is only to be used internally.
 
-Now a value of type \lstinline-Inv Lambda- represents a lambda expression without correct labels. For each constructor there is a function (the smart constructor), taking the same arguments except the label, and building the unfinished value. For example, the smart constructor for lambda expressions is defined as
+Now a value of type \lstinline-Inv Lambda- represents a lambda expression without correct labels. For each constructor there is a function (the smart constructor), taking the same arguments except the label, and building the unfinished value. We named it after the constructor it replaces, written lower case. Because \lstinline-let- and \lstinline-if- are keywords in Haskell, the corresponding smart constructors are called \lstinline-let_- and \lstinline-if_-. For example, the smart constructor for lambda expressions is defined as
 \begin{lstlisting}
 lambda :: [Inv Var] -> Inv Call -> Inv Lambda
 lambda vs (Inv c) = Inv $ Lambda noProg (map unsafeFinish vs) c
@@ -501,7 +549,7 @@ noProg = error "Smart constructors used without calling prog"
 
 There is only one function for public consumption that removes the \lstinline-Inv--wrapper, with signature \lstinline!prog :: Inv Lambda -> Prog!. It uses a state monad to hand out correct labels and keeps track of binding positions to correctly set the reference to the binding position. 
 
-For additional convenience, the types \lstinline!Var!, \lstinline!Val! and \lstinline!Inv a! are made instances of the \lstinline!IsString! type class which allows the compiler together with the language extension \lstinline!OverloadedStrings! to turn string literals into values of these kinds, and similar with the \lstinline!Num!-instance for \lstinline!Val! to enter constants directly as literals.
+For additional convenience, the types \lstinline!Var!, \lstinline!Val! and \lstinline!Inv a! are made instances of the \lstinline!IsString! type class which allows the compiler, if the language extension \lstinline!OverloadedStrings! is enabled, to turn string literals into values of these kinds. Using the same trick, a \lstinline!Num!-instance for \lstinline!Val! allows to enter constants directly as literal numbers.
 
 A simple example program, returning the result of the worldshaking calculation $1 + 1$, is now written as
 \begin{lstlisting}
@@ -521,6 +569,7 @@ ex2 = Lambda (Label 1) [Var (Label 1) "cont"] $
 A larger example is included in \vref{fig:sum10}, where the first ten natural numbers are added up.
 
 %\section{Pretty Printing and Graphical Output}
+\section{Pretty Printing}
 
 Another feature of the Haskell prototype is pretty-printing of an abstract syntax tree. It uses the standard pretty printing library of Haskell \cite{pretty} and renders the above example to the string “\texttt{(λ\ cont.\ (+)\ 1\ 1\ cont)}”. \vref{fig:prettyprint} shows the pretty printed presentation of the program in \vref{fig:sum10}.
 
@@ -561,12 +610,13 @@ Another feature of the Haskell prototype is pretty-printing of an abstract synta
 % 
 % This was just a quick experiment and serves as a proof-of-concept. Obviously, this presentation has its weakness, such as the reduced legibility of the code due to the arrows passing semi-transparently over the text.
 
-Another conversion function is included that turns a program into the syntax used by Isabelle, to make it more convenient to define example programs in Isabelle.
+Also, a conversion function is included that turns a program into the syntax used by Isabelle, to make it more convenient to define example programs in Isabelle.
 
 \chapter{The Isabelle Formalization}
 \label{chapisabelle}
 
-The main mission of this student research project was to implement Shivers’ algorithms in the theorem prover Isabelle\citep{isabelle} and proof his main results. The main hurdles to take were
+\lettrine[lines=3]T{he} main mission of this student research project was to implement Shivers’ algorithms in the theorem prover Isabelle\citep{isabelle} and to prove his main results, which are introduced in \cref{chapshivers}. Shivers was already very rigorous and formal in his proofs, which helped a lot in the course of this project. The main hurdles to take were
+
 \begin{itemize}
 \item representing partial functions such as the semantics functions in Isabelle within the default logic HOL, which is a logic of total functions,
 \item and obtaining the fact that the set of subterms of a program is finite.
@@ -584,11 +634,12 @@ The main mission of this student research project was to implement Shivers’ al
 \label{fig:sessionGraph}
 \end{figure}
 
-I separated the formalizations into several files (called theories in Isabelle-speak). Their dependencies are given in \vref{fig:sessionGraph}, where squared theories contain definition, boxed theories contain the main results and theories in rounded boxes contain auxiliary definitions and lemmas. The definitional theories have directly corresponding counter-parts in the Haskell prototype. The following list gives a quick summary of their content.
+I separated the formalizations into several files (called theories in Isabelle-speak). Their dependencies are given in \vref{fig:sessionGraph}, where theories in rectangles contain definition, boxed theories contain the main results and theories in rounded rectangles contain auxiliary definitions and lemmas. The definitional theories have directly corresponding counter-parts in the Haskell prototype. The following list gives a quick summary of their content.
 
 \begin{description}
+\setkomafont{descriptionlabel}{\itshape}
 \setlength\parskip{0pt}
-\item[CPSScheme] contains the definitions of the abstract syntax to represent the functional programs.
+\item[CPSScheme] contains the definitions of the abstract syntax to represent the functional programs. The types (\vref{fig:isabelletypes}) are very similar to definitions in the Haskell prototype (\vref{fig:haskelldatatypes}).
 \item[Eval] is an implementation of the standard semantics.
 \item[ExCF] is an implementation of the exact nonstandard semantics.
 \item[AbsCF] is an implementation of the abstract nonstandard semantics.
@@ -600,11 +651,20 @@ I separated the formalizations into several files (called theories in Isabelle-s
 \vspace{1em}
 \item[Utils] is a potpourri of various lemmas not specific to our project, some of which could very well be included in the default Isabelle library.
 \item[HOLCFUtils] contains generic lemmas related to the use of \isa{HOLCF}, a domain theory extension to Isabelle.
-\item[CPSUtils] defines sets of subterms for \isa{CPSScheme} programs and proves their finiteness.
+\item[CPSUtils] defines sets of subterms for programs and proves their finiteness.
 \item[FixTransform] transforms fixed point expressions defining two mutually recursive functions to fixed point expressions defining a single function.
 \item[SetMap] contains functions and lemmas to work with set-valued maps.
 \item[MapSets] defines sets of functions and sets of maps, and shows the finiteness of such maps, if their domains and ranges are finite.
 \end{description}
+
+\begin{figure}
+\begin{framed}
+\input{CPSScheme.tex}
+\end{framed}
+\caption{Isabelle data types}
+\label{fig:isabelletypes}
+\end{figure}
+
 
 \section{Domain theory in Isabelle}
 
@@ -656,17 +716,29 @@ As mentioned before, least fixed points exists if the functional is continuous. 
 
 \section{Fixed point induction}
 
-The main method to show results about a least fixed point is the fixed point induction, as explained on page \pageref{fixedpointinduction}. This technique was used for all main results obtained about the semantics functions. Again, \isa{HOLCF} provides some machinery to show the admissibility criterion without much effort.
+The main method to show results about a least fixed point is the fixed point induction, as explained on page \pageref{fixedpointinduction}. This technique was used both to obtain that the exact semantics return a partial map and that the abstract semantics safely approximate the exact semantics. Again, \isa{HOLCF} provides some machinery to show the admissibility criterion without much effort.
 
-A disadvantage of the fixed point induction is that it is not possible to show and use auxiliary lemmas about the function: While proving the inductive case, one does not show results for the function in question, but for an information-theoretical approximation. Thus, any previously shown results are not available. Therefore, the inductions of the auxiliary lemmas have to be intertwined in the induction of the main result.
+The Isabelle formalization of the correctness result, Lemma 6, and the two main stepping stones to prove it, Lemmas 8 and 9, are printed in \vref{fig:corrlemmas}. These two lemmas need to be proven at once due to the mutual recursive definitions of $\F$ and $\C$ resp. $\aF$ and $\aC$. The lemma relates two fixed points: One for the exact semantics and one for the abstract semantics. Shivers proceeds by parallel fixed point induction, which for fixed points of functionals  $F$ and $G$ requires relating $\bot$ and $\bot$, then assuming that $f$ and $g$ relate and showing that $F\ f$ and $G\ g$ relates. In our case of the approximation relation, this can be simplified: We used fixed point induction for fixed point of the exact semantics function and held the abstract semantics fixed. The proof proceeds by explicit case analysis of the arguments vectors of $\F$ and $\C$, \isa{fstate} and \isa{cstate}.
+
+\begin{figure}
+\begin{framed}
+\input{AbsCFCorrect.tex}
+\end{framed}
+\caption{The final correctness result and the main lemma to proof it.}
+\label{fig:corrlemmas}
+\end{figure}
+
+A disadvantage of the fixed point induction is that it is not possible to use auxiliary lemmas about the function: While proving the inductive case, one does not show results for the function in question, but for an information-theoretical approximation. Thus, any previously shown results are not available. Therefore, the inductions of the auxiliary lemmas have to be intertwined with the induction of the main result.
 
 In our case, we had to resort to this measure in the proof that the call cache returned by the exact semantics is a partial map, in theory \isa{ExCFSV}: The auxiliary lemma stated if $b$ is the contour pointed passed to $\F$ resp. $\C$, then every contour environments in the returned call cached mentions a contour counter greater or equal to $b$, if for $\F$ $b$ is strictly larger than all contour counters occurring in the arguments to $\F$ resp. for $\C$ the contour counter $b$ occurs in the contour environment passed to $C$ and is larger than all contour counters occurring in the arguments to $\C$. The main lemma just states that the call cache is a partial map, which corresponds to the predicate \isa{single-valued} of the Isabelle library. The resulting intertwined lemma, as defined in Isabelle, is shown in \vref{fig:intertwined}.
+
+The proof itself again proceeds by case-analysis of the arguments. Each case is handled explicitly, as the automation present in Isabelle could not solve the goals directly.
  
 \begin{figure}
 \begin{framed}
 \input{ExCFSV.tex}
 \end{framed}
-\caption{Intertwined fixed point inductions}
+\caption{Intertwined fixed point inductions and the final main result}
 \label{fig:intertwined}
 \end{figure}
 
@@ -684,9 +756,18 @@ Under the hood \isa{\isacommand{inductive{\isacharunderscorekeyword}set}} works 
 \item Finiteness preservation, i.e.\ if $S$ is finite, then $F\ S$ is also finite.
 \item Descending measure of new elements. So each element $x\in F S \setminus S$ is either added unconditionally ($x\in F\ \{\}$), or there is an element $y \in S$ such that $s(x) < s(y)$ for some naturals-valued measure function $s$ (usually Isabelles \isa{size} function).
 \end{itemize}
-We proved this lemma but then ran into a dead end when we found out how \isa{\isacommand{inductive{\isacharunderscorekeyword}set}} treats mutually recursive sets: If sets over the types $\alpha$ and $\beta$ are to be defined, then the fixed point is a set of triples $(bool,\alpha,\beta)$. This is used to encode the direct sum $\alpha + \beta$: The boolean indicates of which type the value is, the other position in the triple is ignored. This encoding is redundant and the functional constructed by \isa{\isacommand{inductive{\isacharunderscorekeyword}set}} unfortunately happens to add an infinite number of invalid elements to the set. This does not affect the definitions, as only the valid elements are considered when defining the individual sets, but prevents this approach to finiteness from succeeding.
 
-A third approach was suggested to us by Andreas Lochbihler. Here, subexpressions of any type are assigned a position, which is a list of natural numbers. The set \isa{Pos p} of valid positions in the program \isa{p} is defined using \isa{\isacommand{function}} and finiteness is shown easily. A function \isa{subterm} is defined, mapping each position to the corresponding subexpression. We show that the inductively defined sets of subexpressions are subsets of the range of \isa{subterm} and then thus obtained the finiteness of these sets.
+We proved this lemma but then ran into a dead end when we found out that the implementation of the \isa{\isacommand{inductive{\isacharunderscorekeyword}set}} command treats mutually recursive sets by constructing a single intermediate fixed point and defining each set as a projection thereof. The construction happens to be such that the large set is infinite, preventing our approach from succeeding. The infinite fixed point could have been avoided by modifying the construction within \isa{\isacommand{inductive{\isacharunderscorekeyword}set}} slightly.
+
+% We proved this lemma but then ran into a dead end when we found out how \isa{\isacommand{inductive{\isacharunderscorekeyword}set}} treats mutually recursive sets: If sets over the types $\alpha$ and $\beta$ are to be defined, then the fixed point is a set of triples $(bool,\alpha,\beta)$. This is used to encode the direct sum $\alpha + \beta$: The boolean indicates of which type the value is, the other position in the triple is ignored. This encoding is redundant and the functional constructed by \isa{\isacommand{inductive{\isacharunderscorekeyword}set}} unfortunately happens to add an infinite number of invalid elements to the set. This does not affect the definitions, as only the valid elements are considered when defining the individual sets, but prevents this approach to finiteness from succeeding.
+% 
+A third approach was suggested to us by Andreas Lochbihler. Here, subexpressions of any type are assigned a position, which is a list of natural numbers. The set \isa{Pos p} of valid positions in the program \isa{p} is defined using \isa{\isacommand{function}} and finiteness is shown easily and automatically. A partial function \isa{subterm} of type
+\[
+\isa{lambda\ {\isacharplus}\ call\ {\isacharplus}\ val\ {\isasymRightarrow}\ pos\ {\isasymrightharpoonup}\ lambda\ {\isacharplus}\ call\ {\isacharplus}\ val}
+\]
+is defined, mapping a valid position to the corresponding subexpression. We show that the inductively defined sets of subexpressions are subsets of the range of \isa{subterm}, by an explicit inductive proof, and then thus obtained the finiteness of these sets. This approach required about 40\% more lines of code for the sets of lambdas, calls and values (which are the mutually recursive ones) that the first approach, but is cleaner and would scale better.
+% 183 statt 128 Zeilen ohne kommentare
+
  
 
 \begin{figure}
@@ -699,17 +780,39 @@ A third approach was suggested to us by Andreas Lochbihler. Here, subexpressions
 
 \section{Finishing the computability proof}
 
-As mentioned on page \pageref{shiverscomputabilty}, Shivers shows the computability only abstractly for a single recursively defined function, and leaves it to the reader to generalize this to mutually recursive function. We carried this step out in detail. To do so, we need to transform a fixed point for two functions (implemented in \isa{HOLCF} as a fixed point over a tuple) to a simple fixed point equation. The approach here works as long as both functions in the tuple have the same return type, using the equation
-\[
-X^A\cdot X^B = X^{A+B}.
-\]
+
+As mentioned on page \pageref{shiverscomputabilty}, Shivers shows the computability only abstractly for a single recursively defined function, and leaves it to the reader to generalize this to mutually recursive function. We carried this step out in detail. To do so, we need to transform a fixed point for two functions (implemented in \isa{HOLCF} as a fixed point over a tuple) to a simple fixed point equation. The approach here works as long as both functions in the tuple have the same return type, using the isomorphisms
+\begin{align*}
+(A \to X) \times (B \to X) &\rightleftarrows  (A + B) \to X \\
+(f,g) &\mapsto \left(x\mapsto
+\begin{cases}
+f\ a,&\text{if } \iota_A\ a = x \\
+g\ b,&\text{if } \iota_B\ b = x \\
+\end{cases} \right) \\
+(h \circ  \iota_A, h \circ \iota_B) &\mapsfrom h
+\end{align*}
+where $\iota_A \colon A \to A + B$ and $\iota_B \colon B \to A + B$ are the injections function. Interestingly, by using the familiar notation $X^A$ for the set $A\to X$, this corresponds to the well-known law about exponentiation $X^A\cdot X^B = X^{A+B}$.
 
 In theory \isa{FixTransform} we showed that a fixed point can be transformed using any retractable continuous function:
 \[
 g \circ f = \id \implies \fix(F) = g(\fix(f \circ F \circ g))
 \]
-and used this with the functions that convert between the tuple of functions and the combined function to transform fixed points as required. In theory \isa{AbsCFComp}, this these results are applied to $\aC$ and $\aF$ and combined with Shivers abstract computability lemmas.
+and used this with the functions that convert between the tuple of functions and the combined function to transform fixed points as required. In theory \isa{AbsCFComp}, this these results are applied to $\aC$ and $\aF$ and combined with Shivers abstract computability lemmas. This results in the two lemmas given in \vref{fig:complemmas}, where \isa{initial{\isacharunderscore}r} is the initial argument to $\aF$ as set up in $\aPR$, \isa{abs{\isacharunderscore}R} gives, for an argument, is the set of arguments the semantics functions recurse to and \isa{abs{\isacharunderscore}g} calculates the call cache entries for one such argument.
 
+\begin{figure}
+\begin{framed}
+\begin{isabellebody}%
+\isacommand{lemma}\isamarkupfalse%
+\ args{\isacharunderscore}finite{\isacharcolon}\isanewline\ \ \ \ {\isachardoublequoteopen}finite\ {\isacharparenleft}{\isasymUnion}i{\isachardot}\ iterate\ i{\isasymcdot}{\isacharparenleft}\uline{abs{\isacharunderscore}R}{\isacharparenright}{\isasymcdot}{\isacharbraceleft}initial{\isacharunderscore}r\ prog{\isacharbraceright}{\isacharparenright}{\isachardoublequoteclose}\isanewline
+\isanewline
+\isacommand{lemma}\isamarkupfalse%
+\ a{\isacharunderscore}evalCPS{\isacharunderscore}iterative{\isacharcolon}\isanewline
+\ \ \ \ {\isachardoublequoteopen}{\isasymaPR}\ prog\ {\isacharequal}\ \uline{abs{\isacharunderscore}g}{\isasymcdot}{\isacharparenleft}{\isasymUnion}i{\isachardot}\ iterate\ i{\isasymcdot}{\isacharparenleft}\uline{abs{\isacharunderscore}R}{\isacharparenright}{\isasymcdot}{\isacharbraceleft}initial{\isacharunderscore}r\ prog{\isacharbraceright}{\isacharparenright}{\isachardoublequoteclose}
+\end{isabellebody}%
+\end{framed}
+\caption{Computability results as expressed in Isabelle}
+\label{fig:complemmas}
+\end{figure}
 \section{Cosmetics}
 \label{seclayout}
 
@@ -721,17 +824,18 @@ Shivers uses some symbols that do exist as predefined isabelle symbols, e.g. $\a
 
 A similar definition is used for the power-set function used in the computability proof. Shivers denotes it by underlining the argument. This was achieved by a syntax translation \texttt{\textbackslash <\^{}ps>} and a corresponding \LaTeX{} command \texttt{\textbackslash isactrlps}, defined to be \texttt{\{\textbackslash uline \#1\}}.
 
-In the proof about the safe approximation of $\aF$ and $\aC$, two symbols are used overloaded: The abstraction functions $|\cdot|$ and the approximation relation $\lessapprox$. This is per se not a problem, as Isabelle allows for ambiguous syntax translations. In that case, it generates more than one parse tree and picks the (hopefully unique) tree that typechecks.
+In the proof about the safe approximation of $\aF$ and $\aC$, two symbols are used overloaded: The abstraction functions $|\cdot|$ and the approximation relations $\lessapprox$. This is per se not a problem, as Isabelle allows for ambiguous syntax translations. In that case, it generates more than one parse tree and picks the (hopefully unique) tree that typechecks.
 
 Unfortunately, this does not work well in our case: There are eight concrete functions which we want to write as $|\cdot|$ and some expressions have multiple occurrences of these, causing an exponential blow-up of combinations.
 
 Luckily, the latest development version of Isabelle contains a module by Christian Sternagel and Alexander Krauss for ad-hoc overloading, where the choice of the concrete function is done at parse time and immediately, based on the argument types. Using this system, we were able to write $|\cdot|$ and $\lessapprox$ just as Shivers did.
 
-\section{Tool}
+\section{Development Environment}
 
-The most common development environment for working with Isabelle theories is ProofGeneral, an extension to the text editor Emacs. It offers conversion between Isabelle symbol strings (\texttt{\textbackslash<beta>}) and the symbol ($\beta$), allows the user to control the evaluation of the Isabelle code and shows Isabelle’s messages such as proof goals and errors.
-
-Emacs is a relatively large and powerful editor and a great tool for the experienced user. But because the author is used to the similarly powerful editor vim, the prospect of learning Emacs just for working with Isabelle was not a nice one.
+The most common development environment for working with Isabelle theories is ProofGeneral, an extension to the text editor Emacs. 
+%It offers conversion between Isabelle symbol strings (\texttt{\textbackslash<beta>}) and the symbol ($\beta$), allows the user to control the evaluation of the Isabelle code and shows Isabelle’s messages such as proof goals and errors.
+%Emacs is a relatively large and powerful editor and a great tool for the experienced user. But because the author is used to the similarly powerful editor vim, the prospect of learning Emacs just for working with Isabelle was not a nice one.
+Unless one is already familiar with Emacs, learning it in addition to Isabelle might not be efficient.
 
 One of the alternatives is the relatively young project i3p\citep{i3p}, which provides a similar feature set based on the Netbeans frameworks and thus offers a fairly standard UI environment. Over the course of the project, we have found and reported some minor bugs and reported these to the author, who then released new versions.
 
@@ -740,6 +844,159 @@ A larger problem was observed with proofs involving large goal state: i3p, in co
 
 \chapter{Towards Slicing}
 \label{chapslicing}
+
+\lettrine[lines=3]As mentioned in the introduction, this student research project was motivated by Daniel Wasserrab’s work on a formally verified and programming language agnostic framework for slicing. Slicing answers the questions: Which parts of the program affect a specific statement. Wasserrab mentions several uses for Slicing, such as debugging, testing and software security algorithms.
+
+To instantiate his framework for our functional programming language, we have to transform a program into an control flow graph (CFG) containing semantic information. An instantiation has to provide types for the program state (\isa{state}), for edges (\isa{edge}), nodes (\isa{nodes}), variables (\isa{var}), values (\isa{val}) and definitions for the following functions:
+\begin{itemize}
+\item A predicate \isa{valid{\isacharunderscore}edge\ \isacharcolon\isacharcolon\ edge\ \isasymRightarrow\ bool}, defining the set of edges in the CFG. 
+\item Two functions \isa{source,\ target\ \isacharcolon\isacharcolon\ edge\ \isasymRightarrow\ node}, indicating the nodes connected by an edge.
+\item A function \isa{kind\ \isacharcolon\isacharcolon\ edge\ \isasymRightarrow\ state\ edge{\isacharunderscore}kind} which gives the kind of an edge. An edge is either an updating edge, written \isa{\isasymUp f} for a function \isa{f\ \isacharcolon\isacharcolon\ state\ \isasymRightarrow\ state}, or an assertion edge, write \isa{(Q)\isactrlsub\isasymsurd} for a predicate \isa{Q\ \isacharcolon\isacharcolon\ state\ \isasymRightarrow\ bool}.
+\item A special node \isa{({\isacharunderscore}Entry{\isacharunderscore})} indicating the entry node.
+\item Two sets of variables \isa{Use,\ Def\ \isacharcolon\isacharcolon\ node\ \isasymRightarrow\ var\ set} which list, for each node, the variables that are used resp. assigned to when executing this node.
+\item A function \isa{state{\isacharunderscore}val\ \isacharcolon\isacharcolon\ state\ \isasymRightarrow\ var\ \isasymRightarrow\ val}, obtaining the value of the variable for a given program state. The framework does not actually work with values, but it uses this function to make statements about changing or unaltered parts of the program state.
+\end{itemize}
+
+\pagebreak[2]
+These definitions are expected to fulfill certain properties, where edge always refers to a valid edge:
+\begin{itemize}
+\item No edge has the entry node as a target. 
+\item There are no multi-edges, e.g. any edge is uniquely determined by its source and target node.
+\item The entry edge has empty \isa{Def} and \isa{Use} sets.
+\item Evaluating an edge does not change the value of any variable not mentioned in its \isa{Def} set.
+\item If all variables in the \isa{Use} set are equal in two states \isa{s} and \isa{s\isacharprime}, then all variables in the \isa{Def} set are equal in the resulting states after evaluating the edge.
+\item Similarly, if all variables in the \isa{Use} set are equal and an assertion edge would allow traversal in one state, it would also allow traversal in the other state.
+\item The graph is deterministic, i.e.\ if two different edges have the same starting node, they are assertion edges whose predicate are mutually exclusive.
+\end{itemize}
+Wasserrab optionally introduces special exit nodes, which I will skip in this treatment.
+
+\section{Instantiation}
+
+The following documents a plan to instantiate the above definitions for our functional programming language. This has not been carried out in full detail.
+
+The first step is to consider the types \isa{node} and \isa{state}. A node together with a state clearly has to carry all information need to continue evaluating the program. Comparing this with our (standard) semantics functions $\F$ and $\C$, we see that \isa{node\ \isasymtimes\ state} correspond to \isa{fstate\ +\ cstate}, the disjoint sum of the arguments vectors:
+\begin{align*}
+\isa{fstate} &= \isa{d\ \isasymtimes\ d\ list\ \isasymtimes\ venv\ \isasymtimes\ contour}\\
+\isa{cstate} &= \isa{call\ \isasymtimes\ benv\ \isasymtimes\ venv\ \isasymtimes\ contour}
+\end{align*}
+The question is now how to distribute these elements on \isa{node} and \isa{state}. Our approach is to put all syntactical information, e.g.\ expressions already occurring in the syntax tree of the program, into the nodes and the rest into the state. This is a natural choice considering that for imperative programs nodes statements positions in the program code.
+
+Clearly, \isa{call} is syntactical. The type \isa{d} of semantic values is either a closure, a primitive operation, the special value \isa{Stop} or an integer value. Integers values can not occur as the first argument to $\F$. Primitive operations are syntactical and will be put into the node. \isa{Stop} is not a subexpression of the program, but still has a syntactical touch to it, so this will also be put into the node. A closure is a pair \isa{lambda\ \isasymtimes\ benv}, where the lambda expression is syntactical and the binding environment dynamic. Thus the former goes into the node and the latter into the state. In the end, we reach these definitions:
+\begin{align*}
+\isa{node} &= \isa{lambda\ +\ prim\ +\ \{Stop\}\ +\ call} \\
+\isa{state} &= \isa{venv\ \isasymtimes\ d\ list\ \isasymtimes\ benv\ \isasymtimes\ contour}
+\end{align*}
+This definition is actually redundant: For example, a node for a primitive operation does not expect a binding environment. In that case, the arguments will just be looped through unaltered. This actually improves the instantiation, as it keeps the \isa{Def} sets a small as possible.
+
+\begin{figure}
+\begin{framed}
+\begin{minipage}[t]{.5\linewidth}
+\begin{isabellebody}
+\isacommand{types}\isamarkupfalse%
+\ state\ {\isacharequal}\ {\isachardoublequoteopen}venv\ {\isasymtimes}\ d\ list\ {\isasymtimes}\ benv\ {\isasymtimes}\ contour{\isachardoublequoteclose}\isanewline
+\isanewline
+\isacommand{datatype}\isamarkupfalse%
+\ synNode\isanewline
+\ \ {\isacharequal}\ StartNode\ prog\isanewline
+\ \ {\isacharbar}\ StopNode\isanewline
+\ \ {\isacharbar}\ LambdaNode\ lambda\isanewline
+\ \ {\isacharbar}\ PrimNode\ prim\isanewline
+\ \ {\isacharbar}\ CallNode\ call\isanewline
+\isanewline
+\isacommand{datatype}\isamarkupfalse%
+\ node\isanewline
+\ \ {\isacharequal}\ SynNode\ synNode\isanewline
+\ \ {\isacharbar}\ GuardNode\ synNode\ synNode
+\end{isabellebody}
+\end{minipage}\hfill
+\begin{minipage}[t]{.5\linewidth}
+\begin{isabellebody}
+\isacommand{types}\isamarkupfalse%
+\ edge\ {\isacharequal}\ {\isachardoublequoteopen}node\ {\isasymtimes}\ node{\isachardoublequoteclose}\isanewline
+\isanewline
+\isacommand{datatype}\isamarkupfalse%
+\ cfgVar\ {\isacharequal}\isanewline
+\ \ \ Vvar\ var\isanewline
+\ {\isacharbar}\ Vds\isanewline
+\ {\isacharbar}\ V{\isasymbeta}\isanewline
+\ {\isacharbar}\ Vcnt\isanewline
+\isanewline
+\isacommand{datatype}\isamarkupfalse%
+\ cfgVal\ {\isacharequal}\ \isanewline
+\ \ \ VLvar\ \ {\isachardoublequoteopen}contour\ {\isasymrightharpoonup}\ d{\isachardoublequoteclose}\isanewline
+\ \ {\isacharbar}\ VLds\ \ {\isachardoublequoteopen}d\ list{\isachardoublequoteclose}\isanewline
+\ \ {\isacharbar}\ VL{\isasymbeta}\ \ \ benv\isanewline
+\ \ {\isacharbar}\ VLcnt\ contour
+\end{isabellebody}
+\end{minipage}
+\end{framed}
+\caption{Isabelle types for the instantiation of the slicing framework}
+\label{fig:slicingtypes}
+\end{figure}
+
+We also need a special node as the entry node, containing the full program. This leads to Isabelle type definitions printed in \vref{fig:slicingtypes}. Note that the type is actually named \isa{synNode}, for reasons explained in the following.
+
+Having thus defined nodes, we turn to the edges in our graph. One would think that these can just be pairs of syntactical nodes, being traversed if the control flow passes from one node to the other, updating the state in doing so. This is not directly possible, as the slicing framework differs between assertion edges and update edges. We therefore have to split the edge into two, and therefore introduce an intermediate node. Instead of the single edge
+\[
+\isa{node1\ \isacharcolon\isacharcolon\ synNode} \longrightarrow \isa{node1\ \isacharcolon\isacharcolon\ synNode}
+\]
+an evaluation step is represented by the two edges
+\[
+\isa{(SynNode\ node1)\ \isacharcolon\isacharcolon\ node}
+\stackrel{\isa{(Q)\isactrlsub\isasymsurd}}\longrightarrow
+\isa{(GuardNode\ node1\ node2)\ \isacharcolon\isacharcolon\ node}
+\stackrel{\isa{\isasymUp f}}\longrightarrow
+\isa{(SynNode\ node2)\ \isacharcolon\isacharcolon\ node}
+\]
+where the first arrow represents the assertion edge stating “the control flow passes onto \isa{node2}” and the second arrow represents the update edge which actually modifies the state.
+
+The next types to define are the variables and values. To distinguish these from the definitions in the semantics theory, we will call the type for the CFG instantiation \isa{cfgVar} and \isa{cfgVal}. Although not directly obvious from the conditions listed above, the complete \isa{state} has to be accessible via \isa{state{\isacharunderscore}val} to obtain a successful instantiation. Therefore, the set of variables in the graph consists of the set of variables in our program, plus special variables for the argument vector, the binding environment and the contour number in the state vector. The type \isa{cfgVal} has corresponding constructors. Because the variable environment is actually a partial map from variable/contour pairs to semantic values, the value in the CFG of a variable is a partial map from contour to semantic values. The resulting datatype definitions can be seen in \vref{fig:slicingtypes}. The implementation of \isa{state{\isacharunderscore}val} follows immediately.
+
+It remains to define suitable \isa{Def} and \isa{Use} sets. \isa{SemNode}s need to have an empty \isa{Def} set, as they are the origins of assertion edges. A trivially correct choice for the other sets would be \isa{UNIV\isacharcolon\isacharcolon{}cfgVar}, the set of all variables. But this would not lead to any useful results. Therefore, the sets have to be cut down as far as possible. For example, the node representing a call expression $(f\ a_1\ldots a_n)$ would have a \isa{Def} set of $\{\isa{Vds},\ \isa{V\isasymbeta},\ \isa{Vcnt}\}$, as it will set the argument vector, pass a contour environment, if $f$ happens to evaluate to a closure, and update the contour counter. Its \isa{Use} set would encompass $\{\isa{V\isasymbeta},\ \isa{Vcnt}\}$ plus variables for each reference among $\{f,a_1,\ldots,a_n\}$.
+
+\section{A Small Step Semantics}
+
+The edges of the CFG are yet to be given their semantic meaning. The model of the CFG as expected by the framework is reminiscent of a small step semantics. Therefore, it would be helpful to have such a semantics. We can easily derive from the the equations of the denotational semantics, as they are tail recursive, by tracing their arguments of type \isa{fstate\ +\ cstate} (which corresponds to \isa{synNode\ \isasymtimes\ state}) as the recursion runs. If we denote with $\langle n:s\rangle \Rightarrow \langle n':s'\rangle$ the fact that evaluating the node $n$ in state $s$ step to node $n'$ in state $s'$, the rule for call expressions would read:
+\begin{multline*}
+\langle \isa{CallNode\ (App\ lab\ f\ vs)} : \isa{(ve,\ ds,\ \isasymbeta,\ b)}\rangle \\ \Rightarrow 
+\begin{cases}
+\langle \isa{LambdaNode\ l} : (ve,\ ds',\ \isasymbeta',\ nb\ b) \rangle, & \text{if } \A\ f\ ve\ \isasymbeta = \isa{DC\ l\ \isasymbeta'} \\
+\langle \isa{PrimNode\ p} : (ve,\ ds',\ \isasymbeta,\ nb\ b) \rangle, & \text{if } \A\ f\ ve\ \isasymbeta = \isa{DP\ p} \\
+\langle \isa{StopNode} : (ve,\ ds',\ \isasymbeta,\ nb\ b) \rangle, & \text{if } \A\ f\ ve\ \isasymbeta = \isa{Stop} 
+\end{cases}
+\end{multline*}
+where $ds'_i = \A\ vs_i\ ve\ \isasymbeta$. Note how the argument vector \isa{ds} in the starting state is not used, and how the binding environment stays untouched unless the procedure \isa{f} evaluates to a closure which carries its own binding environment.
+
+The rule for the special \isa{StartNode} would ignore the given state and create the initial state: 
+\[
+\langle \isa{ProgNode\ prog} : \isa{state}\rangle \Rightarrow 
+\langle \isa{LambdaNode\ l} : (\isa{empty},\ [\isa{Stop}],\ \isa{empty},\ b_0)\rangle
+\]
+and no rule would further evaluate the \isa{StopNode}, which thus becomes the terminal condition.
+
+We use this semantics to fill our graph edges with life: The assertion edge from node $n$ towards $n'$ will carry the predicate which is true for a state $s$ if and only if $\langle n:s\rangle \Rightarrow \langle n':s'\rangle$ for some state $s'$, and the update edge will set the state to just this $s'$.
+
+It should be possible to prove the equality of the two semantics, i.e.
+\[
+\PR\ prog = i
+\iff
+\langle StartNode\ prog : (\_,\_,\_,\_)\rangle \Rightarrow^* \langle StopNode : (\_,[i],\_,\_)\rangle
+\]
+where $i$ is the result of the evaluation, $\Rightarrow^*$ the transitive hull of $\Rightarrow$ and $\_$ denotes arbitrary values.
+
+\section{Connecting to Shivers}
+
+If that could be done, a similar proof will relate the small step semantics with the exact nonstandard semantics: For each step in the series $\langle n:s\rangle \Rightarrow \langle n':s'\rangle$, if $n'$ is not a \isa{CallNode}, we find a corresponding entry in the call cache returned by the nonstandard semantics function $\PR$. Call caches are of the type $(\isa{label}\times\isa{benv}\ \isasymrightharpoonup\ d)$. The label identifies a subexpression of the program, and thus a \isa{synNode}. The binding environment is ignored for this purpose. The semantic value \isa{d} contains a procedure and can thus be identified with a \isa{synNode}.
+
+We have shown that the call cache returned by $\aPR$ is a safe approximation to the exact call cache. Therefore, we will find corresponding entries there as well. By the converse argument we see that it sufficies to feed such edges to the slicing framework that we can statically derive using Shivers’ abstract nonstandard semantics functions. This will make the constructed graph considerably smaller and thus more exact, and we hope this allows for a more powerful analyses.
+
+\section{Hopes and Fears}
+
+The result of a slicing analysis is, given a node that we are interested in, a set of nodes that do not affect our node. In an imperative language, this would allow us to replace the statements which correspond to these nodes by no-op statements and still not affect the statement which corresponds to our node.
+
+In our functional, continuation-passing style language, it is not so clear how to interpret the result of the analysis. Clearly, we cannot just replace such nodes with no-ops, as that would halt evaluation alltogether. It might be possible to omit the variable bindings or argument vector setting in such nodes and then, in a post-processing step, collapse call-lambda-pairs where no arguments are passed and no variables are bound.
+
+A problem in the implementation we suggested in this chapter could be caused by our treatment of the contour counter, represented by the graph variable \isa{Vcnt}. Every node reads it, and almost all nodes will increase it. This could cause a lot of unwanted dependencies between the nodes, rendering a slicing analysis worthless. For a possible remedy additional nodes could be inserted in the graph whose only effect is to increase the contour counter and thus removing \isa{Vcnt} from the other nodes’ \isa{Def} sets. We expect that these contour nodes are never removed by slicing, but they would also only depend on other contour nodes.
 
 
 \appendix

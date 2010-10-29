@@ -250,10 +250,10 @@ Shivers proofs these lemmas using parallel fixed point induction over the two fi
 
 
 lemma lemma89:
- shows "|fstate| \<lessapprox> (fstate_a::'c::contour_a \<afstate>) \<Longrightarrow> |\<F>\<cdot>(Discr fstate)| \<lessapprox> \<aF>\<cdot>(Discr fstate_a)"
-   and "|cstate| \<lessapprox> (cstate_a::'c::contour_a \<acstate>) \<Longrightarrow> |\<C>\<cdot>(Discr cstate)| \<lessapprox> \<aC>\<cdot>(Discr cstate_a)"
+ fixes fstate_a :: "'c::contour_a \<afstate>" and cstate_a :: "'c::contour_a \<acstate>"
+ shows "|fstate| \<lessapprox> fstate_a \<Longrightarrow> |\<F>\<cdot>(Discr fstate)| \<lessapprox> \<aF>\<cdot>(Discr fstate_a)"
+   and "|cstate| \<lessapprox> cstate_a \<Longrightarrow> |\<C>\<cdot>(Discr cstate)| \<lessapprox> \<aC>\<cdot>(Discr cstate_a)"
 proof(induct arbitrary: fstate fstate_a cstate cstate_a rule: evalF_evalC_induct)
-print_cases
 case Admissibility show ?case
   unfolding ccache_approx_def 
   by (intro adm_lemmas adm_subset adm_prod_split adm_not_conj adm_not_mem adm_single_valued cont2cont)

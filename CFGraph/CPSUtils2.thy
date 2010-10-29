@@ -44,7 +44,6 @@ apply (rule list_size_estimation')
 apply auto
 apply (subst less_Suc_eq_le)
 apply (rule trans_le_add1)
-thm list_size_estimation'
 apply (rule_tac xs= binds and x = "binds!i" in list_size_estimation')
 apply auto
 apply (case_tac "binds!i")
@@ -60,7 +59,7 @@ done
 lemma finite_Pos: "finite (Pos l)" and "finite (PosC c)" "finite (PosV v)"
 by (induct rule: Pos_PosC_PosV.induct, auto simp add:set_zip intro!:finite_imageI, blast+)
 
-fun subterm :: "(lambda + call + val) \<Rightarrow> pos \<Rightarrow> (lambda + call + val) option"
+fun subterm :: "lambda + call + val \<Rightarrow> pos \<rightharpoonup> lambda + call + val"
 where
    "subterm t [] = Some t"
  | "subterm (Inl (Lambda l vs c)) (x#xs) = (case x of  0 \<Rightarrow> subterm (Inr (Inl c)) xs | Suc _ \<Rightarrow> None)"

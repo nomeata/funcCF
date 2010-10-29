@@ -4,20 +4,20 @@ begin
 
 types state = "venv \<times> d list \<times> benv \<times> contour"
 
-datatype node
-  = StartNode lambda
+datatype synNode
+  = StartNode prog
   | StopNode
   | LambdaNode lambda
   | PrimNode prim
   | CallNode call
 
-fun callD :: "d \<Rightarrow> venv \<Rightarrow> d list \<Rightarrow> benv \<Rightarrow> contour \<Rightarrow> (node \<times> state) option"
+fun callD :: "d \<Rightarrow> venv \<Rightarrow> d list \<Rightarrow> benv \<Rightarrow> contour \<Rightarrow> (synNode \<times> state) option"
  where "callD (DC (l,\<beta>)) ve ds _ b = Some (LambdaNode l,  (ve, ds, \<beta>, b))"
      | "callD (DP prim)  ve ds \<beta> b = Some (PrimNode prim, (ve, ds, \<beta>, b))"
      | "callD Stop       ve ds \<beta> b = Some (StopNode,      (ve, ds, \<beta>, b))"
      | "callD (DI _)     ve ds \<beta> b = None"
 
-fun CPSStep :: "node \<Rightarrow> state \<Rightarrow> (node \<times> state) option" ("\<langle>_:_\<rangle>") where
+fun CPSStep :: "synNode \<Rightarrow> state \<Rightarrow> (synNode \<times> state) option" ("\<langle>_:_\<rangle>") where
   "\<langle>StartNode prog : _\<rangle> = Some (LambdaNode prog, (empty , [ Stop ], empty, 0 ))"
  |"\<langle>LambdaNode (Lambda lab vs c) : (ve, ds, \<beta>, b)\<rangle> =
        (if length vs = length ds then Some (CallNode c , (map_upds ve (map (\<lambda>v. (v,b)) vs) ds, ds, (\<beta>(lab \<mapsto> b)), b)) else None)"

@@ -47,7 +47,7 @@ node[shape=box3d];
 "ExCF" -> "HOLCFUtils";
 "ExCF" -> "CPSScheme";
 "ExCF" -> "Utils"[weight=1];
-"AbsCFCorrect" -> "AbsCF"[weight=1];
+"AbsCFCorrect" -> "AbsCF";
 "AbsCFCorrect" -> "ExCF"[weight=1];
 "ExCFSV" -> "ExCF";
 "Computability" -> "HOLCFUtils";

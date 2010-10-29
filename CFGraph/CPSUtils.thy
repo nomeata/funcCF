@@ -124,12 +124,13 @@ where "vals (Lambda _ vs c) = valsC c"
     | "valsV (C l v) = {C l v}"
 
 lemma 
+  fixes list2 :: "(var \<times> lambda) list" and t :: "var\<times>lambda"
   shows lambdas1: "Lambda l vs c \<in> lambdas x \<Longrightarrow> c \<in> calls x"
   and "Lambda l vs c \<in> lambdasC y \<Longrightarrow> c \<in> callsC y"
   and "Lambda l vs c \<in> lambdasV z \<Longrightarrow> c \<in> callsV z"
   and "\<forall>z\<in> set list. Lambda l vs c \<in> lambdasV z \<longrightarrow> c \<in> callsV z"
-  and "\<forall>x\<in> set (list2 :: (var \<times> lambda) list) . Lambda l vs c \<in> lambdas (snd x) \<longrightarrow> c \<in> calls (snd x)"
-  and "Lambda l vs c \<in> lambdas (snd (t:: var\<times>lambda)) \<Longrightarrow> c \<in> calls (snd t)"
+  and "\<forall>x\<in> set list2. Lambda l vs c \<in> lambdas (snd x) \<longrightarrow> c \<in> calls (snd x)"
+  and "Lambda l vs c \<in> lambdas (snd t) \<Longrightarrow> c \<in> calls (snd t)"
 apply (induct rule:lambda_call_val.inducts)
 apply auto
 apply (case_tac c, auto)[1]

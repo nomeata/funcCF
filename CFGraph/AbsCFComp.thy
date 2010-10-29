@@ -77,6 +77,14 @@ fixrec abs_R :: "('c::contour \<afstate> + 'c \<acstate>) discr \<rightarrow> ('
                  in {Discr (Inr (c',\<beta>',ve',b'))}
         )"
 
+text {*
+The initial argument vector, as created by @{text \<aPR>}.
+*}
+
+definition initial_r :: "prog \<Rightarrow> ('c::contour \<afstate> + 'c \<acstate>) discr"
+  where "initial_r prog = Discr (Inl
+     (contents (\<aA> (L prog) empty {}.), [{AStop}], {}., \<abinit>))"
+
 subsection {* Towards finiteness *}
 
 text {*
@@ -331,11 +339,11 @@ proof- {
   } thus ?thesis by auto
 qed
 
-lemma args_finite: "finite (\<Union>i. iterate i\<cdot>(\<^ps>abs_R)\<cdot>{Discr (Inl
-     (contents (\<aA> (L p) empty {}.), [{AStop}], {}., \<abinit>))})" (is "finite ?S")
+lemma args_finite: "finite (\<Union>i. iterate i\<cdot>(\<^ps>abs_R)\<cdot>{initial_r p})" (is "finite ?S")
 proof (rule finite_subset[OF _finite_arg_space])
   have [simp]:"p \<in> lambdas p" by (cases p, simp)
   show "?S \<subseteq> arg_poss p"
+  unfolding initial_r_def
   by  (rule UN_iterate_less[OF _ arg_space_complete_ps])
       (auto simp add:arg_poss_def fstate_poss_def proc_poss_def call_list_lengths_def NList_def nList_def
          intro!: imageI)
@@ -376,9 +384,8 @@ lemma a_evalF_iterative:
 by (simp del:abs_R.simps abs_g.simps add: theorem12 Un_commute a_evalF_decomp)
 
 lemma a_evalCPS_interative:
-"\<aPR> x = \<^ps>abs_g\<cdot>(\<Union>i. iterate i\<cdot>(\<^ps>abs_R)\<cdot>{Discr (Inl
-     (contents (\<aA> (L x) empty {}.), [{AStop}], {}., \<abinit>))})"
-unfolding evalCPS_a_def
+"\<aPR> prog = \<^ps>abs_g\<cdot>(\<Union>i. iterate i\<cdot>(\<^ps>abs_R)\<cdot>{initial_r prog})"
+unfolding evalCPS_a_def and initial_r_def
 by(subst a_evalF_iterative, simp del:abs_R.simps abs_g.simps evalV_a.simps)
 
 end

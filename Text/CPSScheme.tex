@@ -1,0 +1,28 @@
+%
+\begin{isabellebody}%
+\def\isabellecontext{CPSScheme}%
+%
+\isamarkuptrue%
+\isacommand{types}\isamarkupfalse%
+\ label\ {\isacharequal}\ nat\isanewline
+\isanewline
+\isacommand{types}\isamarkupfalse%
+\ var\ {\isacharequal}\ {\isachardoublequoteopen}label\ {\isasymtimes}\ string{\isachardoublequoteclose}\isanewline
+\isanewline
+\isamarkuptrue%
+\isacommand{datatype}\isamarkupfalse%
+\ prim\ {\isacharequal}\ Plus\ label\ {\isacharbar}\ If\ label\ label\isanewline
+\isanewline
+\isacommand{datatype}\isamarkupfalse%
+\ lambda\ {\isacharequal}\ Lambda\ label\ {\isachardoublequoteopen}var\ list{\isachardoublequoteclose}\ call\isanewline
+\ \ \ \ \ \isakeyword{and}\ call\ {\isacharequal}\ App\ label\ val\ {\isachardoublequoteopen}val\ list{\isachardoublequoteclose}\isanewline
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ {\isacharbar}\ Let\ label\ {\isachardoublequoteopen}{\isacharparenleft}var\ {\isasymtimes}\ lambda{\isacharparenright}\ list{\isachardoublequoteclose}\ call\isanewline
+\ \ \ \ \ \isakeyword{and}\ val\ {\isacharequal}\ L\ lambda\ {\isacharbar}\ R\ label\ var\ {\isacharbar}\ C\ label\ int\ {\isacharbar}\ P\ prim\isanewline
+\isanewline
+\isacommand{types}\isamarkupfalse%
+\ prog\ {\isacharequal}\ lambda%
+\end{isabellebody}%
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "root"
+%%% End:

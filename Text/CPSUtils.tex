@@ -4,12 +4,13 @@
 %
 \isacommand{lemma}\isamarkupfalse%
 \ \isanewline
+\ \ \isakeyword{fixes}\ list{\isadigit{2}}\ {\isacharcolon}{\isacharcolon}\ {\isachardoublequoteopen}{\isacharparenleft}var\ {\isasymtimes}\ lambda{\isacharparenright}\ list{\isachardoublequoteclose}\ \isakeyword{and}\ t\ {\isacharcolon}{\isacharcolon}\ {\isachardoublequoteopen}var{\isasymtimes}lambda{\isachardoublequoteclose}\isanewline
 \ \ \isakeyword{shows}\ lambdas{\isadigit{1}}{\isacharcolon}\ {\isachardoublequoteopen}Lambda\ l\ vs\ c\ {\isasymin}\ lambdas\ x\ {\isasymLongrightarrow}\ c\ {\isasymin}\ calls\ x{\isachardoublequoteclose}\isanewline
 \ \ \isakeyword{and}\ {\isachardoublequoteopen}Lambda\ l\ vs\ c\ {\isasymin}\ lambdasC\ y\ {\isasymLongrightarrow}\ c\ {\isasymin}\ callsC\ y{\isachardoublequoteclose}\isanewline
 \ \ \isakeyword{and}\ {\isachardoublequoteopen}Lambda\ l\ vs\ c\ {\isasymin}\ lambdasV\ z\ {\isasymLongrightarrow}\ c\ {\isasymin}\ callsV\ z{\isachardoublequoteclose}\isanewline
 \ \ \isakeyword{and}\ {\isachardoublequoteopen}{\isasymforall}z{\isasymin}\ set\ list{\isachardot}\ Lambda\ l\ vs\ c\ {\isasymin}\ lambdasV\ z\ {\isasymlongrightarrow}\ c\ {\isasymin}\ callsV\ z{\isachardoublequoteclose}\isanewline
-\ \ \isakeyword{and}\ {\isachardoublequoteopen}{\isasymforall}x{\isasymin}\ set\ {\isacharparenleft}list{\isadigit{2}}\ {\isacharcolon}{\isacharcolon}\ {\isacharparenleft}var\ {\isasymtimes}\ lambda{\isacharparenright}\ list{\isacharparenright}\ {\isachardot}\ Lambda\ l\ vs\ c\ {\isasymin}\ lambdas\ {\isacharparenleft}snd\ x{\isacharparenright}\ {\isasymlongrightarrow}\ c\ {\isasymin}\ calls\ {\isacharparenleft}snd\ x{\isacharparenright}{\isachardoublequoteclose}\isanewline
-\ \ \isakeyword{and}\ {\isachardoublequoteopen}Lambda\ l\ vs\ c\ {\isasymin}\ lambdas\ {\isacharparenleft}snd\ {\isacharparenleft}t{\isacharcolon}{\isacharcolon}\ var{\isasymtimes}lambda{\isacharparenright}{\isacharparenright}\ {\isasymLongrightarrow}\ c\ {\isasymin}\ calls\ {\isacharparenleft}snd\ t{\isacharparenright}{\isachardoublequoteclose}\isanewline
+\ \ \isakeyword{and}\ {\isachardoublequoteopen}{\isasymforall}x{\isasymin}\ set\ {\isacharparenleft}list{\isadigit{2}}{\isachardot}\ Lambda\ l\ vs\ c\ {\isasymin}\ lambdas\ {\isacharparenleft}snd\ x{\isacharparenright}\ {\isasymlongrightarrow}\ c\ {\isasymin}\ calls\ {\isacharparenleft}snd\ x{\isacharparenright}{\isachardoublequoteclose}\isanewline
+\ \ \isakeyword{and}\ {\isachardoublequoteopen}Lambda\ l\ vs\ c\ {\isasymin}\ lambdas\ {\isacharparenleft}snd\ t{\isacharparenright}\ {\isasymLongrightarrow}\ c\ {\isasymin}\ calls\ {\isacharparenleft}snd\ t{\isacharparenright}{\isachardoublequoteclose}\isanewline
 %
 \isadelimproof
 %
