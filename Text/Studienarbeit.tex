@@ -463,6 +463,121 @@ to be able to apply the previous result.
 
 The required steps to apply this result to the mutually recursive definitions $\aF$ and $\aC$ are not explained in the dissertation.
 
+
+\section{Example}
+\label{examplesection}
+
+\begin{figure}
+\begin{framed}
+\ttfamily
+\frenchspacing
+\newcommand{\lab}[1]{\textsuperscript{\sffamily#1}}
+\begin{tabbing}
+(\=λ \=let rec = (\=λ \=then (\=λ .\=\ (\=+) p i (\=λ p'.\=\ (\=+) i -1 (\=λ i'.\=\ rec p' i' c')))\kill
+(λ cont.\\
+\>\lab{1}
+\+\+\\
+   let rec = (λ p i c'.\\
+   \lab{2}\'\> \lab{3}
+\+\+\\
+                if i\\
+\lab{4}\'\\
+                then (λ . (+) p i (λ p'. (+) i -1 (λ i'. rec p' i' c')))\\
+\lab{5} \> \lab{8} \> \lab{9} \> \lab{10} \> \lab{13} \> \lab{14} \> \lab{15} \> \lab{18} \>\lab{19} \\		
+                else (λ . c' p))\\
+\lab{6} \> \lab{24} \> \lab{25}
+\-\-\\
+   in rec 0 10 cont)\\
+\ \ \lab{28}
+\end{tabbing}
+\vspace{-1em}
+\end{framed}
+\caption{CPS-style program calculating the sum of the first ten natural numbers.}
+\label{fig:examplecode}
+\end{figure}
+
+
+In \vref{fig:examplecode} lists a functional program in continuation-passing style, calculating the sum of the first ten natural numbers. Its code positions are subscripted by labels which are automatically assigned by the Haskell code presented in the following chapter. Lambda expressions have labels 1, 3, 8, 13, 18, and 24. Call expressions, where the label is placed under the space before the callee, are 2, 4, 9, 14, 19, 25 and 28. Labels 5 and 6 denote the two internal call sites of the conditional expression, while labels 10 and 15 denote the internal call sites of two primops \texttt{(+)}.
+
+An contour environment specifies for each binding position which binding, identified by a contour counter (in this section printed in italics to distinguish them from syntactical labels), is currently in place. The \texttt{let}-expression in the above code will store the lambda expression with label 3 in the variable environment, coupled with the following contour environment:
+\[
+\{ 1 \mapsto \textit 0,\ 2 \mapsto \textit 1 \}
+\]
+indicating that \texttt{cont} variable should resolve to the value bound when the contour counter was \textit 0 and that \texttt{rec} should resolve to the value bound when the contour counter was \textit 1. The closure is called at label 28, which adds he following entry to the call cache returned by the exact semantics
+\[
+(28,\ \{ 1 \mapsto \textit 0,\ 2 \mapsto \textit 1 \}) \mapsto (3,\ \{ 1 \mapsto \textit 0,\ 2 \mapsto \textit 1 \}).
+\]
+The lambda expression will store the arguments using the contour counter \textit 2 and passes the following, extended binding environment to call 4:
+\[
+\{ 1 \mapsto \textit 0,\ 2 \mapsto \textit 1, 3 \mapsto \textit 2\}.
+\]
+
+The next call of lambda 3, from position 19, is recorded in the exact call cache by
+\[
+(19,\ \{ 1\mapsto \textit 0,\ 2\mapsto \textit 2,\ 3\mapsto \textit 2,\ 8\mapsto \textit 4,\ 13\mapsto \textit 6,\ 18\mapsto \textit 8\}) \mapsto (3,\ \{ 1 \mapsto \textit 0,\ 2 \mapsto \textit 1 \}).
+\]
+Now, the arguments will be stored using the contour counter \textit 9 and call 4 is evalute with a binding environment of 
+\[
+\{ 1 \mapsto \textit 0,\ 2 \mapsto \textit 1, 3 \mapsto \textit 9\},
+\]
+ensuring that the correct values of \texttt{p}, \texttt{i} and \texttt{c'} will be obtained when lookup up these variables in the variable environment.
+
+\begin{figure}
+\begin{framed}
+\vspace{-1em}
+\begin{align*}
+4 &\mapsto \{5\}
+& 14 &\mapsto \{15\}\\
+5 &\mapsto \{8\}
+& 15 &\mapsto \{18\}\\
+6 &\mapsto \{24\}
+& 19 &\mapsto \{3\}\\
+9 &\mapsto \{10\}
+& 25 &\mapsto \{\text{\textit{Stop}}\}\\
+10 &\mapsto \{13\}
+& 28 &\mapsto \{3\}
+\end{align*}
+\end{framed}
+\caption{CFA0-analysis of the example program}
+\label{fig:examplecfa0}
+\end{figure}
+
+The complete exact call cache for this program contains 74 entries and we abstain from reproducing it here. The abtract call cache obtianed using the CFA0 abstraction is given in \vref{fig:examplecfa0}. Since the contour environments carry no information in this case, they are omitted. Note that the label 5 on the right hand side of the edge $4 \mapsto \{5\}$ represents the whole if expression, not just the first branch.
+
+Applying the CFA1 abstraction, we obtain the call cache in \vref{fig:examplecfa1}. The contour counter -1 representes the context “outside” the analyized program.  The left hand sides of the entries, as well as closures on the right hand side, now carry their abstracted contour environment. In this example, it allows us to tell evaluations of the lamda expression 3 called from position 28 apart from those called from position 19. In our case, the gain is small as in either case we call the same procedures. % Primitive operations and \textit{Stop} on the right hand side do not carry a contour environment.
+
+But consider the following lambda expression, which implements the function composition operator $\circ$ in continuation-passing style by evaluating \verb-g-, feeding the result to \verb-f- and passing evaluation on to the continuation \verb-c-:
+\begin{center}
+\ttfamily λ f g c . g (λ r. f r c)
+\end{center}
+If this function is used in two totally different contexts, a CFA0 analysis could not tell the two apart and would add return edges from $\circ$ to both of them. CFA1 would annotate those edges by the context that $\circ$ had been called, and thus prevents mixing these different control flows.
+
+\begin{sidewaysfigure}
+\begin{framed}
+\vspace{-1em}
+\begin{align*}
+(4,\{1\mapsto -1,\ 2\mapsto 2,\ 3\mapsto 19\}) &\mapsto \{5\}\\
+(4,\{1\mapsto -1,\ 2\mapsto 2,\ 3\mapsto 28\}) &\mapsto \{5\}\\
+(5,\{5\mapsto 4\}) &\mapsto \{(8,\{1 \mapsto -1,\ 2\mapsto 2,\ 3 \mapsto 28\})\}\\
+(6,\{6\mapsto 4\}) &\mapsto \{(24,\{1 \mapsto -1,\ 2\mapsto 2,\ 3 \mapsto 28\})\}\\
+(9,\{1\mapsto -1,\ 2\mapsto 2,\ 3\mapsto 19,\ 8\mapsto 5\}) &\mapsto \{10\}\\
+(9,\{1\mapsto -1,\ 2\mapsto 2,\ 3\mapsto 28,\ 8\mapsto 5\}) &\mapsto \{10\}\\
+(10,\{10\mapsto 9\}) &\mapsto \{(13, \{1 \mapsto -1,\ 2\mapsto 2,\ 3 \mapsto 28,\ 8\mapsto 5\})\}\\
+(14,\{1\mapsto -1,\ 2\mapsto 2,\ 3\mapsto 19,\ 8\mapsto 5,\ 13\mapsto 10\}) &\mapsto \{15\}\\
+(14,\{1\mapsto -1,\ 2\mapsto 2,\ 3\mapsto 28,\ 8\mapsto 5,\ 13\mapsto 10\}) &\mapsto \{15\}\\
+(15,\{15\mapsto 14\}) &\mapsto \{(18,\{1\mapsto -1,\ 2\mapsto 2,\ 3\mapsto 28,\ 8\mapsto 5,\ 13\mapsto 10\})\}\\
+(19,\{1\mapsto -1,\ 2\mapsto 2,\ 3\mapsto 19,\ 8\mapsto 5,\ 13\mapsto 10,\ 18\mapsto 15\}) &\mapsto \{(3, \{(8,\{1 \mapsto -1,\ 2\mapsto 2\})\}\\
+(19,\{1\mapsto -1,\ 2\mapsto 2,\ 3\mapsto 28,\ 8\mapsto 5,\ 13\mapsto 10,\ 18\mapsto 15\}) &\mapsto \{(3, \{(8,\{1 \mapsto -1,\ 2\mapsto 2\})\}\\
+(25,\{1\mapsto -1,\ 2\mapsto 2,\ 3\mapsto 19,\ 24\mapsto 6\}) &\mapsto \{\text{\textit{Stop}}\}\\
+(25,\{1\mapsto -1,\ 2\mapsto 2,\ 3\mapsto 28,\ 24\mapsto 6\}) &\mapsto \{\text{\textit{Stop}}\}\\
+(28,\{1\mapsto -1,\ 2\mapsto 2\}) &\mapsto \{(3,\{1 \mapsto -1,\ 2\mapsto 2)\})\}
+\end{align*}
+\end{framed}
+\caption{CFA1-analysis of the example program}
+\label{fig:examplecfa1}
+\end{sidewaysfigure}
+
+
 \chapter{The Haskell Prototype}
 \label{chaphaskell}
 
@@ -576,9 +691,7 @@ Another feature of the Haskell prototype is pretty-printing of an abstract synta
 \begin{figure}
 \centering
 \begin{framed}
-\small
 \begin{verbatim}
-
 (λ cont.
    let rec = (λ p i c'.
                 if i
@@ -997,6 +1110,8 @@ The result of a slicing analysis is, given a node that we are interested in, a s
 In our functional, continuation-passing style language, it is not so clear how to interpret the result of the analysis. Clearly, we cannot just replace such nodes with no-ops, as that would halt evaluation alltogether. It might be possible to omit the variable bindings or argument vector setting in such nodes and then, in a post-processing step, collapse call-lambda-pairs where no arguments are passed and no variables are bound.
 
 A problem in the implementation we suggested in this chapter could be caused by our treatment of the contour counter, represented by the graph variable \isa{Vcnt}. Every node reads it, and almost all nodes will increase it. This could cause a lot of unwanted dependencies between the nodes, rendering a slicing analysis worthless. For a possible remedy additional nodes could be inserted in the graph whose only effect is to increase the contour counter and thus removing \isa{Vcnt} from the other nodes’ \isa{Def} sets. We expect that these contour nodes are never removed by slicing, but they would also only depend on other contour nodes.
+
+In \cref{examplesection} the problems of the CFA0-abstraction in the presence of higher order functions such as $\circ$ is mentioned. These also occur here and would lead to unwanted edges in the control graph. A transformation that allows to use the additional information provided by CFA1 is tricky, though, as binding environments do not occur in the static part of the graph so far. A possible solution is to duplicate nodes, once per context identified by the CFA1-abstraction, with the disadvantage of a greatly increased graph.
 
 
 \appendix
