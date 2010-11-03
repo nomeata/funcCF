@@ -301,14 +301,14 @@ main c = + x y (\xy. - z w (\zw. * xy zw (\prod. print prod c)))
 \text{VAR} &\Coloneqq \{\text{\texttt{x},\texttt{y},\texttt{foo},}\ldots\} \\
 \text{CONST} &\Coloneqq \{\text{\texttt{3},\texttt{\#f},}\ldots\} \\
 \text{PRIM} &\Coloneqq \{\text{\texttt{+},\texttt{if},\texttt{test-integer},}\ldots\} \\
-\text{LAB} &\Coloneqq \{l_i,r_i,c_i,ic_p^j\ldots\}
+\text{LAB} &\Coloneqq \{l_i,r_i,c_i,\ldots\} %ic_p^j\ldots\}
 \end{align*}
 \end{framed}
 \caption{CPS syntax}
 \label{fig:syntax}
 \end{figure}
 
-The syntax definition is given in \vref{fig:syntax}. A Program (PR) is a lambda expression. Lambda expressions (LAM) abstract a call. Calls (CALL) either call a function with the given argument list or binds lambdas to names in a possibly mutually recursive fashion. Function values (FUN) can be lambda expressions, references to variables or primitive operations, while in argument positions (ARG), primitive operations are disallowed and constant expressions are allowed. References to variables (REF) name the referenced variable. There is a set of variable names (VAR). Constants (CONST) are either integers or \#f for a false value. A number of primitive operations (PRIM) are defined.
+The syntax definition is given in \vref{fig:syntax}. A program (PR) is a lambda expression. Lambda expressions (LAM) abstract a call. Calls (CALL) either call a function with the given argument list or binds lambdas to names in a possibly mutually recursive fashion. Function values (FUN) can be lambda expressions, references to variables or primitive operations, while in argument positions (ARG), primitive operations are disallowed and constant expressions are allowed. References to variables (REF) name the referenced variable. There is a set of variable names (VAR). Constants (CONST) are either integers or \#f for a false value. A number of primitive operations (PRIM) are defined.
 
 Although not given explicitly, every lambda, call, constant, variable reference and primitive operation is tagged with a unique label from the set LAB. These can be thought of as positions in the program source – for our purpose they are just an abstract set. Also we assume that programs are alphatised, i.e.\ each variable name $v$ is bound at exactly one position, whose label is given by $\text{\textit{binder}}\ v$. Additional \textit{internal labels} are added to this set for primitive operations, representing the internal call sites. For example the \texttt{if} primitive operation is being passed two continuation that might be called, one for the true case and one for the false case. Therefore, two internal labels are associated with this primitive operation.
 
@@ -351,16 +351,22 @@ The set CN of contours is not given explicitly here. Instead, we will treat it a
 \section{Exact nonstandard semantics}
 
 \begin{figure}
+\begin{framed}
 \begin{align*}
 \C\ (c:(f\ a_1\ldots a_n))\ \beta\ ve\ b &= 
 \begin{cases}
 [], & f' \notin \text{Proc} \\
 (\F\ f'\ av\ ve\ b' )[(c,\beta) \mapsto f'], &\text{otherwise}
 \end{cases}\\
-&\phantom{\strut=\strut}\text{where } f' = \A\ f\ \beta\ ve \\
-&\phantom{\strut=\text{where }} av_i = \A\ a_i\ \beta\ ve \\
+&\phantom{\strut=\strut}\text{where } 
+\begin{aligned}[t]
+f' &= \A\ f\ \beta\ ve \\
+av_i &= \A\ a_i\ \beta\ ve\\
+b' &= nb\ b
+\end{aligned}
 \end{align*}
 \vspace{-1em}
+\end{framed}
 \caption{The exact nonstandard semantics for a call expression}
 \label{fig:callsem}
 \end{figure}
@@ -371,13 +377,13 @@ At the moment we are not so much interested in the value a program returns but r
 \text{Ans} &= \text{CCache}
 \end{align*}
 
-The semantics function definitions are extended to record the calls as they happen \vref{fig:callsem} shows exemplary the equation of $\C$ for a call expression $(f\ a_1\ldots a_n)$ with label $c$. If the syntactic value $f$ is evaluated to a procedure $f'\in \text{Proc}$, evaluation continues by applying $\F$ to $f'$ and the arguments. This returns a call cache, which is amended by the entry $(c,\beta) \mapsto f'$ to reflect the current call before the updated call cache is returned by $C$.
+The semantics function definitions are extended to record the calls as they happen \vref{fig:callsem} shows exemplary the equation of $\C$ for a call expression $(f\ a_1\ldots a_n)$ with label~$c$. If the syntactic value $f$ is evaluated to a procedure $f'\in \text{Proc}$, evaluation continues by applying $\F$ to $f'$ and the arguments. This returns a call cache, which is amended by the entry $(c,\beta) \mapsto f'$ to reflect the current call before the updated call cache is returned by~$C$.
 
-This semantics evaluates the program in full, just like the standard semantics, and is therefore unsuitable to be used in a static analysis. But it is the theoretic ideal that a statically calculated call cache will be compared against.
+This semantics evaluates the program in full, just like the standard semantics, and is therefore unsuitable to be used in a static analysis. Nevertheless it is the theoretic ideal that a statically calculated call cache will be compared against.
 
 \section{Abstract nonstandard semantics}
 
-Shivers then proceeds to define a nonstandard semantics that can be calculated statically. The trade off is that the call cache obtained now is just an approximation to the exact call cache, i.e.\ any possible call in the exact call cache will also be in the abstract call cache. The converse does not need to hold.
+Shivers then proceeds to define a nonstandard semantics that can be calculated statically. The trade off is that the call cache obtained now is just an approximation to the exact call cache, i.e.\ any observed call in the exact call cache will be in the abstract call cache, but the converse does not need to hold.
 
 \begin{figure}
 \setlength{\FrameSep}{0pt}
@@ -397,17 +403,46 @@ Shivers then proceeds to define a nonstandard semantics that can be calculated s
 \widehat{\text{Ans}} &= \widehat{\text{CCache}}
 \end{align*}
 \end{framed}
-\caption{CPS semantics domains}
+\caption{Abstract nonstandard semantics domains}
 \label{fig:abssemdoms}
 \end{figure}
 
-The abstract semantics $\aPR$ will run the program no longer in full detail. It will not keep track of actual values computed and conditional branches taken. Instead, it assumes that every branch of an \texttt{if} statement is possibly taken. Semantic values are now sets of possible procedures. \vref{fig:abssemdoms} gives the domains of the abstract semantics functions. 
+\vref{fig:abssemdoms} gives the domains of the abstract semantics functions. The abstract semantics $\aPR$ will run the program no longer in full detail. It will not keep track of actual values computed and conditional branches taken. Instead, it assumes that every branch of an \texttt{if} statement is possibly taken. Semantic values are now sets of possible procedures. This can be seen in \vref{fig:ifsem}, which contains both the exact and the abstract nonstandard semantics definitions for an conditional expression with label $p$, internal labels $ip_0$ and $ip_1$ and continuations respectively, in the abstract case, sets of possible continuations $c_0$ and~$c_1$.
 
-After removing the plain values from our semantics domains, the remaining would all be finite – if  $\widehat{\text{CN}}$ were finite. This is the main trick to obtain a computable abstract semantics. If $\widehat{\text{CN}}$ is finite, there are only finitely many possible closures, procedures, binding environment, variable environments and call caches, and our function becomes computable.
+\begin{figure}
+\begin{framed}
+\begin{align*}
+\F\ (p(ip_0,ip_1):\text{\texttt{if}})\ [v,c_0, c_1]\  ve\ b &=
+\begin{cases}
+[], \text{ if } c_0 \notin \text{Proc} \text{ or } c_1 \notin \text{Proc} \\
+\{ (ip_0,\beta) \mapsto c_0 \} \cup \F\ c_0\ []\ ve\ (nb\ b) & \text{if } v \ne 0 \\
+\{ (ip_1,\beta) \mapsto c_1 \} \cup \F\ c_1\ []\ ve\ (nb\ b) & \text{if } v = 0 
+\end{cases}\\
+&\phantom{\strut=}\text{where } \beta = \{ p \mapsto b \}
+\end{align*}
+\begin{align*}
+\aF\ (p(ip_0,ip_1):\text{\texttt{if}})\ [v,c_0, c_1]\  ve\ b &=
+\phantom{\cup}\bigcup_{f\in c_0} \aF\ f\ []\ ve\ (\widehat{nb}\ b\ ip_0)\\
+&\phantom{\strut=} \cup \bigcup_{f\in c_0} \aF\ f\ []\ ve\ (\widehat{nb}\ b\ ip_1)\\
+&\phantom{\strut=} \cup \{ (ip_0, \beta) \mapsto c_0,\ (ip_1, \beta) \mapsto c1\} \\
+&\phantom{\strut=}\text{where } \beta = \{ p \mapsto b \}
+\end{align*}
+\vspace{-1em}
+\end{framed}
+\caption{Comparison of the nonstandard semantics for an conditional expression}
+\label{fig:ifsem}
+\end{figure}
 
-Again, the choice of the set $\widehat{\text{CN}}$ is not fixed. Possible choices include a singleton set, resulting in “0th-order Control Flow Analysis” (0CFA) or the set of lambdas representing the call site a lambda was called from, resulting in 1st-order Control Flow Analysis (1CFA). The more information we store in the abstract contour counters, the more detailed our analysis will be, but also more expensive to calculate.
 
-Because semantic values $\widehat{\text{D}}$ are now sets of procedures, when evaluating a call expression $(f\ a_1\ldots a_n)$, there is a set of possible procedure that $f$ can evaluate to, and $\aF$ will be called for each of them. The resulting call caches need to be joined using pointwise set union. Similarly, the continuations of primitive operations are sets of procedures, for all of which $\aF$ is called and the result is joined again.
+After removing the plain values from our semantics domains, the remaining sets would all be finite – if $\widehat{\text{CN}}$ was finite. This is the main trick to obtain a computable abstract semantics. If $\widehat{\text{CN}}$ is finite, there are only finitely many possible closures, procedures, binding environment, variable environments and call caches, and our function becomes computable.
+
+Naturally, there is a loss of information when replacing the infinite set of contour counters in the exact case by a finite set. Variable bindings that could otherwise be distinguished by their contour counter now fall together. Therefore, the abstract variable environment tracks sets of possible values for each variable/contour counter pair.
+
+Again, the choice of the set $\widehat{\text{CN}}$ is not fixed. Possible choices include the singleton set, resulting in “0th-order Control Flow Analysis” (0CFA) or the set of lambdas representing the call site a lambda was called from, resulting in first-order Control Flow Analysis (1CFA). To be able to track this information, the function $\widehat{nb}$, used to generate new contour counters, takes such a label as an additional argument. It is ignored when performing 0CFA, and it is stored in the contour counter in 1CFA.
+
+This generalizes to $k$CFA, where the last $k$ call sites are tracked by the abstract contour counter. The more information we store in the abstract contour counters, the more detailed our analysis will be, but also more expensive to calculate.
+
+Because semantic values $\widehat{\text{D}}$ are now sets of procedures, when evaluating a call expression $(f\ a_1\ldots a_n)$, there is a set of possible procedure that $f$ can evaluate to, and $\aF$ will be called for each of them. The resulting call caches need to be joined by pointwise set union. Similarly, the continuations of primitive operations are sets of procedures, for all of which $\aF$ is called and the result is joined again.
 
 \section{Main results}
 
@@ -418,7 +453,7 @@ The main results about these semantics functions are stated and shown in Shivers
 \item the abstract semantics is computable.
 \end{enumerate}
 
-But before starting to prove these results, Shivers establishes that the recursive definitions he gave for $\F$ and $\C$ (and by analogy, $\aF$ and $\aC$) are sound. He proceeds in the standard way of turning a recursive definitions $f = F f$ for a function $f\in X$, where $X$ is a function space with a chain-complete partial order, into a functional $F\colon X \to X$. $F$ is then shown to be continuous and therefore has a least fixed point, which is used then defined to be $f$.
+But before starting to prove these results, Shivers establishes that the recursive definitions he gave for $\F$ and $\C$ (and by analogy, $\aF$ and $\aC$) are sound. He proceeds in the standard way of turning a recursive definitions $f = F f$ for a function $f\in X$, where $X$ is a function space with a chain-complete partial order, into a functional $F\colon X \to X$. $F$ is then shown to be continuous and therefore has a least fixed point, which is used then defined to be~$f$.
   
 
 The need to show that the result of $\PR$ is a partial map arises from the fact that, for an easier proof of continuity, Shivers changes the answer domain to be
@@ -516,7 +551,7 @@ The next call of lambda 3, from position 19, is recorded in the exact call cache
 \[
 (19,\ \{ 1\mapsto \textit 0,\ 2\mapsto \textit 2,\ 3\mapsto \textit 2,\ 8\mapsto \textit 4,\ 13\mapsto \textit 6,\ 18\mapsto \textit 8\}) \mapsto (3,\ \{ 1 \mapsto \textit 0,\ 2 \mapsto \textit 1 \}).
 \]
-Now, the arguments will be stored using the contour counter \textit 9 and call 4 is evalute with a binding environment of 
+Now, the arguments will be stored using the contour counter \textit 9 and call 4 is evaluated with a binding environment of 
 \[
 \{ 1 \mapsto \textit 0,\ 2 \mapsto \textit 1, 3 \mapsto \textit 9\},
 \]
@@ -538,19 +573,19 @@ ensuring that the correct values of \texttt{p}, \texttt{i} and \texttt{c'} will 
 & 28 &\mapsto \{3\}
 \end{align*}
 \end{framed}
-\caption{CFA0-analysis of the example program}
+\caption{0CFA-analysis of the example program}
 \label{fig:examplecfa0}
 \end{figure}
 
-The complete exact call cache for this program contains 74 entries and we abstain from reproducing it here. The abtract call cache obtianed using the CFA0 abstraction is given in \vref{fig:examplecfa0}. Since the contour environments carry no information in this case, they are omitted. Note that the label 5 on the right hand side of the edge $4 \mapsto \{5\}$ represents the whole if expression, not just the first branch.
+The complete exact call cache for this program contains 74 entries and we abstain from reproducing it here. The abstract call cache obtained using the 0CFA abstraction is given in \vref{fig:examplecfa0}. Since the contour environments carry no information in this case, they are omitted. Note that the label 5 on the right hand side of the edge $4 \mapsto \{5\}$ represents the whole if expression, not just the first branch.
 
-Applying the CFA1 abstraction, we obtain the call cache in \vref{fig:examplecfa1}. The contour counter -1 representes the context “outside” the analyized program.  The left hand sides of the entries, as well as closures on the right hand side, now carry their abstracted contour environment. In this example, it allows us to tell evaluations of the lamda expression 3 called from position 28 apart from those called from position 19. In our case, the gain is small as in either case we call the same procedures. % Primitive operations and \textit{Stop} on the right hand side do not carry a contour environment.
+Applying the 1CFA abstraction, we obtain the call cache in \vref{fig:examplecfa1}. The contour counter -1 represents the context “outside” the analyzed program.  The left hand sides of the entries, as well as closures on the right hand side, now carry their abstracted contour environment. In this example, it allows us to tell evaluations of the lambda expression 3 called from position 28 apart from those called from position 19. In our case, the gain is small as in either case we call the same procedures. % Primitive operations and \textit{Stop} on the right hand side do not carry a contour environment.
 
 But consider the following lambda expression, which implements the function composition operator $\circ$ in continuation-passing style by evaluating \verb-g-, feeding the result to \verb-f- and passing evaluation on to the continuation \verb-c-:
 \begin{center}
 \ttfamily λ f g c . g (λ r. f r c)
 \end{center}
-If this function is used in two totally different contexts, a CFA0 analysis could not tell the two apart and would add return edges from $\circ$ to both of them. CFA1 would annotate those edges by the context that $\circ$ had been called, and thus prevents mixing these different control flows.
+If this function is used in two totally different contexts, a 0CFA analysis could not tell the two apart and would add return edges from $\circ$ to both of them. 1CFA would annotate those edges by the context that $\circ$ had been called, and thus prevents mixing these different control flows.
 
 \begin{sidewaysfigure}
 \begin{framed}
@@ -573,7 +608,7 @@ If this function is used in two totally different contexts, a CFA0 analysis coul
 (28,\{1\mapsto -1,\ 2\mapsto 2\}) &\mapsto \{(3,\{1 \mapsto -1,\ 2\mapsto 2)\})\}
 \end{align*}
 \end{framed}
-\caption{CFA1-analysis of the example program}
+\caption{1CFA-analysis of the example program}
 \label{fig:examplecfa1}
 \end{sidewaysfigure}
 
@@ -1101,17 +1136,17 @@ where $i$ is the result of the evaluation, $\Rightarrow^*$ the transitive hull o
 
 If that could be done, a similar proof will relate the small step semantics with the exact nonstandard semantics: For each step in the series $\langle n:s\rangle \Rightarrow \langle n':s'\rangle$, if $n'$ is not a \isa{CallNode}, we find a corresponding entry in the call cache returned by the nonstandard semantics function $\PR$. Call caches are of the type $(\isa{label}\times\isa{benv}\ \isasymrightharpoonup\ d)$. The label identifies a subexpression of the program, and thus a \isa{synNode}. The binding environment is ignored for this purpose. The semantic value \isa{d} contains a procedure and can thus be identified with a \isa{synNode}.
 
-We have shown that the call cache returned by $\aPR$ is a safe approximation to the exact call cache. Therefore, we will find corresponding entries there as well. By the converse argument we see that it sufficies to feed such edges to the slicing framework that we can statically derive using Shivers’ abstract nonstandard semantics functions. This will make the constructed graph considerably smaller and thus more exact, and we hope this allows for a more powerful analyses.
+We have shown that the call cache returned by $\aPR$ is a safe approximation to the exact call cache. Therefore, we will find corresponding entries there as well. By the converse argument we see that it suffices to feed such edges to the slicing framework that we can statically derive using Shivers’ abstract nonstandard semantics functions. This will make the constructed graph considerably smaller and thus more exact, and we hope this allows for a more powerful analysis.
 
 \section{Hopes and Fears}
 
 The result of a slicing analysis is, given a node that we are interested in, a set of nodes that do not affect our node. In an imperative language, this would allow us to replace the statements which correspond to these nodes by no-op statements and still not affect the statement which corresponds to our node.
 
-In our functional, continuation-passing style language, it is not so clear how to interpret the result of the analysis. Clearly, we cannot just replace such nodes with no-ops, as that would halt evaluation alltogether. It might be possible to omit the variable bindings or argument vector setting in such nodes and then, in a post-processing step, collapse call-lambda-pairs where no arguments are passed and no variables are bound.
+In our functional, continuation-passing style language, it is not so clear how to interpret the result of the analysis. Clearly, we cannot just replace such nodes with no-ops, as that would halt evaluation altogether. It might be possible to omit the variable bindings or argument vector setting in such nodes and then, in a post-processing step, collapse call-lambda-pairs where no arguments are passed and no variables are bound.
 
 A problem in the implementation we suggested in this chapter could be caused by our treatment of the contour counter, represented by the graph variable \isa{Vcnt}. Every node reads it, and almost all nodes will increase it. This could cause a lot of unwanted dependencies between the nodes, rendering a slicing analysis worthless. For a possible remedy additional nodes could be inserted in the graph whose only effect is to increase the contour counter and thus removing \isa{Vcnt} from the other nodes’ \isa{Def} sets. We expect that these contour nodes are never removed by slicing, but they would also only depend on other contour nodes.
 
-In \cref{examplesection} the problems of the CFA0-abstraction in the presence of higher order functions such as $\circ$ is mentioned. These also occur here and would lead to unwanted edges in the control graph. A transformation that allows to use the additional information provided by CFA1 is tricky, though, as binding environments do not occur in the static part of the graph so far. A possible solution is to duplicate nodes, once per context identified by the CFA1-abstraction, with the disadvantage of a greatly increased graph.
+In \cref{examplesection} the problems of the 0CFA-abstraction in the presence of higher order functions such as $\circ$ is mentioned. These also occur here and would lead to unwanted edges in the control graph. A transformation that allows to use the additional information provided by 1CFA is tricky, though, as binding environments do not occur in the static part of the graph so far. A possible solution is to duplicate nodes, once per context identified by the 1CFA-abstraction, with the disadvantage of a greatly increased graph.
 
 
 \appendix
