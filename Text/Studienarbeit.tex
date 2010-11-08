@@ -1,4 +1,4 @@
-\documentclass[a4paper,halfparskip,DIV=10,11pt]{scrbook}
+\documentclass[a4paper,parskip=half,DIV=calc,12pt]{scrbook}
 
 %\usepackage{german}
 \usepackage[T3,T1]{fontenc}
@@ -24,7 +24,7 @@
 \usepackage[pdfauthor={Joachim Breitner}]{hyperref}
 \usepackage[capitalise]{cleveref}
 \usepackage{tikz}
-\usetikzlibrary{snakes,arrows,shapes}
+\usetikzlibrary{arrows,shapes}
 % \usetikzlibrary{automata}
 % \usetikzlibrary{decorations}
 % \usetikzlibrary{snakes}
@@ -227,7 +227,7 @@
 \vspace{2em}
 {\large Student Research Project}\\
 \vspace{2.5em}
-{\sectfont\huge \@title }\\
+{\sectfont\LARGE \@title }\\
 \vspace{2em}
 {\sectfont\Large \@subtitle }\\
 % \vfill
@@ -238,7 +238,7 @@ Supervisors: \\
 Prof. Dr. Gregor Snelting \\
 Andreas Lochbihler \\
 \vspace{2em}
-{\large \@date }
+{\@date }
 \makeatother
 \end{titlepage}
 %\KOMAoptions{twoside=true}
@@ -412,16 +412,16 @@ Shivers then proceeds to define a nonstandard semantics that can be calculated s
 \begin{figure}
 \begin{framed}
 \begin{align*}
-\F\ (p(ip_0,ip_1):\text{\texttt{if}})\ [v,c_0, c_1]\  ve\ b &=
+\F\ (p:\text{\texttt{if}})\ [v,c_0, c_1]\  ve\ b &=
 \begin{cases}
 [], \text{ if } c_0 \notin \text{Proc} \text{ or } c_1 \notin \text{Proc} \\
-\{ (ip_0,\beta) \mapsto c_0 \} \cup \F\ c_0\ []\ ve\ (nb\ b) & \text{if } v \ne 0 \\
-\{ (ip_1,\beta) \mapsto c_1 \} \cup \F\ c_1\ []\ ve\ (nb\ b) & \text{if } v = 0 
+\{ (ip_0,\beta) \mapsto c_0 \} \cup \F\ c_0\ []\ ve\ (nb\ b),\text{ if } v \ne 0 \\
+\{ (ip_1,\beta) \mapsto c_1 \} \cup \F\ c_1\ []\ ve\ (nb\ b),\text{ if } v = 0 
 \end{cases}\\
 &\phantom{\strut=}\text{where } \beta = \{ p \mapsto b \}
 \end{align*}
 \begin{align*}
-\aF\ (p(ip_0,ip_1):\text{\texttt{if}})\ [v,c_0, c_1]\  ve\ b &=
+\aF\ (p:\text{\texttt{if}})\ [v,c_0, c_1]\  ve\ b &=
 \phantom{\cup}\bigcup_{f\in c_0} \aF\ f\ []\ ve\ (\widehat{nb}\ b\ ip_0)\\
 &\phantom{\strut=} \cup \bigcup_{f\in c_0} \aF\ f\ []\ ve\ (\widehat{nb}\ b\ ip_1)\\
 &\phantom{\strut=} \cup \{ (ip_0, \beta) \mapsto c_0,\ (ip_1, \beta) \mapsto c1\} \\
@@ -726,6 +726,7 @@ Another feature of the Haskell prototype is pretty-printing of an abstract synta
 \begin{figure}
 \centering
 \begin{framed}
+\small
 \begin{verbatim}
 (λ cont.
    let rec = (λ p i c'.
@@ -1155,6 +1156,9 @@ In \cref{examplesection} the problems of the 0CFA-abstraction in the presence of
 \raggedright
 \bibliography{root}
 }
+
+% Erklärung auf eine gerade Seite
+\renewcommand{\cleardoublepage}{\clearpage}
 \chapter*{Erklärung}
 
 \lettrine H{iermit} erkläre ich, Joachim Breitner, dass ich die vorliegende Studienarbeit selb\-ständig
