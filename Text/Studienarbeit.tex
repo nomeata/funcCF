@@ -121,30 +121,14 @@
 
 %\pagestyle{headings}
 
-% get rid of fourier fontenc warnings
-% from http://newsgroups.derkeiler.com/Archive/Comp/comp.text.tex/2006-01/msg00679.html
-\makeatletter
-\let\my@@font@warning\@font@warning
-\let\@font@warning\@font@info
-\makeatother
-%
 \usepackage{mathpazo}
-%\usepackage{fourier}
-%\usepackage[math]{iwona}
-%\usepackage{ccfonts}
-%\usepackage{arev}
-%\usepackage[garamond]{mathdesign}
-%\usepackage{pxfonts}
-%
-\makeatletter
-\let\@font@warning\my@@font@warning
-\makeatother 
 
 % Palatino: 5% mehr Zeilendurchschuss (laut KOMA-skript)
 \linespread{1.05}
 
 % Satzspiegel neu berechen
 \recalctypearea
+
 
 % Figures unabhängig vom Kapitel zählen
 \makeatletter
