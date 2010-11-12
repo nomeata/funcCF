@@ -1233,6 +1233,7 @@ In this case, the analysis provides a useful result: The nodes 2 and 3, represen
 \node (4b) {4cnt}; & \node{\{\isa{Vcnt}\}}; & \node{\{\isa{Vcnt}\}}; \\
 \node (stop) {Stop}; & \node{\{\isa{Vds}\}}; \\
 };
+\begin{scope}{shorten >=1mm}
 \draw[->] (start) -- (1);
 \draw[->] (1) -- (1b);
 \draw[->] (1b) -- (2);
@@ -1242,6 +1243,7 @@ In this case, the analysis provides a useful result: The nodes 2 and 3, represen
 \draw[->] (3b) -- (4);
 \draw[->] (4) -- (4b);
 \draw[->] (4b) -- (stop);
+\end{scope}
 
 \begin{scope}[every to/.style={out=170, in=190, thick, shorten >=1mm}]
 \draw[->] (stop) to (4);
