@@ -1149,21 +1149,27 @@ A similar problem is posed the binding environment in the graph variable \isa{V\
 
 The combination of a call and a lambda expression is roughly equivalent to an assignment statement in an imperative language. Combining these in one step, we can remove the argument vector variable \isa{Vds} from our scheme and split the assignment of individual arguments into separate nodes. This would avoid unnecessary dependencies between the loop counter and the loop accumulator in a loop implemented by a recursive function.
 
-Splitting the binding environment into a set of graph variables, one per binding position, is desirable. It is not clear whether this will improve the representation without further modifications, as the evaluation of a lambda expression to a closure needs bundles the complete binding environment, which requires all of these graph variables to appear in the \isa{Use} and \isa{Def} set of a call.
+Splitting the binding environment into a set of graph variables, one per binding position, should be considered. It is not clear whether this will improve the representation without further modifications, as the evaluation of a lambda expression to a closure bundles the complete binding environment, which requires all of these graph variables to appear in the \isa{Use} and \isa{Def} set of a call.
 
-In \cref{examplesection} the problems of the 0CFA-abstraction in the presence of higher order functions such as $\circ$ is mentioned. These also occur here and would lead to unwanted edges in the control graph. A transformation that allows to use the additional information provided by 1CFA is tricky, though, as binding environments do not occur in the static part of the graph so far. A possible solution is to duplicate nodes, once per context identified by the 1CFA-abstraction, at the cost of an increased graph.
+In \cref{examplesection} the problems of the 0CFA-abstraction in the presence of higher order functions such as $\circ$ are mentioned. These also occur here and would lead to unwanted edges in the control graph. A transformation that allows to use the additional information provided by 1CFA is tricky, though, as binding environments do not occur in the static part of the graph. A possible solution is to duplicate nodes, once per context identified by the 1CFA-abstraction, at the cost of an increased graph.
 
 \section{Example}
 
 The smallest example of a program with obviously useless instructions would be the following code:
+
+\begin{center}
 {\ttfamily
+\centering
 \frenchspacing
 \newcommand{\lab}[1]{\textsuperscript{\scriptsize\sffamily#1}}
-\begin{tabbing}
+\vspace{-1em}
+\parbox{0pt}{\begin{tabbing}
 (\=λ\ c.\=\ (\=λx.\=\ c\ 1)\ 0). \\
 \>\lab{1}\>\lab{2}\>\lab{3}\>\lab{4}
-\end{tabbing}
+\end{tabbing}}
+\vspace{-1em}
 }
+\end{center}
 
 \begin{figure}
 \begin{framed}
@@ -1172,24 +1178,26 @@ The smallest example of a program with obviously useless instructions would be t
 \matrix[
 	row sep=.8em,
 	anchor=west,
-	column 1/.append style={nodes={ellipse,draw,minimum width=4em}}
+	column 1/.append style={nodes={ellipse,draw,minimum width=4em,anchor=center}},
 ]{
 
-\node[draw=none] {\textbf{Node}}; & \node {\textbf{Use}}; & \node {\textbf{Def}}; \\
+\node[draw=none] {\textbf{Node}}; & \node {\textbf{Use}}; & \node {\textbf{Def}}; \\[-.8em]
 \node (start) {Start}; & \node {$\emptyset$}; & \node {\isa{UNIV}}; \\
-\node (1) {1}; & \node{\{\isa{Vds}, \isa{V\isasymbeta}, \isa{Vcnt}\}}; & \node{\{\isa{Vvar\ c}, \isa{V\isasymbeta}\}}; \\
+\node (1) {1}; & \node{\{\isa{Vds}, \isa{V\isasymbeta}, \isa{Vcnt}\}}; & \node{\{\isa{V\isasymbeta}, \isa{Vvar\ c}\}}; \\
 \node (2) {2}; & \node{\{\isa{V\isasymbeta}, \isa{Vcnt}\}}; & \node{\{\isa{Vds}, \isa{Vcnt}\}}; \\
-\node (3) {3}; & \node{\{\isa{Vds}, \isa{V\isasymbeta}, \isa{Vcnt}\}}; & \node{\{\isa{Vvar\ x}, \isa{V\isasymbeta}\}}; \\
+\node (3) {3}; & \node{\{\isa{Vds}, \isa{V\isasymbeta}, \isa{Vcnt}\}}; & \node{\{\isa{V\isasymbeta}, \isa{Vvar\ x}\}}; \\
 \node (4) {4}; & \node{\{\isa{V\isasymbeta}, \isa{Vcnt}, \isa{Vvar\ c}\}}; & \node{\{\isa{Vds}, \isa{Vcnt}\}}; \\
 \node (stop) {Stop}; & \node{\{\isa{Vds}\}}; \\
 };
+\begin{scope}[shorten >=1pt]
 \draw[->] (start) -- (1);
 \draw[->] (1) -- (2);
 \draw[->] (2) -- (3);
 \draw[->] (3) -- (4);
 \draw[->] (4) -- (stop);
+\end{scope}
 
-\begin{scope}[every to/.style={out=170, in=190, thick, shorten >=1mm}]
+\begin{scope}[every to/.style={out=170, in=190, thick, shorten >=1pt}]
 \draw[->] (stop) to (4);
 \draw[->] (4) to (3);
 \draw[->] (4) to (2);
@@ -1209,7 +1217,8 @@ The smallest example of a program with obviously useless instructions would be t
 \vref{fig:cfgsimp} contains the naive call graph without any of the modifications in the previous section. The program’s control flow is purely linear, denoted by down-pointing edges. Edges in the other direction denote dependencies between the nodes. The intermediate nodes which we added per edge to fulfill the framework’s requirements are not shown.
 
 In this form, every node influences the final node and we do not obtain any useful information from the slicing analysis. In \vref{fig:cfgbetter}, we improved the instantiation by introducing special nodes to update the contour counter \isa{Vcnt} resp. the contour environment \isa{V\isasymbeta}. The figure contains only the dependency arrows relevant in the analysis of the stop node.
-In this case, the analysis provides a useful result: The nodes 2 and 3, representing the useless call and the useless lambda, do not influence the Stop node.
+
+In this case, the analysis provides a useful result: The nodes 2 and 3, representing the useless call and the useless lambda, do not influence the Stop node. The corresponding extra nodes are still in the set of depending nodes. In that sense, they form the skeleton of the program flow and are never removed by slicing.
 
 
 \begin{figure}
@@ -1219,9 +1228,9 @@ In this case, the analysis provides a useful result: The nodes 2 and 3, represen
 \matrix[
 	row sep=.8em,
 	anchor=west,
-	column 1/.append style={nodes={ellipse,draw,minimum width=4em}}
+	column 1/.append style={nodes={ellipse,draw,minimum width=4em,anchor=center}},
 ]{
-\node[draw=none] {\textbf{Node}}; & \node {\textbf{Use}}; & \node {\textbf{Def}}; \\
+\node[draw=none] {\textbf{Node}}; & \node {\textbf{Use}}; & \node {\textbf{Def}}; \\[-.8em]
 \node (start) {Start}; & \node {$\emptyset$}; & \node {\isa{UNIV}}; \\
 \node (1) {1}; & \node{\{\isa{Vds}, \isa{Vcnt}\}}; & \node{\{\isa{Vvar\ c}\}}; \\
 \node (1b) {1$\beta$}; & \node{\{\isa{V\isasymbeta}, \isa{Vcnt}\}}; & \node{\{\isa{V\isasymbeta}\}}; \\
@@ -1233,7 +1242,7 @@ In this case, the analysis provides a useful result: The nodes 2 and 3, represen
 \node (4b) {4cnt}; & \node{\{\isa{Vcnt}\}}; & \node{\{\isa{Vcnt}\}}; \\
 \node (stop) {Stop}; & \node{\{\isa{Vds}\}}; \\
 };
-\begin{scope}{shorten >=1mm}
+\begin{scope}[shorten >=1pt]
 \draw[->] (start) -- (1);
 \draw[->] (1) -- (1b);
 \draw[->] (1b) -- (2);
@@ -1245,7 +1254,7 @@ In this case, the analysis provides a useful result: The nodes 2 and 3, represen
 \draw[->] (4b) -- (stop);
 \end{scope}
 
-\begin{scope}[every to/.style={out=170, in=190, thick, shorten >=1mm}]
+\begin{scope}[every to/.style={out=170, in=190, thick, shorten >=1pt}]
 \draw[->] (stop) to (4);
 \draw[->] (4) to (3b);
 \draw[->] (4) to (1);
