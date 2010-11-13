@@ -1129,38 +1129,40 @@ We use this semantics to fill our graph edges with life: The assertion edge from
 It should be possible to prove the equality of the two semantics, i.e.
 \begin{gather*}
 \PR\ prog = i\\
-	    \iff\\
-	    \langle StartNode\ prog : (\_,\_,\_,\_)\rangle \Rightarrow^* \langle StopNode : (\_,[i],\_,\_)\rangle
-	    \end{gather*}
-	    where $i$ is the result of the evaluation, $\Rightarrow^*$ the transitive hull of $\Rightarrow$ and $\_$ denotes arbitrary values.
+\iff\\
+\langle StartNode\ prog : (\_,\_,\_,\_)\rangle \Rightarrow^* \langle StopNode : (\_,[i],\_,\_)\rangle
+\end{gather*}
+where $i$ is the result of the evaluation, $\Rightarrow^*$ the transitive hull of $\Rightarrow$ and $\_$ denotes arbitrary values.
 
-	    \section{Connecting to Shivers}
+\section{Connecting to Shivers}
 
-	    If that could be done, a similar proof will relate the small step semantics with the exact nonstandard semantics: For each step in the series $\langle n:s\rangle \Rightarrow \langle n':s'\rangle$, if $n'$ is not a \isa{CallNode}, we find a corresponding entry in the call cache returned by the nonstandard semantics function $\PR$. Call caches are of the type $(\isa{label}\times\isa{benv}\ \isasymrightharpoonup\ d)$. The label identifies a subexpression of the program, and thus a \isa{synNode}. The binding environment is ignored for this purpose. The semantic value \isa{d} contains a procedure and hence can be identified with a \isa{synNode}.
+If that could be done, a similar proof will relate the small step semantics with the exact nonstandard semantics: For each step in the series $\langle n:s\rangle \Rightarrow \langle n':s'\rangle$, if $n'$ is not a \isa{CallNode}, we find a corresponding entry in the call cache returned by the nonstandard semantics function $\PR$. Call caches are of the type $(\isa{label}\times\isa{benv}\ \isasymrightharpoonup\ d)$. The label identifies a subexpression of the program, and thus a \isa{synNode}. The binding environment is ignored for this purpose. The semantic value \isa{d} contains a procedure and hence can be identified with a \isa{synNode}.
 
-	    We have shown that the call cache returned by $\aPR$ is a safe approximation to the exact call cache. Therefore, we will find corresponding entries there as well. By the converse argument we see that it suffices to feed such edges to the slicing framework that we can statically derive using Shivers’ abstract nonstandard semantics. This will make the constructed graph considerably smaller and thus more exact, and we hope this allows for a more powerful analysis.
+We have shown that the call cache returned by $\aPR$ is a safe approximation to the exact call cache. Therefore, we will find corresponding entries there as well. By the converse argument we see that it suffices to feed such edges to the slicing framework that we can statically derive using Shivers’ abstract nonstandard semantics. This will make the constructed graph considerably smaller and thus more exact, and we hope this allows for a more powerful analysis.
 
-	    \section{Hopes and Fears}
+\section{Hopes and Fears}
 
-	    The result of a slicing analysis is, given a node that we are interested in, a set of nodes that do not affect our node. In an imperative language, this would allow us to replace the statements which correspond to these nodes by no-op statements without affecting the statement which corresponds to our interesting node.
+The result of a slicing analysis is, given a node that we are interested in, a set of nodes that do not affect our node. In an imperative language, this would allow us to replace the statements which correspond to these nodes by no-op statements without affecting the statement which corresponds to our interesting node.
 
-	    In our functional, continuation-passing style language, it is not so clear how to interpret the result of the analysis. Clearly, we cannot just replace such nodes with no-ops, as that would halt evaluation altogether. It might be possible to omit the variable bindings or argument vector setting in such nodes and then, in a post-processing step, collapse call-lambda-pairs where no arguments are passed and no variables are bound.
+In our functional, continuation-passing style language, it is not so clear how to interpret the result of the analysis. Clearly, we cannot just replace such nodes with no-ops, as that would halt evaluation altogether. It might be possible to omit the variable bindings or argument vector setting in such nodes and then, in a post-processing step, collapse call-lambda-pairs where no arguments are passed and no variables are bound.
 
-	    A problem in the implementation we suggested in this chapter could be caused by our treatment of the contour counter, represented by the graph variable \isa{Vcnt}. Every node reads it, and almost all nodes increase it. This could cause a lot of unwanted dependencies between the nodes, rendering the slicing analysis worthless. For a possible remedy additional nodes could be inserted in the graph whose only effect is to increase the contour counter and thus removing \isa{Vcnt} from the other nodes’ \isa{Def} sets. We expect that these contour nodes are never removed by slicing, but they would also only depend on other contour nodes.
+A problem in the implementation we suggested in this chapter could be caused by our treatment of the contour counter, represented by the graph variable \isa{Vcnt}. Every node reads it, and almost all nodes increase it. This could cause a lot of unwanted dependencies between the nodes, rendering the slicing analysis worthless.
 
-	    A similar problem is posed the binding environment in the graph variable \isa{V\isasymbeta}, which is also written by each lambda expression and used by each call expression. Again, dedicated nodes could avoid having \isa{V\isasymbeta} in the \isa{Def} sets of lambda expressions.
+For a possible remedy additional nodes could be inserted in the graph whose only effect is to increase the contour counter and thus removing \isa{Vcnt} from the other nodes’ \isa{Def} sets. We expect that these contour nodes are never removed by slicing, and that these would only depend on other contour nodes plus potentially nodes which represent conditional statements.
 
-	    The combination of a call and a lambda expression is roughly equivalent to an assignment statement in an imperative language. Combining these in one step, we can remove the argument vector variable \isa{Vds} from our scheme and split the assignment of individual arguments into separate nodes. This would avoid unnecessary dependencies between the loop counter and the loop accumulator in a loop implemented by a recursive function.
+A similar problem is posed by the binding environment in the graph variable \isa{V\isasymbeta}, which is also written by each lambda expression and used by each call expression. Again, dedicated nodes could avoid having \isa{V\isasymbeta} in the \isa{Def} sets of lambda expressions.
 
-	    Splitting the binding environment into a set of graph variables, one per binding position, should be considered. It is not clear whether this will improve the representation without further modifications, as the evaluation of a lambda expression to a closure bundles the complete binding environment, which requires all of these graph variables to appear in the \isa{Use} and \isa{Def} set of a call.
+The combination of a call and a lambda expression is roughly equivalent to an assignment statement in an imperative language. Combining these in one step, we can remove the argument vector variable \isa{Vds} from our scheme and split the assignment of individual arguments into separate nodes. This would avoid unnecessary dependencies between the loop counter and the loop accumulator in a loop implemented by a recursive function.
 
-	    In \cref{examplesection} the problems of the 0CFA-abstraction in the presence of higher order functions such as $\circ$ are mentioned. These also occur here and would lead to unwanted edges in the control graph. A transformation that allows to use the additional information provided by 1CFA is tricky, though, as binding environments do not occur in the static part of the graph. A possible solution is to duplicate nodes, once per context identified by the 1CFA-abstraction, at the cost of an increased graph.
+Splitting the binding environment into a set of graph variables, one per binding position, should be considered. It is not clear whether this will improve the representation without further modifications, as the evaluation of a lambda expression to a closure bundles the complete binding environment, which requires all of these graph variables to appear in the \isa{Use} and \isa{Def} set of a call.
 
-	    \section{Example}
+In \cref{examplesection} the problems of the 0CFA-abstraction in the presence of higher order functions such as $\circ$ are mentioned. These also occur here and would lead to unwanted edges in the control graph. A transformation that allows to use the additional information provided by 1CFA is tricky, though, as binding environments do not occur in the static part of the graph. A possible solution is to duplicate nodes, once per context identified by the 1CFA-abstraction, at the cost of an increased graph.
 
-	    The smallest example of a program with obviously useless instructions would be the following code:
+\section{Example}
 
-	    \begin{center}
+The smallest example of a program with obviously useless instructions would be the following code:
+
+\begin{center}
 {\ttfamily
 \centering
 \frenchspacing
