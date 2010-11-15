@@ -1,0 +1,205 @@
+\documentclass[a4paper,parskip=half,DIV=10,twoside=false,12pt]{scrbook}
+
+%\usepackage{german}
+\usepackage[T3,OT1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{faktor}
+\usepackage{nicefrac}
+\usepackage{listings}
+\usepackage{enumerate}
+\usepackage{dsfont}
+\usepackage{remreset}
+\usepackage{booktabs}
+\usepackage{lettrine}
+%\usepackage{txfonts}
+\usepackage{varioref}
+\usepackage{multirow}
+\usepackage{rotating}
+\usepackage{cancel}
+\usepackage[pdfauthor={Joachim Breitner}]{hyperref}
+\usepackage[amsmath,thmmarks]{ntheorem}
+\usepackage[capitalise]{cleveref}
+\usepackage{tikz}
+%\usepackage[tracking=true,kerning=true,spacing=true]{microtype}
+\usepackage{microtype}
+\usetikzlibrary{automata}
+\usetikzlibrary{decorations}
+\usetikzlibrary{snakes}
+\usepackage[ruled,vlined]{algorithm2e}
+
+\usepackage[numbers,square]{natbib}
+\bibliographystyle{amsalpha}
+
+% theorem-settings
+\theoremnumbering{arabic}
+\theoremstyle{plain}
+\theorembodyfont{\itshape}
+\theoremheaderfont{\normalfont\bfseries}
+\theoremseparator{}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+
+\theorembodyfont{\upshape}
+\newtheorem{example}{Example}
+\newtheorem{remark}{Remark}
+\newtheorem{definition}{Definition}
+
+\theoremstyle{nonumberplain}
+\theoremheaderfont{\scshape}
+\theorembodyfont{\normalfont}
+\theoremsymbol{\ensuremath{_\blacksquare}}
+\newtheorem{proof}{Proof}
+
+% for \autoref
+\newcommand{\examplename}{Example}
+\newcommand{\lemmaname}{Lemma}
+\newcommand{\remarkname}{Remark}
+\newcommand{\corollaryname}{Corollary}
+\newcommand{\definitionname}{Definition}
+\newcommand{\algocflinename}{Algorithm}
+\newcommand{\AlgoLineautorefname}{line}
+\renewcommand{\chapterautorefname}{Chapter}
+\renewcommand{\sectionautorefname}{Section}
+\renewcommand{\subsectionautorefname}{Section}
+
+% for \cref
+\crefname{algocf}{Algorithm}{Algorithms}
+\crefname{figure}{Figure}{Figure}
+
+% vref settings
+\vrefwarning
+\def\reftextfaceafter {\unskip}%
+\def\reftextfacebefore{\unskip}%
+\def\reftextafter     {on the \reftextvario{following}{next} page}%
+\def\reftextbefore    {on the \reftextvario{preceding}{previous} page}%
+\def\reftextcurrent   {\unskip}%
+
+% titlesec
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+	{\sectfont\Large\filcenter}
+	{\titlerule%[1pt]%
+	 \vspace{1pt}%
+	 \titlerule%
+	 %\vspace{.4pc}%
+	 \LARGE\MakeUppercase{\chaptertitlename} \thechapter}
+	{1pc}
+	{\titlerule
+	 \vspace{1pc}%
+	 \Huge}
+% \titleformat{\chapter}[display]
+% 	{\sectfont\Large}
+% 	{%\titlerule%[1pt]%
+% 	 %\vspace{1pt}%
+% 	 %\titlerule%
+% 	 %\vspace{.4pc}%
+% 	 \LARGE{\chaptertitlename} \thechapter}
+% 	{1pc}
+% 	{%\titlerule
+% 	 %\vspace{1pc}%
+% 	 \sectfont%
+% 	 \Huge}
+
+%\pagestyle{headings}
+
+\usepackage{mathpazo}
+
+% Palatino: 5% mehr Zeilendurchschuss (laut KOMA-skript)
+\linespread{1.05}
+
+% Satzspiegel neu berechen
+\recalctypearea
+
+% Figures unabhängig vom Kapitel zählen
+\makeatletter
+\@removefromreset{figure}{chapter}
+\renewcommand{\thefigure}{\arabic{figure}}
+\@removefromreset{table}{chapter}
+\renewcommand{\thetable}{\arabic{table}}
+\makeatother
+
+% Disable single lines at the start of a paragraph (Schusterjungen)
+\clubpenalty = 10000
+%
+% Disable single lines at the end of a paragraph (Hurenkinder)
+\widowpenalty = 10000 \displaywidowpenalty = 10000
+
+% Durchgestrichene Tabellenzeilen
+% wie machen?
+\makeatletter
+\def\stline{%
+  \noalign{\vskip-.7em\vskip-\arrayrulewidth\hrule \@height \arrayrulewidth\vskip.7em}}
+\makeatother
+
+\DeclareMathOperator{\Aut}{Aut}
+\DeclareMathOperator{\Out}{Out}
+\DeclareMathOperator{\GL}{GL}
+\DeclareMathOperator{\SL}{SL}
+\DeclareMathOperator{\PSL}{PSL}
+\DeclareMathOperator{\Stab}{Stab}
+\newcommand{\Id}{\mathrm{Id}}
+\DeclareMathOperator{\Kern}{Kern}
+\DeclareMathOperator{\NT}{NT}
+\DeclareMathOperator{\Diag}{Diag}
+\DeclareMathOperator{\Sym}{Sym}
+\newcommand{\da}{\coloneqq}
+\newcommand{\ad}{\eqqcolon}
+\newcommand{\Z}{\mathds Z}
+\newcommand{\N}{\mathds N}
+\newcommand{\ev}{\mathds 1}
+\newcommand{\ep}{\varepsilon}
+
+\newcommand{\llangle}{\langle\!\langle}
+\newcommand{\rrangle}{\rangle\!\rangle}
+
+\SetKwFunction{Len}{len}
+\SetKwFunction{Coincidence}{Coincidence}
+\SetKwFunction{NewCoset}{NewCoset}
+\SetKwFunction{AccA}{AccA}
+\SetKwFunction{pop}{pop}
+\SetKwFunction{push}{push}
+
+\hyphenation{Karls-ruhe}
+
+\author{Joachim Breitner}
+\title{Control Flow in Functional Languages}
+\subtitle{Formally taming lambdas}
+
+
+\begin{document}
+\begin{titlepage}
+\centering
+\makeatletter
+{\Large \@author} \\
+\vspace{2em}
+{\large Student Research Project}\\
+\vspace{2.5em}
+{\sectfont\LARGE \@title }\\
+\vspace{2em}
+{\sectfont\Large \@subtitle }
+\vfill
+{\Large \@author} \\
+\vspace{2em}
+{\large Student Research Project}\\
+\vspace{2.5em}
+{\sectfont\LARGE \@title }\\
+\vspace{2em}
+{\sectfont\Large \@subtitle }
+\vfill
+{\Large \@author} \\
+\vspace{2em}
+{\large Student Research Project}\\
+\vspace{2.5em}
+{\sectfont\LARGE \@title }\\
+\vspace{2em}
+{\sectfont\Large \@subtitle }
+\vfill
+\makeatother
+\end{titlepage}
+\end{document}
