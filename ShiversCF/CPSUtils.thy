@@ -1,7 +1,7 @@
 header  {* Syntax tree helpers *}
 
 theory CPSUtils
-imports CPSScheme Finite_Inductive_Set
+imports CPSScheme
 begin
 
 text {*
@@ -32,34 +32,6 @@ where "calls  (Lambda l vs c) = callsC c"
                                     \<union> callsC c')"
     | "callsV (L l) = calls l"
     | "callsV _     = {}"
-
-(* Failed attempt using inductive_set: *)
-
-inductive_set lambdas' and calls' and values'
-  for p
-  where "p \<in> lambdas' p"
-      | "Lambda l vs c \<in> lambdas' p \<Longrightarrow> c \<in> calls' p"
-      | "App l d ds \<in> calls' p \<Longrightarrow> d \<in> values' p"
-      | "\<lbrakk> App l d ds \<in> calls' p ; d' \<in> set ds \<rbrakk> \<Longrightarrow> d' \<in> values' p"
-      | "Let l binds c' \<in> calls' p \<Longrightarrow> c' \<in> calls' p"
-      | "\<lbrakk> Let l binds c' \<in> calls' p ; l' \<in> snd ` set binds \<rbrakk> \<Longrightarrow> l' \<in> lambdas' p"
-      | "L l \<in> values' p \<Longrightarrow> l \<in> lambdas' p"
-
-lemma "finite (lambdas' p)"
-  apply (subst lambdas'_def)
-  apply (subst Collect_def)
-  apply (subst lambdas'p_def)
-  apply (subst lambdas'p_calls'p_values'p_def)
-  apply (rule lfp_curryD[of _ "\<lambda>l. finite (l False False undefined undefined)"])
-  apply mono
-  apply (erule lfp_curryD)
-  apply (erule lfp_curryD)
-  apply (erule lfp_curryD)
-  apply (rule finite_inj_collect_lfp)
-  apply (simp)[1]
-  apply (erule lfp_finite[of _ size])
-  apply (intro finiteness_preserving_lemmas)
-oops
 
 lemma finite_lambdas[simp]: "finite (lambdas l)" and "finite (lambdasC c)" "finite (lambdasV v)"
 by (induct rule: lambdas_lambdasC_lambdasV.induct, auto, blast)

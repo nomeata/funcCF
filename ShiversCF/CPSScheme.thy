@@ -9,7 +9,7 @@ First, we define the syntax tree of a program in our toy functional language, us
 *}
 
 text {*
-We assume that the program to be investigates is already parsed into a syntaxtree. Furthermore, we assume that distinct labels were added to distinguish different code positions and that the program has been alphatised, i.e. that each variable name is only bound one. This binding position is, as a convenience, considered part of the variable name.
+We assume that the program to be investigates is already parsed into a syntax tree. Furthermore, we assume that distinct labels were added to distinguish different code positions and that the program has been alphatised, i.e. that each variable name is only bound one. This binding position is, as a convenience, considered part of the variable name.
 *}
 
 types label = nat
@@ -34,8 +34,8 @@ datatype lambda = Lambda label "var list" call
 types prog = lambda
 
 text {*
-Three example programs. These can be generated using the Haskell implementation
-of Shivers’ algorithm that we wrote as a prototype.
+Three example programs. These were generated using the Haskell implementation
+of Shivers’ algorithm that we wrote as a prototype\cite{HaskProto}.
 *}
 
 abbreviation "ex1 == (Lambda 1 [(1,''cont'')] (App 2 (R 3 (1,''cont'')) [(C 4 0)]))"

@@ -146,7 +146,7 @@ fixrec   a_evalF :: "'c::contour \<afstate> discr \<rightarrow> 'c \<aans>" ("\<
         )"
 
 text {*
-Again, we give name the cases of the induction rule and build a nicer case analysis rule for argument of type @{text \<afstate>}.
+Again, we name the cases of the induction rule and build a nicer case analysis rule for arguments of type @{text \<afstate>}.
 *}
 
 lemmas a_evalF_evalC_induct = a_evalF_a_evalC.induct[case_names Admissibility Bottom Next]

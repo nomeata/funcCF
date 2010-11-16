@@ -132,7 +132,7 @@ fixrec   evalF :: "fstate discr \<rightarrow> ans" ("\<F>")
         )"
 
 text {* 
-To evaluate a full program, it is passed to @{text \<F>} with proper initializations of the other arguments. We test our semantics function agains the three example programs and observe that the expected value is returned. (The third example takes long to finish, thus is it not ran by default.)
+To evaluate a full program, it is passed to @{text \<F>} with proper initializations of the other arguments. We test our semantics function against two example programs and observe that the expected value is returned. 
 *}
 
 definition evalCPS :: "prog \<Rightarrow> ans" ("\<PR>")
@@ -149,9 +149,9 @@ lemma correct_ex2: "\<PR> ex2 = Def 2"
 unfolding evalCPS_def
 by simp
 
+(* (The third example takes long to finish, thus is it not ran by default.) 
 lemma correct_ex3: "evalCPS ex3 = Def 55"
 oops
-(* Dauert lange, klappt aber\<dots>
 unfolding evalCPS_def
 by simp
 *)

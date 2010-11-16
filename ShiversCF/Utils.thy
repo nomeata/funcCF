@@ -55,10 +55,10 @@ text {*
 Lemmas about @{text map}, @{text zip} and @{text fst}/@{text snd}
 *}
 
-lemma map_fst_zip: "length xs = length ys ==> map fst (zip xs ys) = xs"
+lemma map_fst_zip: "length xs = length ys \<Longrightarrow> map fst (zip xs ys) = xs"
 apply (induct xs ys rule:list_induct2) by auto
 
-lemma map_snd_zip: "length xs = length ys ==> map snd (zip xs ys) = ys"
+lemma map_snd_zip: "length xs = length ys \<Longrightarrow> map snd (zip xs ys) = ys"
 apply (induct xs ys rule:list_induct2) by auto
 
 end

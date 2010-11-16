@@ -1,6 +1,6 @@
 ## configurables
 
-SESSION-NAME = CFGraph
+SESSION-NAME = ShiversCF
 BASE-IMAGE = HOLCF
 
 ## targets

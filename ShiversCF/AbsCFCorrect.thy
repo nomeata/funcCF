@@ -34,7 +34,7 @@ It would be unwieldly to always write out @{text "abs_<type> x"}. We would rathe
 
 Unfortunately, this does not work well in our case: There are eight @{text "abs_<type>"} functions and some expressions later have multiple occurences of these, causing an exponential blow-up of combinations.
 
-Luckily, the latest development version of Isabelle contains a module by Christian Sternagel and Alexander Krauss for ad-hoc overloading, where the choice of the concrete function is done at parse time and immediately. This is used in the following to set up the the symbol @{text "|_|"} for the family of abstraction functions.
+Therefore, we use a module by Christian Sternagel and Alexander Krauss for ad-hoc overloading, where the choice of the concrete function is done at parse time and immediately. This is used in the following to set up the the symbol @{text "|_|"} for the family of abstraction functions.
 *}
 
 consts abs :: "'a \<Rightarrow> 'b" ("|_|")
