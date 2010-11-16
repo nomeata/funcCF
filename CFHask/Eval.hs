@@ -1,7 +1,7 @@
 {-|
- - Here, a standard semantic for the language defined in "CPSScheme" is
- - implemented, following the definitions in Olin Shivers\' \"Control-Flow
- - Analysis of Higher-Order Languages\".
+Here, a standard semantic for the language defined in "CPSScheme" is
+implemented, following the definitions in Olin Shivers\' \"Control-Flow
+Analysis of Higher-Order Languages\".
  -}
 {-# LANGUAGE TypeOperators #-}
 module Eval where

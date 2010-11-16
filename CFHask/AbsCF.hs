@@ -1,7 +1,7 @@
 {-|
- - This module calculates an abstract control graph by evaluating a "CPSScheme"
- - program, following the definitions in Olin Shivers\' \"Control-Flow
- - Analysis of Higher-Order Languages\".
+This module calculates an abstract control graph by evaluating a "CPSScheme"
+program, following the definitions in Olin Shivers\' \"Control-Flow
+Analysis of Higher-Order Languages\".
  -}
 {-# LANGUAGE TypeOperators #-}
 module AbsCF where
