@@ -1,0 +1,348 @@
+\documentclass{beamer}
+%\documentclass{article}
+%\usepackage{beamerarticle}
+
+\newlength{\px}
+\setlength{\px}{0.0009765625\paperwidth}
+
+\usetheme[footline=authortitle,compress]{Nomeata}
+
+\AtBeginSection[]
+{
+%  \begin{frame}<beamer>
+%    \tableofcontents[currentsection,currentsubsection]
+%  \end{frame}
+}
+
+
+%\usecolortheme{orchid}
+\usecolortheme{crane}
+
+\usepackage[T3,OT1]{fontenc}
+\usepackage[german]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{tikz}
+%\usetikzlibrary{shapes,arrows}
+\usetikzlibrary{positioning,calc,decorations,decorations.pathmorphing,shapes.geometric,matrix}
+\usepackage{hyperref}
+
+\usepackage{mathtools}
+\usepackage{amssymb}
+
+\usepackage{listings}
+
+% \pause mit verstecken
+\newcommand{\hide}{\onslide+<+(1)->}
+
+\title{Shivers Steuerungsflussanalyse}
+\subtitle{Vortrag zur Studienarbeit}
+\author{Joachim Breitner}
+%\institute{\url{mail@joachim-breitner.de}}
+%\titlegraphic{}
+\date{23. November 2010}
+
+\DeclareTextSymbol\textlambda{T3}{171}           % Lambda
+\DeclareTextSymbolDefault\textlambda{T3}
+\DeclareUnicodeCharacter{03BB}{\textlambda}
+
+
+\begin{document}
+
+\frame[plain]{\titlepage}
+\only<article>{\maketitle}
+
+\section{Ein Beispielprogramm}
+\only<presentation>{\subsection*{}}
+
+\newcommand{\lab}[1]{\textsuperscript{\scriptsize\sffamily#1}}
+
+\begin{frame}
+\frametitle{Umständlich konstant eins}
+Unser Beispielprogramm:
+\ttfamily
+\begin{tabbing}
+(\=λ c. \=let \=p = (\=λ k.\=\ k 1) in\=\ p (\=λ x.\=\ p c ))\hspace{6mm}\=\\
+\visible<2->{ \>\lab{1} \>\lab{2} \> \>\lab{3} \>\lab{4} \> \lab{5} \> \lab{6} \> \lab{7} \>{\normalfont \textsuperscript{$\leftarrow$ Labels}}}
+\end{tabbing}
+\end{frame}
+
+\section{Semantik}
+\only<presentation>{\subsection*{}}
+
+\newcommand{\Stop}{\text{Stop}}
+\begin{frame}
+\frametitle{In 10 Schritten zur Eins}
+{\ttfamily
+\begin{tabbing}
+(\=λ c. \=let \=p = (\=λ k.\=\ k 1) in\=\ p (\=λ x.\=\ p c ))\\
+\>\lab{\alert<1>{1}} \>\lab{\alert<2>{2}} \> \>\lab{\alert<4,8>{3}} \>\lab{\alert<5,9>{4}} \> \lab{\alert<3>{5}} \> \lab{\alert<6>{6}} \> \lab{\alert<7>{7}}
+\end{tabbing}}
+
+\begin{overprint}
+\onslide<+>
+\begin{block}{Schritt 1}
+\begin{itemize}
+\item Evaluiere:\phantom{$\langle$}1
+\item Parameter: $[\Stop]$
+\item Variablenbelegung: \\
+$\{\}$
+\item Contour-Zähler: \textit0
+\end{itemize}
+\end{block}
+
+\onslide<+>
+\begin{block}{Schritt 2}
+\begin{itemize}
+\item Evaluiere:\phantom{$\langle$}2
+\item Bindungsumgebung: $\{ 1 \mapsto \textit 0 \}$
+\item Variablenbelegung: \\
+$\{ (c,\textit 0) \mapsto \Stop \}$
+\item Contour-Zähler: \textit0
+\end{itemize}
+\end{block}
+
+\onslide<+>
+\begin{block}{Schritt 3}
+\begin{itemize}
+\item Evaluiere:\phantom{$\langle$}5
+\item Bindungsumgebung: $\beta \coloneqq \{ 1 \mapsto \textit 0,\ 2 \mapsto \textit 1 \}$
+\item Variablenbelegung: \\
+$\{ (c,\textit 0) \mapsto \Stop,\ (p,\textit 1) \mapsto \langle 3,\beta\rangle\}$
+\item Contour-Zähler: \textit1
+\end{itemize}
+\end{block}
+
+\onslide<+>
+\begin{block}{Schritt 4}
+\begin{itemize}
+\item Evaluiere:\phantom{$\langle$}$\langle 3, \beta\rangle$
+\item Parameter: $[\langle6, \beta\rangle]$
+\item Variablenbelegung: \\
+$\{ (c,\textit 0) \mapsto \Stop,\ (p,\textit 1) \mapsto \langle 3 ,\beta\rangle\}$
+\item Contour-Zähler: \textit2
+\end{itemize}
+\end{block}
+
+\onslide<+>
+\begin{block}{Schritt 5}
+\begin{itemize}
+\item Evaluiere:\phantom{$\langle$}4
+\item Bindungsumgebung: $\beta \cup \{ 3 \mapsto \textit 2 \}$
+\item Variablenbelegung: \\
+$\{ (c,\textit 0) \mapsto \Stop,\ (p,\textit 1) \mapsto \langle 3 ,\beta\rangle,\ (k,\textit 2) \mapsto \langle6, \beta\rangle\}$
+\item Contour-Zähler: \textit2
+\end{itemize}
+\end{block}
+
+\onslide<+>
+\begin{block}{Schritt 6}
+\begin{itemize}
+\item Evaluiere:\phantom{$\langle$}$\langle6, \beta\rangle$
+\item Parameter: $[\text{\tt 1}]$
+\item Variablenbelegung: \\
+$\{ (c,\textit 0) \mapsto \Stop,\ (p,\textit 1) \mapsto \langle 3 ,\beta\rangle,\ (k,\textit 2) \mapsto \langle6, \beta\rangle\}$
+\item Contour-Zähler: \textit3
+\end{itemize}
+\end{block}
+
+\onslide<+>
+\begin{block}{Schritt 7}
+\begin{itemize}
+\item Evaluiere:\phantom{$\langle$}7
+\item Bindungsumgebung: $\beta \cup \{ 6 \mapsto \textit 3 \}$
+\item Variablenbelegung: \\
+$\{ (c,\textit 0) \mapsto \Stop,\ (p,\textit 1) \mapsto \langle 3 ,\beta\rangle,\ (k,\textit 2) \mapsto \langle6, \beta\rangle, (x,\textit 3) \mapsto \text{\tt 1}\}$
+\item Contour-Zähler: \textit3
+\end{itemize}
+\end{block}
+
+\onslide<+>
+\begin{block}{Schritt 8}
+\begin{itemize}
+\item Evaluiere:\phantom{$\langle$}$\langle 3, \beta\rangle$
+\item Parameter: $[\Stop]$
+\item Variablenbelegung: \\
+$\{ (c,\textit 0) \mapsto \Stop,\ (p,\textit 1) \mapsto \langle 3 ,\beta\rangle,\ (k,\textit 2) \mapsto \langle6, \beta\rangle, (x,\textit 3) \mapsto \text{\tt 1}\}$
+\item Contour-Zähler: \textit4
+\end{itemize}
+\end{block}
+
+\onslide<+>
+\begin{block}{Schritt 9}
+\begin{itemize}
+\item Evaluiere:\phantom{$\langle$}4
+\item Bindungsumgebung: $\beta \cup \{ 3 \mapsto \textit 4 \}$
+\item Variablenbelegung: \\
+$\{ (c,\textit 0) \mapsto \Stop,\ (p,\textit 1) \mapsto \langle 3 ,\beta\rangle,\ (k,\textit 2) \mapsto \langle6, \beta\rangle, (x,\textit 3) \mapsto \text{\tt 1},$\\$\phantom{\{}(k,\textit 4) \mapsto \Stop\}$
+\item Contour-Zähler: \textit4
+\end{itemize}
+\end{block}
+
+\onslide<+>
+\begin{block}{Schritt 10}
+\begin{itemize}
+\item Evaluiere:\phantom{$\langle$}$\Stop$
+\item Parameter: $[1]$
+\item Variablenbelegung: \\
+$\{ (c,\textit 0) \mapsto \Stop,\ (p,\textit 1) \mapsto \langle 3 ,\beta\rangle,\ (k,\textit 2) \mapsto \langle6, \beta\rangle, (x,\textit 3) \mapsto \text{\tt 1},$\\$\phantom{\{}(k,\textit 4) \mapsto \Stop\}$
+\item Contour-Zähler: \textit5
+\end{itemize}
+\end{block}
+
+\end{overprint}
+
+\end{frame}
+
+\section{Exakte Analyse}
+\only<presentation>{\subsection*{}}
+
+\begin{frame}
+\frametitle{Halteproblematisch}
+
+{\ttfamily
+\begin{tabbing}
+(\=λ c. \=let \=p = (\=λ k.\=\ k 1) in\=\ p (\=λ x.\=\ p c ))\\
+\>\lab{1} \>\lab{2} \> \>\lab{3} \>\lab{4} \> \lab{5} \> \lab{6} \> \lab{7} 
+\end{tabbing}
+}
+
+\begin{block}{Tatsächliche Aufrufe}
+\begin{align*}
+(4, \beta \cup \{ 3 \mapsto \textit 2\}) &\leadsto \langle6, \beta\rangle \\
+(4, \beta \cup \{ 3 \mapsto \textit 4\}) &\leadsto \Stop \\
+(5, \beta) &\leadsto \langle3, \beta\rangle \\
+(7, \beta \cup \{ 6 \mapsto \textit 3 \}) &\leadsto \langle3, \beta\rangle 
+\end{align*}
+\end{block}
+\end{frame}
+
+\section{0CFA}
+\only<presentation>{\subsection*{}}
+
+\begin{frame}
+\frametitle{Ohne Tiefgang}
+
+{\ttfamily
+\begin{tabbing}
+(\=λ c. \=let \=p = (\=λ k.\=\ k 1) in\=\ p (\=λ x.\=\ p c ))\\
+\>\lab{1} \>\lab{2} \> \>\lab{3} \>\lab{4} \> \lab{5} \> \lab{6} \> \lab{7} 
+\end{tabbing}
+}
+
+\begin{block}{Prognostizierte Aufrufe}
+\begin{align*}
+4 &\leadsto 6 \\
+4 &\leadsto \Stop \\ 
+5 &\leadsto 3 \\
+7 &\leadsto 3
+\end{align*}
+\end{block}
+\end{frame}
+
+\section{1CFA}
+\only<presentation>{\subsection*{}}
+
+
+\begin{frame}
+\frametitle{Etwas Tiefgang}
+
+{\ttfamily
+\begin{tabbing}
+(\=λ c. \=let \=p = (\=λ k.\=\ k 1) in\=\ p (\=λ x.\=\ p c ))\\
+\>\lab{1} \>\lab{2} \> \>\lab{3} \>\lab{4} \> \lab{5} \> \lab{6} \> \lab{7} 
+\end{tabbing}
+}
+
+\begin{block}{Prognostizierte Aufrufe}
+\begin{align*}
+(4, \hat\beta \cup \{ 3 \mapsto 5\}) &\leadsto \langle6, \hat\beta\rangle \\
+(4, \hat\beta \cup \{ 3 \mapsto 7\}) &\leadsto \Stop \\
+(5, \hat\beta) &\leadsto \langle3, \hat\beta\rangle \\
+(7, \hat\beta \cup \{ 6 \mapsto 4 \}) &\leadsto \langle3, \hat\beta\rangle 
+\end{align*}
+\hfill wobei $\hat\beta \coloneqq \{ 1 \mapsto \text{top},\ 2 \mapsto 1\}$
+\end{block}
+\end{frame}
+
+
+\section{Slicing}
+\only<presentation>{\subsection*{}}
+
+\begin{frame}
+\frametitle{Schnittmuster \only<1>{ohne}\only<2>{mit} Shivers}
+
+{\ttfamily
+\begin{tabbing}
+(\=λ c. \=let \=p = (\=λ k.\=\ k 1) in\=\ p (\=λ x.\=\ p c ))\\
+\>\lab{1} \>\lab{2} \> \>\lab{3} \>\lab{4} \> \lab{5} \> \lab{6} \> \lab{7} 
+\end{tabbing}
+}
+\begin{center}
+\hfill
+\begin{tikzpicture}[every node/.style={draw}]
+\path     node[circle] (1) {1}
+-- ++(0,-1) node[trapezium] (2) {2}
+-- ++(1,-1) node[circle] (3) {3}
+-- ++(0,-1) node[rectangle] (4) {4}
+-- ++(-1,1) node[rectangle] (5) {5}
+-- ++(2,-1) node[circle] (6) {6}
+-- ++(0,-1) node[rectangle] (7) {7}
+-- ++(-2,0) node[diamond] (s) {};
+\draw[->] (1) -- (2);
+\draw[->] (2) -- (5);
+\draw[->] (5) -- (3);
+\draw[->] (3) -- (4);
+\draw[->] (4) -- (6);
+\draw[->] (6) -- (7);
+\draw[->] (7) to[out=45,in=0] (3);
+\draw[->] (4) -- (s);
+\visible<1>{
+\draw[->] (4) to[out=180,in=-135] (1);
+\draw[->] (4) -- (3);
+\draw[->] (5) to[out=125,in=-125] (1);
+\draw[->] (5) -- (6);
+\draw[->] (5) -- (s);
+\draw[->] (7) to[out=45,in=0] (1);
+\draw[->] (7) -- (6);
+\draw[->] (7) -- (s);
+}
+\end{tikzpicture}
+\hfill
+\llap{
+\begin{tikzpicture}
+\matrix[anchor=west]{
+\node[draw,circle] {}; \pgfmatrixnextcell \node {Lambda}; \\
+\node[draw,trapezium] {}; \pgfmatrixnextcell \node {Let}; \\
+\node[draw,rectangle] {}; \pgfmatrixnextcell \node {Aufruf}; \\
+\node[draw,diamond] {}; \pgfmatrixnextcell \node {Stop}; \\
+};
+\end{tikzpicture}
+}
+\end{center}
+
+\end{frame}
+
+
+\section{Fazit}
+\only<presentation>{\subsection*{}}
+
+\begin{frame}
+\frametitle{Fazit}
+\begin{block}{}
+\begin{itemize}
+\item Shivers Algorithmus ist korrekt.
+\item Slicing-Framework für funktionale Sprache denkbar.
+\item Shivers Algorithmus kann dabei helfen.
+\item Es besteht noch Arbeitsbedarf.
+\end{itemize}
+\end{block}
+\end{frame}
+
+
+\only<presentation>{\section{}\subsection*{}}
+
+\setbeamercolor{normal text}{bg=black}
+\setbeamertemplate{background canvas}{}
+\frame<presentation>[plain]{}
+\end{document}
+

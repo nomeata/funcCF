@@ -1,0 +1,265 @@
+% based upon beamerthemeQuedlinburg
+% Copyright 2005 by Andreas Tille <tille@debian.org>
+%
+% some modifications by Joachim Breitner, © 2005
+%
+% This program can be redistributed and/or modified under the terms
+% of the GNU Public License, version 2.
+
+\mode<presentation>
+
+% shadow of not yet presented items
+\setbeamercovered{dynamic}
+
+% View structure of presentation before new section
+\AtBeginSection[]
+{
+  \begin{frame}<beamer>
+    \tableofcontents[currentsection,currentsubsection]
+  \end{frame}
+}
+
+% Load Logo once
+%\pgfdeclareimage[width=15pt]{uni-logo}{img/Logo}
+
+% single steps in itemize 
+%\beamerdefaultoverlayspecification{<+->}
+
+\useinnertheme[shadow=true]{rounded}
+%%\useoutertheme{shadow1}
+\setbeamercolor{section in head/foot}{parent=palette quaternary}
+
+%\useoutertheme[subsection=false]{miniframes1}
+\setbeamercolor{section in head/foot}{parent=palette tertiary}
+\setbeamercolor{subsection in head/foot}{parent=palette secondary}
+\setbeamercolor{author in head/foot}{parent=subsection in head/foot}
+\setbeamercolor{title in head/foot}{parent=section in head/foot}
+
+\setbeamertemplate{navigation symbols}{}
+
+\def\beamer@theme@footline@empty{}
+\def\beamer@theme@footline@authorinstitute{
+  \defbeamertemplate*{footline}{miniframes theme}
+  {%
+    \begin{beamercolorbox}[colsep=1.5pt]{upper separation line foot}
+    \end{beamercolorbox}
+    \begin{beamercolorbox}[ht=2.5ex,dp=1.125ex,%
+      leftskip=.3cm,rightskip=.3cm plus1fil]{author in head/foot}%
+      \leavevmode{\usebeamerfont{author in head/foot}\insertshortauthor}%
+      \hfill%
+      {\usebeamerfont{institute in head/foot}\usebeamercolor[fg]{institute in head/foot}\insertshortinstitute}%
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[colsep=1.5pt]{lower separation line foot}
+    \end{beamercolorbox}
+  }
+}
+\def\beamer@theme@footline@authortitle{
+  \defbeamertemplate*{footline}{miniframes theme}
+  {%
+    \begin{beamercolorbox}[colsep=1.5pt]{upper separation line foot}
+    \end{beamercolorbox}
+    \begin{beamercolorbox}[ht=2.5ex,dp=1.125ex,%
+      leftskip=.3cm,rightskip=.3cm plus1fil]{title in head/foot}%
+      \leavevmode{\usebeamerfont{title in head/foot}\insertshorttitle}%
+      \hfill%
+      {\usebeamerfont{author in head/foot}\usebeamercolor[fg]{author in head/foot}\insertshortauthor}%
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[colsep=1.5pt]{lower separation line foot}
+    \end{beamercolorbox}
+  }
+}
+\def\beamer@theme@footline@institutetitle{
+  \defbeamertemplate*{footline}{miniframes theme}
+  {%
+    \begin{beamercolorbox}[colsep=1.5pt]{upper separation line foot}
+    \end{beamercolorbox}
+    \begin{beamercolorbox}[ht=2.5ex,dp=1.125ex,%
+      leftskip=.3cm,rightskip=.3cm plus1fil]{title in head/foot}%
+      \leavevmode{\usebeamerfont{title in head/foot}\insertshorttitle}%
+      \hfill%
+      {\usebeamerfont{institute in head/foot}\usebeamercolor[fg]{institute in head/foot}\insertshortinstitute}%
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[colsep=1.5pt]{lower separation line foot}
+    \end{beamercolorbox}
+  }
+}
+\def\beamer@theme@footline@authorinstitutetitle{
+  \defbeamertemplate*{footline}{miniframes theme}
+  {%
+    \begin{beamercolorbox}[colsep=1.5pt]{upper separation line foot}
+    \end{beamercolorbox}
+    \begin{beamercolorbox}[ht=2.5ex,dp=1.125ex,%
+      leftskip=.3cm,rightskip=.3cm plus1fil]{author in head/foot}%
+      \leavevmode{\usebeamerfont{author in head/foot}\insertshortauthor}%
+      \hfill%
+      {\usebeamerfont{institute in head/foot}\usebeamercolor[fg]{institute in head/foot}\insertshortinstitute}%
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[ht=2.5ex,dp=1.125ex,%
+      leftskip=.3cm,rightskip=.3cm plus1fil]{title in head/foot}%
+      {\usebeamerfont{title in head/foot}\insertshorttitle}%
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[colsep=1.5pt]{lower separation line foot}
+    \end{beamercolorbox}
+  }
+}
+
+\DeclareOptionBeamer{footline}{\csname beamer@theme@footline@#1\endcsname}
+\DeclareOptionBeamer{subsection}[true]{\csname beamer@theme@subsection#1\endcsname}
+\ProcessOptionsBeamer
+
+%% from shadow1 (removed there)
+\addtobeamertemplate{headline}
+{}
+{%
+  \vskip-0.2pt
+  \pgfuseshading{beamer@topshade}
+  \vskip-2pt
+}
+%% ende aus shadow1
+
+                                % Head
+\defbeamertemplate*{headline}{miniframes theme}
+{%
+  \begin{beamercolorbox}[colsep=1.5pt]{upper separation line head}
+  \end{beamercolorbox}
+  \begin{beamercolorbox}{section in head/foot}
+    \vskip2pt\insertnavigation{\paperwidth}\vskip2pt
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[colsep=1.5pt]{lower separation line head}
+  \end{beamercolorbox}
+}
+
+% From shade
+\AtBeginDocument{
+  \pgfdeclareverticalshading{beamer@topshade}{\paperwidth}{%
+    color(0pt)=(bg);
+    color(4pt)=(black!50!bg)}
+}
+
+\addtobeamertemplate{headline}
+{}
+{%
+  \vskip-0.2pt
+  \pgfuseshading{beamer@topshade}
+  \vskip-2pt
+}
+
+\setbeamercolor{section in head/foot}{parent=palette quaternary}
+
+\setbeamercolor{frametitle}{parent=subsection in head/foot}
+\setbeamercolor{frametitle right}{parent=section in head/foot}
+
+\setbeamertemplate{mini frame}
+{%
+%  \begin{pgfpicture}{0pt}{0pt}{0.1cm}{0.1cm}
+%    \pgfpathcircle{\pgfpoint{0.05cm}{0.05cm}}{0.05cm}
+%    \pgfusepath{fill,stroke}
+%  \end{pgfpicture}%
+$\otimes$
+}
+\setbeamersize{mini frame size=2mm,mini frame offset=-.5mm}
+
+
+\setbeamertemplate{mini frame in current subsection}
+{%
+%  \begin{pgfpicture}{0pt}{0pt}{0.1cm}{0.1cm}
+%    \pgfpathcircle{\pgfpoint{0.05cm}{0.05cm}}{0.05cm}
+%    \pgfusepath{stroke}
+%  \end{pgfpicture}%
+$\odot$
+}
+
+%\setbeamertemplate{mini frame in other subsection}
+%{\color{fg!#1!bg}\usebeamertemplate{mini frame in current subsection}}
+
+
+
+%%%%%%%
+
+%% end of miniframes outer theme definitions
+
+
+%\usecolortheme{Skole}
+
+%\pgfdeclaremask{stux}{slx-tux-mask}
+%\pgfdeclareimage[mask=stux,width=1cm]{stux-logo}{slx-tux}
+
+%\logo{\vbox{\hbox{\pgfuseimage{stux-logo}}}}
+\mode
+<all>
+
+%% Further definitions
+\mode
+<all>
+%% split1 ende
+
+\setbeamercolor{frametitle}{parent=subsection in head/foot}
+\setbeamercolor{frametitle right}{parent=section in head/foot}
+%%%%%%%
+
+\pgfdeclarehorizontalshading[frametitle.bg,frametitle right.bg]{beamer@frametitleshade}{\paperheight}{%
+  color(0pt)=(frametitle.bg);
+  color(\paperwidth)=(frametitle right.bg)}
+
+%% Has no visible effect
+%\AtBeginDocument{
+%  \pgfdeclareverticalshading{beamer@topshade}{\paperwidth}{%
+%    color(0pt)=(bg);
+%    color(4pt)=(black!50!bg)}
+%}
+
+%% This would add an additional shaded line between progress status and frame title
+%\addtobeamertemplate{headline}
+%{}
+%{%
+%  \vskip-0.2pt
+%  \pgfuseshading{beamer@topshade}
+%  \vskip-2pt
+%}
+
+\defbeamertemplate*{frametitle}{shadow1 theme}
+{%
+  \nointerlineskip%
+  \vskip-2pt%
+  \hbox{\leavevmode
+    \advance\beamer@leftmargin by -12bp%
+    \advance\beamer@rightmargin by -12bp%
+    \beamer@tempdim=\textwidth%
+    \advance\beamer@tempdim by \beamer@leftmargin%
+    \advance\beamer@tempdim by \beamer@rightmargin%
+    \hskip-\Gm@lmargin\hbox{%
+      \setbox\beamer@tempbox=\hbox{\begin{minipage}[b]{\paperwidth}%
+          \vbox{}\vskip-.75ex%
+          \leftskip0.3cm%
+          \rightskip0.3cm plus1fil\leavevmode
+          \insertframetitle%
+          \ifx\insertframesubtitle\@empty%
+            \strut\par%
+          \else
+            \par{\usebeamerfont*{framesubtitle}{\usebeamercolor[fg]{framesubtitle}\insertframesubtitle}\strut\par}%
+          \fi%
+          \nointerlineskip
+          \vbox{}%
+          \end{minipage}}%
+      \beamer@tempdim=\ht\beamer@tempbox%
+      \advance\beamer@tempdim by 2pt%
+      \begin{pgfpicture}{0pt}{0pt}{\paperwidth}{\beamer@tempdim}
+        \usebeamercolor{frametitle right}
+        \pgfrect[clip]{\pgforigin}{\pgfpoint{\paperwidth}{\beamer@tempdim}}
+        \pgfbox[left,base]{\pgfuseshading{beamer@frametitleshade}}
+	%\pgfputat{\pgfrelative{\pgfpoint{\paperwidth}{0.5\beamer@tempdim}}{\pgfpoint{-19pt}{-7.5pt}}}{\pgfbox[right,bottom]{\pgfuseimage{uni-logo}}}
+
+      \end{pgfpicture}
+      \hskip-\paperwidth%
+      \box\beamer@tempbox%
+    }%
+    \hskip-\Gm@rmargin%
+  }%
+  \nointerlineskip
+    \vskip-0.2pt
+    \hbox to\textwidth{\hskip-\Gm@lmargin\pgfuseshading{beamer@topshade}\hskip-\Gm@rmargin}
+    \vskip-2pt
+}
+
+\mode
+<all>
